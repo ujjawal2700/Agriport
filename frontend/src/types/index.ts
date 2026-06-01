@@ -1,0 +1,287 @@
+// ── Domain types for Agriport CRM (frontend / mock layer) ────────────────────
+
+export type UserRole = 'customer' | 'executive' | 'manager' | 'admin'
+
+export interface User {
+  id: string
+  fullName: string
+  email: string
+  mobile: string
+  role: UserRole
+  companyName?: string
+  businessType?: string
+  gstNumber?: string
+  country?: string
+  state?: string
+  city?: string
+  address?: string
+  avatarUrl?: string
+}
+
+export interface PricingSlab {
+  minQty: number
+  maxQty: number | null // null => and above
+  price: number
+  label: string
+}
+
+export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock'
+
+export interface Product {
+  id: string
+  name: string
+  category: string
+  images: string[]
+  shortDescription: string
+  description: string
+  specifications: Record<string, string>
+  unit: string
+  moq: number
+  availableStock: number
+  stockStatus: StockStatus
+  basePrice: number
+  currency: string
+  pricingSlabs: PricingSlab[]
+  rating: number
+  origin: string
+  leadTimeDays: number
+  isFeatured?: boolean
+  isNew?: boolean
+  tags?: string[]
+}
+
+export interface Category {
+  id: string
+  name: string
+  slug: string
+  productCount: number
+  icon: string
+}
+
+export interface CartItem {
+  productId: string
+  name: string
+  image: string
+  unit: string
+  quantity: number
+  unitPrice: number // resolved from pricing slab at current qty
+  moq: number
+}
+
+export type OrderStatus = 'placed' | 'confirmed' | 'completed' | 'cancelled'
+export type PaymentStatus = 'paid' | 'pending' | 'failed' | 'refunded'
+export type PaymentMode = 'upi' | 'card' | 'bank_transfer' | 'cash' | 'gateway'
+
+export interface OrderLine {
+  productId: string
+  name: string
+  image: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  lineTotal: number
+}
+
+export interface Order {
+  id: string
+  reference: string
+  placedOn: string // ISO
+  status: OrderStatus
+  paymentStatus: PaymentStatus
+  paymentMode: PaymentMode
+  lines: OrderLine[]
+  subtotal: number
+  tax: number
+  shipping: number
+  total: number
+  pickupAddress?: string
+  dispatchInfo?: string
+  trackingTimeline: { label: string; at: string | null; done: boolean }[]
+  invoiceNo?: string
+  gatePassNo?: string
+  cancellationReason?: string
+  refundStatus?: string
+}
+
+export interface Transaction {
+  id: string
+  orderRef: string
+  amount: number
+  mode: PaymentMode
+  date: string // ISO
+  status: PaymentStatus
+}
+
+export interface BusinessDocument {
+  id: string
+  type: 'gst_certificate' | 'business_license' | 'id_proof' | 'address_proof'
+  name: string
+  uploadedOn: string | null
+  status: 'verified' | 'pending' | 'missing'
+  fileName?: string
+}
+
+export interface Banner {
+  id: string
+  title: string
+  subtitle: string
+  cta: string
+  accent: string
+}
+
+// ── Admin domain ─────────────────────────────────────────────────────────────
+
+export type AccountStatus = 'active' | 'suspended' | 'blocked'
+
+export interface AdminUser {
+  id: string
+  name: string
+  company: string
+  email: string
+  mobile: string
+  city: string
+  joinedOn: string
+  status: AccountStatus
+  ordersCount: number
+  totalSpend: number
+  docStatus: 'verified' | 'pending'
+}
+
+export interface ManagerRow {
+  id: string
+  name: string
+  email: string
+  region: string
+  teamSize: number
+  revenue: number
+  target: number
+  status: AccountStatus
+}
+
+export interface ExecutiveApproval {
+  id: string
+  name: string
+  manager: string
+  region: string
+  requestedOn: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+export type StockRequestType = 'add' | 'update' | 'new_product'
+export interface StockRequest {
+  id: string
+  productName: string
+  category: string
+  manager: string
+  type: StockRequestType
+  currentStock: number
+  requestedChange: number
+  requestedOn: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
+export interface DashboardStats {
+  totalRevenue: number
+  revenueDelta: number
+  totalOrders: number
+  ordersDelta: number
+  totalUsers: number
+  usersDelta: number
+  pendingPayments: number
+  pendingPaymentsAmount: number
+  activeManagers: number
+  activeExecutives: number
+  productStock: number
+  monthlySales: number
+  monthlySalesDelta: number
+}
+
+export interface SalesPoint {
+  label: string
+  revenue: number
+  orders: number
+}
+
+export interface CategorySales {
+  name: string
+  value: number
+}
+
+// ── Sales (Manager + Executive) domain ───────────────────────────────────────
+
+export type ExecStatus = 'active' | 'pending' | 'inactive'
+export interface Executive {
+  id: string
+  name: string
+  region: string
+  sales: number
+  target: number
+  deals: number
+  status: ExecStatus
+  joinedOn: string
+}
+
+export type CustomerStage = 'lead' | 'prospect' | 'active' | 'dormant'
+export interface CRMCustomer {
+  id: string
+  name: string
+  company: string
+  phone: string
+  city: string
+  stage: CustomerStage
+  value: number
+  lastContact: string
+  owner: string
+}
+
+export interface FollowUp {
+  id: string
+  customer: string
+  company: string
+  dueOn: string
+  type: 'call' | 'visit' | 'email'
+  note: string
+  done: boolean
+}
+
+export interface SaleRecord {
+  id: string
+  ref: string
+  customer: string
+  product: string
+  quantity: number
+  unit: string
+  amount: number
+  date: string
+  paymentStatus: PaymentStatus
+  by: string
+}
+
+export interface VendorPurchase {
+  id: string
+  vendor: string
+  product: string
+  quantity: number
+  unit: string
+  buyPrice: number
+  total: number
+  date: string
+  status: 'received' | 'pending' | 'ordered'
+}
+
+export interface IncentivePoint {
+  label: string
+  earned: number
+  target: number
+}
+
+export interface SalesStats {
+  revenue: number
+  revenueDelta: number
+  target: number
+  deals: number
+  dealsDelta: number
+  pending: number
+  teamSize: number
+  incentiveEarned: number
+}
