@@ -10,7 +10,7 @@ interface LogoProps {
   light?: boolean
 }
 
-const SRC = '/agriport-logo.png'
+const SRC = '/logo3.png'
 
 /** Text fallback shown until the logo image is dropped into /public. */
 function Wordmark({ size }: { size: number }) {
@@ -30,9 +30,9 @@ function Wordmark({ size }: { size: number }) {
   )
 }
 
-export default function Logo({ size = 36, light = false }: LogoProps) {
+export default function Logo({ size = 40, light = false }: LogoProps) {
   const [errored, setErrored] = useState(false)
-  const height = Math.round(size * 1.35)
+  const height = Math.round(size * 1.55)
 
   const content = errored ? (
     <Wordmark size={size} />
