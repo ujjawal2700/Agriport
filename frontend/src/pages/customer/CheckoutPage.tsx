@@ -71,9 +71,9 @@ export default function CheckoutPage() {
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.5,
-          p: 2,
-          borderRadius: 2.5,
+          gap: { xs: 1.25, md: 1.5 },
+          p: { xs: 1.25, md: 1.75 },
+          borderRadius: 2,
           cursor: 'pointer',
           border: `1.5px solid ${selected ? 'var(--brand-500)' : 'var(--ink-200)'}`,
           bgcolor: selected ? 'var(--brand-50)' : '#fff',
@@ -81,10 +81,10 @@ export default function CheckoutPage() {
         }}
       >
         <Radio checked={selected} size="small" sx={{ p: 0 }} />
-        <Box sx={{ color: 'var(--brand-700)', display: 'grid', placeItems: 'center' }}>{ICONS[id]}</Box>
+        <Box sx={{ color: 'var(--brand-700)', display: 'grid', placeItems: 'center', '& svg': { fontSize: { xs: 20, md: 24 } } }}>{ICONS[id]}</Box>
         <Box sx={{ flex: 1 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 14.5 }}>{label}</Typography>
-          <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>{description}</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: { xs: 13.5, md: 14.5 } }}>{label}</Typography>
+          <Typography sx={{ fontSize: { xs: 11.5, md: 12.5 }, color: 'var(--ink-500)', mt: 0.25 }}>{description}</Typography>
         </Box>
       </Box>
     )
@@ -100,7 +100,7 @@ export default function CheckoutPage() {
       <Box className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Box className="lg:col-span-2 flex flex-col gap-6">
           {/* Delivery */}
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" sx={{ fontSize: 17, mb: 2 }}>
               Billing & pickup
             </Typography>
@@ -119,26 +119,26 @@ export default function CheckoutPage() {
           </Box>
 
           {/* Payment */}
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 1.75, md: 3 } }}>
             <Typography variant="h6" sx={{ fontSize: 17, mb: 0.5 }}>
               Payment method
             </Typography>
-            <Typography sx={{ fontSize: 13, color: 'var(--ink-500)', mb: 2.5 }}>
+            <Typography sx={{ fontSize: 13, color: 'var(--ink-500)', mb: { xs: 1.5, md: 2.5 } }}>
               Online payments are confirmed instantly. Offline modes are verified by our team after payment.
             </Typography>
 
-            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-500)', mb: 1 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-500)', mb: 0.75 }}>
               ONLINE
             </Typography>
-            <Box className="flex flex-col gap-2 mb-4">
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 1.25, mb: { xs: 2.5, md: 4 } }}>
               {online.map((m) => (
                 <MethodCard key={m.id} id={m.id} label={m.label} description={m.description} />
               ))}
             </Box>
-            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-500)', mb: 1 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-500)', mb: 0.75 }}>
               OFFLINE
             </Typography>
-            <Box className="flex flex-col gap-2">
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.25 }}>
               {offline.map((m) => (
                 <MethodCard key={m.id} id={m.id} label={m.label} description={m.description} />
               ))}

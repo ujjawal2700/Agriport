@@ -66,10 +66,10 @@ export const adminUsers: AdminUser[] = [
 ]
 
 export const managers: ManagerRow[] = [
-  { id: 'm-01', name: 'Arjun Desai', email: 'arjun@globira.com', region: 'West', teamSize: 8, revenue: 2840000, target: 3000000, status: 'active' },
-  { id: 'm-02', name: 'Sneha Reddy', email: 'sneha@globira.com', region: 'South', teamSize: 6, revenue: 2120000, target: 2200000, status: 'active' },
-  { id: 'm-03', name: 'Karan Malhotra', email: 'karan@globira.com', region: 'North', teamSize: 7, revenue: 1980000, target: 2400000, status: 'active' },
-  { id: 'm-04', name: 'Farah Sayed', email: 'farah@globira.com', region: 'East', teamSize: 5, revenue: 1310000, target: 1800000, status: 'suspended' },
+  { id: 'm-01', name: 'Arjun Desai', email: 'arjun@agriport.com', region: 'West', teamSize: 8, revenue: 2840000, target: 3000000, status: 'active' },
+  { id: 'm-02', name: 'Sneha Reddy', email: 'sneha@agriport.com', region: 'South', teamSize: 6, revenue: 2120000, target: 2200000, status: 'active' },
+  { id: 'm-03', name: 'Karan Malhotra', email: 'karan@agriport.com', region: 'North', teamSize: 7, revenue: 1980000, target: 2400000, status: 'active' },
+  { id: 'm-04', name: 'Farah Sayed', email: 'farah@agriport.com', region: 'East', teamSize: 5, revenue: 1310000, target: 1800000, status: 'suspended' },
 ]
 
 export const executiveApprovals: ExecutiveApproval[] = [

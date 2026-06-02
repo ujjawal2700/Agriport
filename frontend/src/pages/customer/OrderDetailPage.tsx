@@ -97,7 +97,7 @@ export default function OrderDetailPage() {
       <Box className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: items + meta */}
         <Box className="lg:col-span-2 flex flex-col gap-6">
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" sx={{ fontSize: 17, mb: 2 }}>
               Items ({order.lines.length})
             </Typography>
@@ -151,7 +151,7 @@ export default function OrderDetailPage() {
 
           {/* Logistics / cancellation */}
           {order.status === 'cancelled' ? (
-            <Box sx={{ borderRadius: 4, border: '1px solid #E0695C', bgcolor: '#FDF3F2', p: 3 }}>
+            <Box sx={{ borderRadius: 4, border: '1px solid #E0695C', bgcolor: '#FDF3F2', p: { xs: 2, md: 3 } }}>
               <Typography variant="h6" sx={{ fontSize: 16, mb: 1, color: '#922A20' }}>
                 Cancellation details
               </Typography>
@@ -164,7 +164,7 @@ export default function OrderDetailPage() {
             </Box>
           ) : (
             (order.pickupAddress || order.dispatchInfo) && (
-              <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+              <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
                 <Typography variant="h6" sx={{ fontSize: 17, mb: 2 }}>
                   Logistics
                 </Typography>
@@ -193,14 +193,14 @@ export default function OrderDetailPage() {
 
         {/* Right: tracking + actions */}
         <Box className="flex flex-col gap-6">
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
             <Typography variant="h6" sx={{ fontSize: 17, mb: 2.5 }}>
               Order tracking
             </Typography>
             <Timeline steps={order.trackingTimeline} />
           </Box>
 
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
             <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600, mb: 1.5 }}>
               PAYMENT · {PAYMENT_MODE_LABEL[order.paymentMode]}
             </Typography>

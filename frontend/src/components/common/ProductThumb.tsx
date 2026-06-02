@@ -30,6 +30,7 @@ interface Props {
   className?: string
   height?: number | string
   variant?: number
+  fontSize?: any
 }
 
 export default function ProductThumb({
@@ -40,6 +41,7 @@ export default function ProductThumb({
   className,
   height = '100%',
   variant = 0,
+  fontSize,
 }: Props) {
   const idx = (hash(id) + variant) % PALETTES.length
   const [a, b] = PALETTES[idx]
@@ -86,7 +88,7 @@ export default function ProductThumb({
         sx={{
           fontFamily: '"Bricolage Grotesque", serif',
           fontWeight: 800,
-          fontSize: '2.4rem',
+          fontSize: fontSize ?? { xs: '1.15rem', md: '2.4rem' },
           color: 'rgba(255,255,255,0.94)',
           letterSpacing: '-0.03em',
           textShadow: '0 2px 8px rgba(0,0,0,0.25)',
@@ -99,12 +101,12 @@ export default function ProductThumb({
         <Box
           sx={{
             position: 'absolute',
-            bottom: 8,
-            left: 8,
-            px: 1,
-            py: '2px',
+            bottom: { xs: 4, md: 8 },
+            left: { xs: 4, md: 8 },
+            px: { xs: 0.6, md: 1 },
+            py: { xs: '1px', md: '2px' },
             borderRadius: 1,
-            fontSize: '0.62rem',
+            fontSize: { xs: '0.52rem', md: '0.62rem' },
             fontWeight: 700,
             letterSpacing: '0.04em',
             textTransform: 'uppercase',

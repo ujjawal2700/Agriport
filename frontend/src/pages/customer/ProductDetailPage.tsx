@@ -68,20 +68,20 @@ export default function ProductDetailPage() {
         ]}
       />
 
-      <Box className="grid grid-cols-1 lg:grid-cols-2 gap-8 -mt-4">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: { xs: 3, md: 8 }, mt: { xs: -1.5, md: -2 } }}>
         {/* Gallery */}
         <Box>
-          <Box sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid var(--ink-200)' }}>
-            <ProductThumb id={product.id} name={product.name} variant={activeImg} rounded={0} height={420} />
+          <Box sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid var(--ink-200)', height: { xs: 260, sm: 360, md: 420 } }}>
+            <ProductThumb id={product.id} name={product.name} variant={activeImg} rounded={0} height="100%" fontSize={{ xs: '2.5rem', md: '4rem' }} />
           </Box>
-          <Box className="flex gap-3 mt-3">
+          <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 3 }, mt: { xs: 1.5, md: 3 } }}>
             {[0, 1, 2, 3].map((v) => (
               <Box
                 key={v}
                 onClick={() => setActiveImg(v)}
                 sx={{
-                  width: 84,
-                  height: 84,
+                  width: { xs: 60, sm: 76, md: 84 },
+                  height: { xs: 60, sm: 76, md: 84 },
                   borderRadius: 2.5,
                   overflow: 'hidden',
                   cursor: 'pointer',
@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
                   outline: '1px solid var(--ink-200)',
                 }}
               >
-                <ProductThumb id={product.id} name={product.name} variant={v} rounded={0} />
+                <ProductThumb id={product.id} name={product.name} variant={v} rounded={0} fontSize={{ xs: '0.85rem', md: '1.2rem' }} />
               </Box>
             ))}
           </Box>
@@ -97,7 +97,7 @@ export default function ProductDetailPage() {
 
         {/* Info + buy box */}
         <Box>
-          <Box className="flex items-center gap-2 mb-2">
+          <Box className="flex flex-wrap items-center gap-2 mb-2">
             <StatusChip kind="stock" value={product.stockStatus} />
             {product.isNew && (
               <Chip size="small" icon={<BoltRoundedIcon sx={{ fontSize: 14 }} />} label="New arrival" color="secondary" variant="outlined" />
@@ -111,18 +111,18 @@ export default function ProductDetailPage() {
             {product.name}
           </Typography>
 
-          <Box className="flex items-center gap-4 mb-3">
+          <Box className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3">
             <Box className="flex items-center gap-1">
               <StarRoundedIcon sx={{ fontSize: 19, color: '#E0A95A' }} />
               <Typography sx={{ fontWeight: 700 }} className="tnum">
                 {product.rating.toFixed(1)}
               </Typography>
             </Box>
-            <Divider orientation="vertical" flexItem />
+            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
             <Box className="flex items-center gap-1.5 text-[13px]" sx={{ color: 'var(--ink-500)' }}>
               <PublicRoundedIcon sx={{ fontSize: 17 }} /> Origin: {product.origin}
             </Box>
-            <Divider orientation="vertical" flexItem />
+            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
             <Box className="flex items-center gap-1.5 text-[13px]" sx={{ color: 'var(--ink-500)' }}>
               <LocalShippingRoundedIcon sx={{ fontSize: 17 }} /> Lead {product.leadTimeDays}d
             </Box>
@@ -169,31 +169,31 @@ export default function ProductDetailPage() {
           </Box>
 
           {/* Buy box */}
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', p: 3, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(22,27,36,0.05)' }}>
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', p: { xs: 2, md: 3 }, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(22,27,36,0.05)' }}>
             <Box className="flex items-end justify-between mb-4 flex-wrap gap-3">
               <Box>
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600 }}>YOUR PRICE</Typography>
-                <Box className="flex items-baseline gap-2">
-                  <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: 34, lineHeight: 1 }}>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>YOUR PRICE</Typography>
+                <Box className="flex items-baseline gap-1.5">
+                  <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: { xs: 24, md: 34 }, lineHeight: 1 }}>
                     {formatMoney(currentSlab.price)}
                   </Typography>
-                  <Typography sx={{ color: 'var(--ink-500)', fontWeight: 600 }}>/{product.unit}</Typography>
+                  <Typography sx={{ color: 'var(--ink-500)', fontWeight: 600, fontSize: { xs: 13, md: 15 } }}>/{product.unit}</Typography>
                   {savings > 0 && (
-                    <Chip size="small" color="success" label={`Save ${savings}%`} sx={{ ml: 0.5 }} />
+                    <Chip size="small" color="success" label={`Save ${savings}%`} sx={{ ml: 0.5, height: 20, '& .MuiChip-label': { px: 0.75, fontSize: 10.5 } }} />
                   )}
                 </Box>
               </Box>
               <Box className="text-right">
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600 }}>AVAILABLE</Typography>
-                <Typography className="tnum" sx={{ fontWeight: 700 }}>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>AVAILABLE</Typography>
+                <Typography className="tnum" sx={{ fontWeight: 700, fontSize: { xs: 13, md: 15 } }}>
                   {product.availableStock.toLocaleString('en-IN')} {product.unit}
                 </Typography>
               </Box>
             </Box>
 
-            <Box className="flex items-center gap-3 mb-4 flex-wrap">
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'auto 1fr' }, gap: { xs: 2, md: 3 }, mb: { xs: 2.5, md: 4 } }}>
               <Box>
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
                   QUANTITY (MOQ {product.moq})
                 </Typography>
                 <QuantityStepper
@@ -205,18 +205,23 @@ export default function ProductDetailPage() {
                 />
               </Box>
               <Box sx={{ flex: 1, minWidth: 140 }}>
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>ORDER TOTAL</Typography>
-                <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: 26, color: 'var(--brand-700)' }}>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>ORDER TOTAL</Typography>
+                <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: { xs: 20, md: 26 }, color: 'var(--brand-700)' }}>
                   {formatMoney(lineTotal)}
                 </Typography>
               </Box>
             </Box>
 
-            <Box className="flex gap-3">
+            <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 3 } }}>
               <Button
                 variant="contained"
                 size="large"
-                fullWidth
+                sx={{
+                  flex: 1,
+                  py: { xs: 1, md: 1.5 },
+                  fontSize: { xs: 13, md: 15 },
+                  whiteSpace: 'nowrap',
+                }}
                 startIcon={<ShoppingCartRoundedIcon />}
                 disabled={outOfStock}
                 onClick={handleAdd}
@@ -226,6 +231,12 @@ export default function ProductDetailPage() {
               <Button
                 variant="outlined"
                 size="large"
+                sx={{
+                  flex: 1,
+                  py: { xs: 1, md: 1.5 },
+                  fontSize: { xs: 13, md: 15 },
+                  whiteSpace: 'nowrap',
+                }}
                 disabled={outOfStock}
                 onClick={() => {
                   handleAdd()
@@ -240,15 +251,15 @@ export default function ProductDetailPage() {
       </Box>
 
       {/* Description & specs */}
-      <Box className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-12">
-        <Box className="lg:col-span-2">
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: { xs: 4, md: 8 }, mt: { xs: 6, md: 12 } }}>
+        <Box>
           <Typography variant="h5" sx={{ mb: 2 }}>
             Product description
           </Typography>
           <Typography color="text.secondary" sx={{ lineHeight: 1.7, mb: 4 }}>
             {product.description}
           </Typography>
-          <Box className="flex flex-wrap gap-3">
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {[
               { icon: <VerifiedRoundedIcon />, label: 'Verified supplier' },
               { icon: <LocalShippingRoundedIcon />, label: `Dispatch in ${product.leadTimeDays} days` },
@@ -256,8 +267,18 @@ export default function ProductDetailPage() {
             ].map((f, i) => (
               <Box
                 key={i}
-                className="flex items-center gap-2"
-                sx={{ px: 2, py: 1.25, borderRadius: 2.5, border: '1px solid var(--ink-200)', bgcolor: '#fff', color: 'var(--brand-700)' }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  px: 2,
+                  py: 1.25,
+                  borderRadius: 2.5,
+                  border: '1px solid var(--ink-200)',
+                  bgcolor: '#fff',
+                  color: 'var(--brand-700)',
+                  flex: { xs: '1 1 100%', sm: '0 1 auto' },
+                }}
               >
                 {f.icon}
                 <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-800)' }}>{f.label}</Typography>

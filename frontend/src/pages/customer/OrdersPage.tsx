@@ -114,6 +114,7 @@ export default function OrdersPage() {
           <Tab
             key={t.value}
             value={t.value}
+            sx={{ overflow: 'visible' }}
             label={
               t.value === 'all' || !counts[t.value] ? (
                 t.label

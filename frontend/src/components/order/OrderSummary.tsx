@@ -37,7 +37,7 @@ function Row({ label, value, strong, accent }: { label: string; value: string; s
 export default function OrderSummary({ items, title = 'Order summary' }: { items: CartItem[]; title?: string }) {
   const { subtotal, tax, shipping, total } = computeTotals(items)
   return (
-    <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+    <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
       <Typography variant="h6" sx={{ fontSize: 17, mb: 2 }}>
         {title}
       </Typography>

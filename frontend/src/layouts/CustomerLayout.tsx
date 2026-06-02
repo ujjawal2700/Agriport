@@ -18,6 +18,7 @@ import {
   Typography,
   Container,
   Link as MuiLink,
+  Paper,
 } from '@mui/material'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
@@ -25,6 +26,8 @@ import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import Logo from '@/components/common/Logo'
 import { ROUTES } from '@/constants'
 import { useAppDispatch, useAppSelector, useCartCount } from '@/redux/hooks'
@@ -62,10 +65,18 @@ export default function CustomerLayout() {
   const isActive = (to: string) =>
     to === ROUTES.products ? location.pathname.startsWith('/products') : location.pathname === to
 
+  const showBack = location.pathname !== '/'
+
   return (
     <Box className="app-canvas min-h-screen flex flex-col">
       <AppBar position="sticky">
-        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, px: { xs: 2, md: 3 }, gap: 2 }}>
+        <Toolbar sx={{ minHeight: { xs: 60, md: 68 }, px: { xs: 2, md: 3 }, gap: 1.5 }}>
+          {showBack && (
+            <IconButton onClick={() => navigate(-1)} sx={{ color: 'var(--ink-800)', ml: -1 }}>
+              <ArrowBackRoundedIcon />
+            </IconButton>
+          )}
+
           <RouterLink to={ROUTES.home} className="shrink-0">
             <Logo size={34} />
           </RouterLink>
@@ -175,7 +186,7 @@ export default function CustomerLayout() {
         </Toolbar>
       </AppBar>
 
-      <Box component="main" sx={{ flex: 1 }}>
+      <Box component="main" sx={{ flex: 1, pb: 0 }}>
         <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
           <Suspense fallback={<PageFallback />}>
             <Outlet />
@@ -183,8 +194,8 @@ export default function CustomerLayout() {
         </Container>
       </Box>
 
-      <Box component="footer" sx={{ borderTop: '1px solid var(--ink-200)', backgroundColor: '#fff', mt: 4 }}>
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Box component="footer" sx={{ borderTop: '1px solid var(--ink-200)', backgroundColor: '#fff', mt: { xs: 2, md: 4 } }}>
+        <Container maxWidth="xl" sx={{ pt: 4, pb: { xs: 12, md: 4 } }}>
           <Box className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <Logo size={30} />
             <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }}>
@@ -219,6 +230,67 @@ export default function CustomerLayout() {
           </Box>
         </Container>
       </Box>
+      {/* Mobile Bottom Navigation Bar */}
+      <Paper
+        elevation={8}
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 64,
+          display: { xs: 'flex', md: 'none' },
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          borderTop: '1px solid var(--ink-200)',
+          borderRadius: 0,
+          bgcolor: '#ffffff',
+          zIndex: 1000,
+          pb: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        {[
+          { label: 'Home', to: ROUTES.home, icon: <HomeRoundedIcon sx={{ fontSize: 22 }} /> },
+          { label: 'Marketplace', to: ROUTES.products, icon: <StorefrontRoundedIcon sx={{ fontSize: 22 }} /> },
+          {
+            label: 'Cart',
+            to: ROUTES.cart,
+            icon: (
+              <Badge badgeContent={cartCount} color="primary" overlap="circular">
+                <ShoppingCartRoundedIcon sx={{ fontSize: 22 }} />
+              </Badge>
+            ),
+          },
+          { label: 'My Orders', to: ROUTES.orders, icon: <ReceiptLongRoundedIcon sx={{ fontSize: 22 }} /> },
+          { label: 'Profile', to: ROUTES.profile, icon: <PersonRoundedIcon sx={{ fontSize: 22 }} /> },
+        ].map((n) => {
+          const active = isActive(n.to)
+          return (
+            <Box
+              key={n.to}
+              component={RouterLink}
+              to={n.to}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                color: active ? 'var(--brand-600)' : 'var(--ink-600)',
+                flex: 1,
+                height: '100%',
+                transition: 'color 0.2s, transform 0.1s',
+                '&:active': { transform: 'scale(0.95)' },
+              }}
+            >
+              {n.icon}
+              <Typography sx={{ fontSize: 10.5, fontWeight: active ? 750 : 600, mt: 0.5 }}>
+                {n.label}
+              </Typography>
+            </Box>
+          )
+        })}
+      </Paper>
     </Box>
   )
 }

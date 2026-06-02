@@ -30,7 +30,7 @@ export default function LoginPage() {
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? ROUTES.home
 
-  const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema), defaultValues: { email: '', password: '' } })
+  const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema), defaultValues: { email: 'customer@gmail.com', password: '12345678' } })
   const mobileForm = useForm<MobileForm>({ resolver: zodResolver(mobileSchema), defaultValues: { mobile: '' } })
 
   const onEmailSubmit = () => {
@@ -103,7 +103,7 @@ export default function LoginPage() {
         </Box>
       )}
 
-      <Divider sx={{ my: 3.5, color: 'var(--ink-400)', fontSize: 12.5 }}>NEW TO GLOBIRA?</Divider>
+      <Divider sx={{ my: 3.5, color: 'var(--ink-400)', fontSize: 12.5 }}>NEW TO AGRIPORT?</Divider>
       <Button component={RouterLink} to={ROUTES.signup} variant="outlined" fullWidth size="large">
         Create a business account
       </Button>

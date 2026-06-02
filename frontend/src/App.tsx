@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import AppProviders from '@/providers/AppProviders'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 import RoleRoute from '@/routes/RoleRoute'
@@ -57,11 +57,21 @@ const ExecutiveIncentivesPage = lazy(() => import('@/pages/executive/ExecutiveIn
 
 // Misc
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+const MobileShowcase = lazy(() => import('@/pages/mobile/MobileShowcase'))
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 export default function App() {
   return (
     <AppProviders>
       <BrowserRouter>
+        <ScrollToTop />
         <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Auth */}
@@ -141,6 +151,7 @@ export default function App() {
             <Route path="incentives" element={<ExecutiveIncentivesPage />} />
           </Route>
 
+          <Route path="/mobile-showcase" element={<MobileShowcase />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>
