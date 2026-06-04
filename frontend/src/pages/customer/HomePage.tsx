@@ -6,9 +6,11 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import { useGetProductsQuery, useGetCategoriesQuery, useGetBannersQuery } from '@/redux/api'
+import { useGetProductsQuery } from '@/redux/api'
+import { useAppSelector } from '@/redux/hooks'
 import ProductCard from '@/components/product/ProductCard'
 import { CardGridSkeleton } from '@/components/common/Loader'
+import { categoryIcon } from '@/utils/contentIcons'
 import { ROUTES } from '@/constants'
 
 function SectionTitle({ title, to, icon }: { title: string; to?: string; icon?: ReactNode }) {
@@ -33,8 +35,9 @@ export default function HomePage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const { data: products, isLoading } = useGetProductsQuery()
-  const { data: categories } = useGetCategoriesQuery()
-  const { data: banners } = useGetBannersQuery()
+  // Storefront content is executive-editable (Redux + localStorage), so read it
+  // from the storefront slice rather than the static mock API.
+  const { hero, categories, banners } = useAppSelector((s) => s.storefront)
 
   const featured = products?.filter((p) => p.isFeatured) ?? []
   const fresh = products?.filter((p) => p.isNew) ?? []
@@ -105,37 +108,42 @@ export default function HomePage() {
           <rect width="100%" height="100%" fill="url(#hero-grid)" />
         </svg>
         <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 640 }}>
-          <Chip
-            label="WHOLESALE B2B MARKETPLACE"
-            size="small"
-            sx={{ bgcolor: 'rgba(255,255,255,0.12)', color: '#9DD4BC', fontWeight: 700, letterSpacing: '0.08em', mb: { xs: 1.25, md: 2.5 } }}
-          />
+          {hero.badge && (
+            <Chip
+              label={hero.badge}
+              size="small"
+              sx={{ bgcolor: 'rgba(255,255,255,0.12)', color: '#9DD4BC', fontWeight: 700, letterSpacing: '0.08em', mb: { xs: 1.25, md: 2.5 } }}
+            />
+          )}
           <Typography sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: { xs: 20, md: 48 }, lineHeight: 1.05, letterSpacing: '-0.025em', mb: { xs: 2, md: 2 } }}>
-            Source smarter.
-            <br />
-            Buy in bulk, pay less.
+            {hero.titleLine1}
+            {hero.titleLine2 && (
+              <>
+                <br />
+                {hero.titleLine2}
+              </>
+            )}
           </Typography>
           <Typography sx={{ display: { xs: 'none', md: 'block' }, color: 'rgba(255,255,255,0.78)', fontSize: 18, mb: 4, maxWidth: 520 }}>
-            Lot-based wholesale pricing across agro commodities, packaging, tools and more —
-            with verified suppliers and transparent dispatch.
+            {hero.subtitle}
           </Typography>
           <Box className="flex flex-wrap gap-3">
             <Button
               variant="contained"
               size="large"
-              onClick={() => navigate(ROUTES.products)}
+              onClick={() => navigate(hero.primaryCtaTo || ROUTES.products)}
               sx={{ bgcolor: '#fff', color: 'var(--brand-800)', '&:hover': { bgcolor: '#EAF6F0' }, py: { xs: 0.8, md: 1.5 }, px: { xs: 1.5, md: 3 }, fontSize: { xs: 12.5, md: 15 } }}
             >
-              Browse marketplace
+              {hero.primaryCtaLabel}
             </Button>
             <Button
               variant="outlined"
               size="large"
               component={RouterLink}
-              to={ROUTES.products + '?sort=price_asc'}
+              to={hero.secondaryCtaTo || ROUTES.products}
               sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' }, py: { xs: 0.8, md: 1.5 }, px: { xs: 1.5, md: 3 }, fontSize: { xs: 12.5, md: 15 } }}
             >
-              Today's bulk deals
+              {hero.secondaryCtaLabel}
             </Button>
           </Box>
         </Box>
@@ -173,9 +181,7 @@ export default function HomePage() {
                   mb: 1.5,
                 }}
               >
-                <span className="material-symbols-outlined" style={{ color: 'var(--brand-600)', fontSize: 22 }}>
-                  ◈
-                </span>
+                {categoryIcon(c.icon, { sx: { color: 'var(--brand-600)', fontSize: 22 } })}
               </Box>
               <Typography sx={{ fontWeight: 700, fontSize: 14, color: 'var(--ink-900)', lineHeight: 1.25 }}>
                 {c.name}

@@ -143,6 +143,25 @@ export interface Banner {
   accent: string
 }
 
+/** Editable hero block shown at the top of the customer home page. */
+export interface HeroContent {
+  badge: string
+  titleLine1: string
+  titleLine2: string
+  subtitle: string
+  primaryCtaLabel: string
+  primaryCtaTo: string
+  secondaryCtaLabel: string
+  secondaryCtaTo: string
+}
+
+/** Trust badge shown on every product detail page (icon key + label). */
+export interface TrustBadge {
+  id: string
+  icon: string
+  label: string
+}
+
 // ── Admin domain ─────────────────────────────────────────────────────────────
 
 export type AccountStatus = 'active' | 'suspended' | 'blocked'

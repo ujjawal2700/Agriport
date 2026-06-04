@@ -5,11 +5,7 @@ import { currentUser } from '@/mocks/data'
 // Opens a print-ready document in a new window. The browser's "Save as PDF"
 // turns this into a downloadable invoice / gate pass — no backend required.
 function openPrintable(title: string, bodyHtml: string) {
-  const win = window.open('', '_blank', 'width=820,height=900')
-  if (!win) return
-  win.document.write(`<!doctype html><html><head><title>${title}</title>
-  <meta charset="utf-8" />
-  <style>
+  const styles = `
     * { box-sizing: border-box; }
     body { font-family: 'Plus Jakarta Sans', system-ui, Arial, sans-serif; color:#161B24; margin:0; padding:48px; }
     .head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #11543B; padding-bottom:20px; margin-bottom:28px; }
@@ -25,10 +21,53 @@ function openPrintable(title: string, bodyHtml: string) {
     .totals .grand { border-top:2px solid #161B24; margin-top:8px; padding-top:10px; font-weight:800; font-size:18px; }
     .foot { margin-top:48px; color:#9AA4B2; font-size:12px; text-align:center; }
     .grid2 { display:flex; gap:48px; margin-bottom:8px; }
-    @media print { body { padding:24px; } }
-  </style></head><body>${bodyHtml}
-  <script>window.onload=()=>{window.print()}</script></body></html>`)
-  win.document.close()
+    @media print { body { padding:24px; } }`
+
+  const html = `<!doctype html><html><head><title>${title}</title>
+  <meta charset="utf-8" />
+  <style>${styles}</style></head><body>${bodyHtml}
+  <script>window.onload=()=>{window.print()}</script></body></html>`
+
+  // Preferred path: a dedicated window (lets the user "Save as PDF").
+  const win = window.open('', '_blank', 'width=820,height=900')
+  if (win) {
+    win.document.write(html)
+    win.document.close()
+    return
+  }
+
+  // Fallback: popup blocked. Render & print via a hidden iframe so the
+  // invoice is still generated without relying on a new window.
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow?.document
+  if (!doc) {
+    document.body.removeChild(iframe)
+    return
+  }
+  doc.open()
+  doc.write(`<!doctype html><html><head><title>${title}</title>
+  <meta charset="utf-8" /><style>${styles}</style></head><body>${bodyHtml}</body></html>`)
+  doc.close()
+
+  const triggerPrint = () => {
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
+    // Clean up after the print dialog has had a chance to open.
+    setTimeout(() => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
+    }, 1000)
+  }
+  // Give the iframe a tick to lay out its content before printing.
+  if (iframe.contentWindow) iframe.contentWindow.onload = triggerPrint
+  setTimeout(triggerPrint, 300)
 }
 
 export function downloadInvoice(order: Order) {

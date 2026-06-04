@@ -16,9 +16,9 @@ import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PublicRoundedIcon from '@mui/icons-material/PublicRounded'
-import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import { useGetProductQuery } from '@/redux/api'
-import { useAppDispatch } from '@/redux/hooks'
+import { useAppDispatch, useAppSelector } from '@/redux/hooks'
+import { trustIcon } from '@/utils/contentIcons'
 import { addToCart } from '@/redux/slices/cartSlice'
 import ProductThumb from '@/components/common/ProductThumb'
 import StatusChip from '@/components/common/StatusChip'
@@ -35,6 +35,7 @@ export default function ProductDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const trustBadges = useAppSelector((s) => s.storefront.trustBadges)
   const { data: product, isLoading } = useGetProductQuery(id)
   const [activeImg, setActiveImg] = useState(0)
   const [qty, setQty] = useState(1)
@@ -308,7 +309,9 @@ export default function ProductDetailPage() {
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {[
-              { icon: <VerifiedRoundedIcon />, label: 'Verified supplier' },
+              // Executive-editable global trust badges
+              ...trustBadges.map((b) => ({ icon: trustIcon(b.icon), label: b.label })),
+              // Auto-derived from product data
               { icon: <LocalShippingRoundedIcon />, label: `Dispatch in ${product.leadTimeDays} days` },
               { icon: <PublicRoundedIcon />, label: `Origin · ${product.origin}` },
             ].map((f, i) => (

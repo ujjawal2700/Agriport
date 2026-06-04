@@ -23,11 +23,15 @@ import {
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
+import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded'
 import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
 import StatusChip from '@/components/common/StatusChip'
-import { useGetCategoriesQuery } from '@/redux/api'
+import { api, useGetCategoriesQuery } from '@/redux/api'
+import { useAppDispatch } from '@/redux/hooks'
 import { products as mockProducts } from '@/mocks/data'
-import type { Product, StockStatus } from '@/types'
+import { generateSlabs } from '@/utils/pricing'
+import type { Product, StockStatus, PricingSlab } from '@/types'
 import toast from 'react-hot-toast'
 
 // Local runtime store (mirrors mock data, resets on page reload — no backend yet)
@@ -76,6 +80,7 @@ const emptyForm = (): Partial<Product> => ({
 
 export default function ExecutiveProductsPage() {
   const { data: categories } = useGetCategoriesQuery()
+  const dispatch = useAppDispatch()
   // Use local runtime list so new products appear immediately
   const [localProducts, setLocalProducts] = useState<Product[]>([...runtimeProducts])
   const [search, setSearch] = useState('')
@@ -84,6 +89,8 @@ export default function ExecutiveProductsPage() {
   const [form, setForm] = useState<Partial<Product>>(emptyForm())
   const [tagsInput, setTagsInput] = useState('')
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  // Editable bulk-pricing tiers for the product being added / edited
+  const [slabs, setSlabs] = useState<PricingSlab[]>([])
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -100,6 +107,7 @@ export default function ExecutiveProductsPage() {
     setForm(emptyForm())
     setTagsInput('')
     setUploadedImages([])
+    setSlabs(generateSlabs(0))
     setOpen(true)
   }
 
@@ -115,8 +123,20 @@ export default function ExecutiveProductsPage() {
     })
     setTagsInput((p.tags ?? []).join(', '))
     setUploadedImages(p.images ?? [])
+    setSlabs(p.pricingSlabs?.length ? p.pricingSlabs.map((s) => ({ ...s })) : generateSlabs(p.basePrice ?? 0))
     setOpen(true)
   }
+
+  // ── Pricing tier helpers ────────────────────────────────────────────────
+  const setSlabField = (idx: number, key: keyof PricingSlab, val: PricingSlab[keyof PricingSlab]) =>
+    setSlabs((prev) => prev.map((s, i) => (i === idx ? { ...s, [key]: val } : s)))
+
+  const addSlab = () =>
+    setSlabs((prev) => [...prev, { minQty: 1, maxQty: null, price: form.basePrice ?? 0, label: 'New tier' }])
+
+  const removeSlab = (idx: number) => setSlabs((prev) => prev.filter((_, i) => i !== idx))
+
+  const autoFillSlabs = () => setSlabs(generateSlabs(form.basePrice ?? 0))
 
   const handleImageUpload = (slotIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -152,12 +172,17 @@ export default function ExecutiveProductsPage() {
   const setSpec = (key: string, val: string) =>
     setForm((f) => ({ ...f, specifications: { ...(f.specifications ?? {}), [key]: val } }))
 
-  const buildSlabs = (base: number) => [
-    { minQty: 1, maxQty: 10, price: base, label: '1–10 units' },
-    { minQty: 11, maxQty: 50, price: Math.round(base * 0.92), label: '11–50 units' },
-    { minQty: 51, maxQty: 200, price: Math.round(base * 0.85), label: '51–200 units' },
-    { minQty: 201, maxQty: null, price: Math.round(base * 0.78), label: '201+ units (bulk)' },
-  ]
+  // Persist a product change to the shared mock list and tell RTK Query to
+  // refetch so the customer app (e.g. product detail pricing) reflects it.
+  const persistToStore = (product: Product, mode: 'add' | 'update') => {
+    if (mode === 'add') {
+      mockProducts.unshift(product)
+    } else {
+      const idx = mockProducts.findIndex((p) => p.id === product.id)
+      if (idx !== -1) mockProducts[idx] = product
+    }
+    dispatch(api.util.invalidateTags(['Product']))
+  }
 
   const handleSave = () => {
     if (!form.name?.trim() || !form.category?.trim() || !form.unit?.trim()) {
@@ -170,6 +195,9 @@ export default function ExecutiveProductsPage() {
       .filter(Boolean)
 
     const base = form.basePrice ?? 0
+    // Use the executive-edited bulk-pricing tiers; fall back to the standard
+    // ladder if none were defined.
+    const finalSlabs: PricingSlab[] = slabs.length ? slabs : generateSlabs(base)
 
     if (editing) {
       const updated: Product = {
@@ -177,7 +205,7 @@ export default function ExecutiveProductsPage() {
         ...form,
         tags,
         images: uploadedImages,
-        pricingSlabs: buildSlabs(base),
+        pricingSlabs: finalSlabs,
         specifications: {
           ...form.specifications,
           Origin: form.origin ?? form.specifications?.Origin ?? '',
@@ -188,6 +216,7 @@ export default function ExecutiveProductsPage() {
         showContainerOptions: form.showContainerOptions ?? true,
       } as Product
       setLocalProducts((prev) => prev.map((p) => (p.id === editing.id ? updated : p)))
+      persistToStore(updated, 'update')
       toast.success(`"${updated.name}" updated successfully`)
     } else {
       const newId = `p${Date.now()}`
@@ -212,7 +241,7 @@ export default function ExecutiveProductsPage() {
         stockStatus: form.stockStatus ?? 'in_stock',
         basePrice: base,
         currency: '₹',
-        pricingSlabs: buildSlabs(base),
+        pricingSlabs: finalSlabs,
         rating: 4.0,
         origin: form.origin ?? '',
         leadTimeDays: form.leadTimeDays ?? 3,
@@ -225,6 +254,7 @@ export default function ExecutiveProductsPage() {
         showContainerOptions: form.showContainerOptions ?? true,
       }
       setLocalProducts((prev) => [newProduct, ...prev])
+      persistToStore(newProduct, 'add')
       toast.success(`"${newProduct.name}" added successfully`)
     }
     close()
@@ -559,6 +589,117 @@ export default function ExecutiveProductsPage() {
                 onChange={(e) => setSpec('Origin', e.target.value)}
               />
             </Box>
+          </Box>
+
+          <Divider />
+
+          {/* Bulk Pricing Tiers */}
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Bulk Pricing Tiers
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <TextField
+                  label="Base price (₹)"
+                  size="small"
+                  type="number"
+                  value={form.basePrice ?? ''}
+                  onChange={(e) => setField('basePrice', Number(e.target.value))}
+                  sx={{ width: 140 }}
+                />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AutoFixHighRoundedIcon />}
+                  onClick={autoFillSlabs}
+                  sx={{ borderRadius: 2, fontWeight: 600, textTransform: 'none', whiteSpace: 'nowrap' }}
+                >
+                  Auto-fill from base
+                </Button>
+              </Box>
+            </Box>
+            <Typography sx={{ fontSize: 11.5, color: 'var(--ink-400)', mb: 1.5 }}>
+              These wholesale tiers are shown on the customer product page. Leave Max Qty blank for the top "and above" tier.
+            </Typography>
+
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em', borderColor: 'var(--ink-200)' } }}>
+                  <TableCell sx={{ width: 90 }}>Min Qty</TableCell>
+                  <TableCell sx={{ width: 90 }}>Max Qty</TableCell>
+                  <TableCell sx={{ width: 110 }}>Price (₹)</TableCell>
+                  <TableCell>Label</TableCell>
+                  <TableCell align="right" sx={{ width: 48 }} />
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {slabs.map((s, idx) => (
+                  <TableRow key={idx} sx={{ '& td': { borderColor: 'var(--ink-100)', py: 0.75 } }}>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={s.minQty}
+                        onChange={(e) => setSlabField(idx, 'minQty', Number(e.target.value))}
+                        sx={{ '& input': { py: 0.75 } }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        placeholder="∞"
+                        value={s.maxQty ?? ''}
+                        onChange={(e) =>
+                          setSlabField(idx, 'maxQty', e.target.value === '' ? null : Number(e.target.value))
+                        }
+                        sx={{ '& input': { py: 0.75 } }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={s.price}
+                        onChange={(e) => setSlabField(idx, 'price', Number(e.target.value))}
+                        sx={{ '& input': { py: 0.75 } }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        placeholder="e.g. 11–50 units"
+                        value={s.label}
+                        onChange={(e) => setSlabField(idx, 'label', e.target.value)}
+                        sx={{ '& input': { py: 0.75 } }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <IconButton size="small" onClick={() => removeSlab(idx)} sx={{ color: '#c0392b' }}>
+                        <DeleteOutlineRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {slabs.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 2, color: 'var(--ink-400)', fontSize: 12.5 }}>
+                      No tiers yet — add one or auto-fill from the base price.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <Button
+              size="small"
+              startIcon={<AddRoundedIcon />}
+              onClick={addSlab}
+              sx={{ mt: 1, borderRadius: 2, fontWeight: 600, textTransform: 'none' }}
+            >
+              Add tier
+            </Button>
           </Box>
 
           <Divider />
