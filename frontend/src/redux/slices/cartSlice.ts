@@ -29,6 +29,7 @@ const cartSlice = createSlice({
           quantity: qty,
           unitPrice: resolveUnitPrice(product.pricingSlabs, qty).price,
           moq: product.moq,
+          specifications: product.specifications,
         })
       }
     },

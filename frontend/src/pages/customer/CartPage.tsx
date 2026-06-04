@@ -79,7 +79,7 @@ export default function CartPage() {
                     {item.name}
                   </Typography>
                   <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }} className="tnum">
-                    {formatMoney(item.unitPrice)} / {item.unit} · MOQ {item.moq}
+                    MOQ {item.moq}
                   </Typography>
                   <Box className="flex items-center gap-3 mt-2.5">
                     <QuantityStepper
@@ -95,12 +95,6 @@ export default function CartPage() {
                       <DeleteOutlineRoundedIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                </Box>
-                <Box sx={{ textAlign: { xs: 'left', sm: 'right' }, minWidth: 110 }}>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600 }}>LINE TOTAL</Typography>
-                  <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: 20 }}>
-                    {formatMoney(item.unitPrice * item.quantity)}
-                  </Typography>
                 </Box>
               </Box>
             )
@@ -122,10 +116,6 @@ export default function CartPage() {
           >
             Proceed to checkout
           </Button>
-          <Divider sx={{ my: 2 }} />
-          <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', textAlign: 'center' }}>
-            Taxes calculated at 5% GST. Final invoice on order confirmation.
-          </Typography>
         </Box>
       </Box>
     </Box>

@@ -31,6 +31,7 @@ interface Props {
   height?: number | string
   variant?: number
   fontSize?: any
+  imageUrl?: string
 }
 
 export default function ProductThumb({
@@ -42,10 +43,33 @@ export default function ProductThumb({
   height = '100%',
   variant = 0,
   fontSize,
+  imageUrl,
 }: Props) {
   const idx = (hash(id) + variant) % PALETTES.length
   const [a, b] = PALETTES[idx]
   const angle = (hash(id + 'a') % 60) + 120
+
+  // If a real image URL is provided, render it directly
+  if (imageUrl) {
+    return (
+      <Box
+        className={className}
+        sx={{
+          position: 'relative',
+          width: '100%',
+          height,
+          borderRadius: `${rounded}px`,
+          overflow: 'hidden',
+        }}
+      >
+        <img
+          src={imageUrl}
+          alt={name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      </Box>
+    )
+  }
 
   return (
     <Box
@@ -76,6 +100,21 @@ export default function ProductThumb({
           </pattern>
         </defs>
         <rect width="120" height="120" fill={`url(#p-${id})`} />
+      </svg>
+      {/* Repeating Watermark Layer */}
+      <svg
+        width="100%"
+        height="100%"
+        style={{ position: 'absolute', inset: 0, opacity: 0.08, pointerEvents: 'none', zIndex: 2 }}
+      >
+        <defs>
+          <pattern id={`wm-${id}-${variant}`} width="90" height="45" patternTransform="rotate(-25)" patternUnits="userSpaceOnUse">
+            <text x="0" y="20" fill="#FFF" fontSize="9" fontWeight="bold" fontFamily="inherit">
+              agriport
+            </text>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#wm-${id}-${variant})`} />
       </svg>
       <Box
         sx={{

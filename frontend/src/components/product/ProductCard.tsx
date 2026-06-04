@@ -1,15 +1,12 @@
 import { Card, Box, Typography, Chip } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
-import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import ProductThumb from '@/components/common/ProductThumb'
 import StatusChip from '@/components/common/StatusChip'
 import { ROUTES } from '@/constants'
-import { formatMoney } from '@/utils/format'
 import type { Product } from '@/types'
 
 export default function ProductCard({ product }: { product: Product }) {
-  const bulk = product.pricingSlabs[product.pricingSlabs.length - 1]
   return (
     <Card
       component={RouterLink}
@@ -52,12 +49,6 @@ export default function ProductCard({ product }: { product: Product }) {
       <Box sx={{ p: { xs: 0.75, md: 2 }, pt: { xs: 0.5, md: 1.5 } }}>
         <Box className="flex items-center justify-between gap-2 mb-0.5">
           <StatusChip kind="stock" value={product.stockStatus} />
-          <Box className="flex items-center gap-0.5">
-            <StarRoundedIcon sx={{ fontSize: 16, color: '#E0A95A' }} />
-            <Typography sx={{ fontSize: 13, fontWeight: 700 }} className="tnum">
-              {product.rating.toFixed(1)}
-            </Typography>
-          </Box>
         </Box>
 
         <Typography
@@ -77,20 +68,6 @@ export default function ProductCard({ product }: { product: Product }) {
         </Typography>
 
         <Box sx={{ mt: { xs: 0.5, md: 1.5 } }}>
-          <Box className="flex items-baseline gap-1 flex-wrap">
-            <Typography sx={{ display: { xs: 'none', md: 'block' }, fontSize: 11, color: 'var(--ink-500)', fontWeight: 700, width: '100%', mb: 0 }}>
-              FROM
-            </Typography>
-            <Typography
-              className="tnum"
-              sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: { xs: 15.5, md: 22 }, lineHeight: 1.1 }}
-            >
-              {formatMoney(bulk.price)}
-            </Typography>
-            <Typography sx={{ fontSize: { xs: 11, md: 12.5 }, fontWeight: 600, color: 'var(--ink-500)' }}>
-              /{product.unit}
-            </Typography>
-          </Box>
           <Box sx={{ mt: { xs: 0.5, md: 1 }, pt: { xs: 0.5, md: 1 }, borderTop: '1px dashed var(--ink-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography sx={{ fontSize: { xs: 10, md: 11 }, color: 'var(--ink-500)', fontWeight: 600 }}>
               Min. Order (MOQ)

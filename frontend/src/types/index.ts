@@ -48,6 +48,11 @@ export interface Product {
   isFeatured?: boolean
   isNew?: boolean
   tags?: string[]
+  // Requirements section customization
+  sizePlaceholder?: string        // placeholder text for Specific Size input
+  containerOptionFull?: string    // label for Full Container button
+  containerOptionHalf?: string    // label for Half Container button
+  showContainerOptions?: boolean  // whether to show container option buttons
 }
 
 export interface Category {
@@ -66,6 +71,7 @@ export interface CartItem {
   quantity: number
   unitPrice: number // resolved from pricing slab at current qty
   moq: number
+  specifications?: Record<string, string>
 }
 
 export type OrderStatus = 'placed' | 'confirmed' | 'completed' | 'cancelled'
@@ -80,6 +86,7 @@ export interface OrderLine {
   unit: string
   unitPrice: number
   lineTotal: number
+  specifications?: Record<string, string>
 }
 
 export interface Order {
@@ -101,6 +108,13 @@ export interface Order {
   gatePassNo?: string
   cancellationReason?: string
   refundStatus?: string
+  customerName?: string
+  companyName?: string
+  customerPhone?: string
+  customerCity?: string
+  deliveryAddress?: string
+  quotedPrices?: Record<string, number>   // productId → agreed unit price
+  quotedShipping?: number
 }
 
 export interface Transaction {

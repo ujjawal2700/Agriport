@@ -24,7 +24,7 @@ import { clearCart } from '@/redux/slices/cartSlice'
 import { PAYMENT_METHODS, ROUTES } from '@/constants'
 import type { PaymentMode } from '@/types'
 import { formatMoney } from '@/utils/format'
-import { currentUser } from '@/mocks/data'
+import { currentUser, orders } from '@/mocks/data'
 import toast from 'react-hot-toast'
 
 const ICONS: Record<PaymentMode, ReactElement> = {
@@ -56,7 +56,43 @@ export default function CheckoutPage() {
 
   const placeOrder = () => {
     setPlacing(true)
+    const newOrder: Order = {
+      id: `o-${Date.now()}`,
+      reference: `AGP-2406-${Math.floor(1000 + Math.random() * 9000)}`,
+      placedOn: new Date().toISOString(),
+      status: 'placed',
+      paymentStatus: 'pending',
+      paymentMode: method,
+      customerName: user.fullName || 'Rohan Mehta',
+      companyName: user.companyName || 'Megha Trading Co.',
+      customerPhone: user.mobile || '+91 98765 43210',
+      customerCity: user.city || 'Pune',
+      deliveryAddress: address || user.address || '',
+      lines: items.map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        image: item.image || '',
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        lineTotal: item.quantity * item.unitPrice,
+        specifications: item.specifications,
+      })),
+      subtotal: total,
+      tax: Math.round(total * 0.05),
+      shipping: total > 50000 ? 0 : 1500,
+      total: total + Math.round(total * 0.05) + (total > 50000 ? 0 : 1500),
+      trackingTimeline: [
+        { label: 'Order placed', at: new Date().toISOString(), done: true },
+        { label: 'Payment verification', at: null, done: false },
+        { label: 'Admin approval', at: null, done: false },
+        { label: 'Dispatch', at: null, done: false },
+        { label: 'Delivered', at: null, done: false },
+      ],
+    }
+
     setTimeout(() => {
+      orders.push(newOrder)
       dispatch(clearCart())
       toast.success('Order placed successfully!')
       navigate(`${ROUTES.orders}?placed=1`, { replace: true })
@@ -157,7 +193,7 @@ export default function CheckoutPage() {
             startIcon={placing ? <CircularProgress size={18} color="inherit" /> : <CheckCircleRoundedIcon />}
             onClick={placeOrder}
           >
-            {placing ? 'Placing order…' : `Place order · ${formatMoney(total)}`}
+            {placing ? 'Placing order…' : 'Place order'}
           </Button>
           <Divider sx={{ my: 2 }} />
           <Box className="flex items-start gap-2">

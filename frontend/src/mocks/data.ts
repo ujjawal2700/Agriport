@@ -82,7 +82,7 @@ export const products: Product[] = [
     shortDescription: 'Aged premium basmati, export grade, 25kg woven sacks.',
     description:
       'Export-grade aged basmati rice with extra-long grain and consistent aroma. Triple-cleaned, sortexed and moisture-controlled for international shipment. Packed in BOPP laminated 25kg sacks suitable for stacking and long storage.',
-    specifications: { Grade: 'Export A+', Packing: '25 kg sack', Moisture: '≤ 12%', 'Grain Length': '8.3 mm', Origin: 'Punjab, India' },
+    specifications: { Grade: 'Import A+', Packing: '25 kg sack', 'Brand Name': 'Agriport Gold', 'Packing Type': 'Basket', 'Size or Count': '8.3 mm', Origin: 'Punjab, India' },
     unit: 'sack',
     moq: 20,
     availableStock: 1840,
@@ -101,10 +101,10 @@ export const products: Product[] = [
     name: 'Corrugated Shipping Boxes — 5-Ply (Bundle of 50)',
     category: 'Packaging',
     images: [],
-    shortDescription: 'Heavy-duty 5-ply boxes, 400×300×300mm, bundle of 50.',
+    shortDescription: 'size and count availability',
     description:
       'High burst-strength 5-ply corrugated boxes engineered for export logistics. Kraft outer liner with ECT-44 rating. Flat-packed bundles of 50 for efficient storage.',
-    specifications: { Ply: '5-ply', Size: '400×300×300 mm', 'Burst Strength': '18 kg/cm²', Bundle: '50 boxes', Print: 'Plain Kraft' },
+    specifications: { Grade: 'Import', Packing: '50 boxes', 'Brand Name': 'PackShield', 'Packing Type': 'Cartoon', 'Size or Count': '400×300×300 mm', Origin: 'India' },
     unit: 'bundle',
     moq: 10,
     availableStock: 620,
@@ -127,7 +127,7 @@ export const products: Product[] = [
     shortDescription: 'Brushless 20V drill, 2 batteries, hard case.',
     description:
       'Professional brushless cordless impact drill with 65Nm torque, 2-speed gearbox and two 4.0Ah Li-ion batteries. Supplied in a rugged carry case. CE & BIS certified.',
-    specifications: { Voltage: '20V', Torque: '65 Nm', Battery: '2 × 4.0Ah', Chuck: '13 mm', Warranty: '1 year' },
+    specifications: { Grade: 'Import', Packing: 'Hard case', 'Brand Name': 'VoltMax', 'Packing Type': 'Cartoon', 'Size or Count': '13 mm', Origin: 'China' },
     unit: 'piece',
     moq: 5,
     availableStock: 95,
@@ -149,7 +149,7 @@ export const products: Product[] = [
     shortDescription: 'Unbleached cotton greige, 60×60 count, 100m roll.',
     description:
       'Premium unbleached cotton greige fabric, 60×60 thread count, 44" width. Ideal for dyeing and printing units. Supplied in 100-metre rolls.',
-    specifications: { Count: '60×60', Width: '44 inch', GSM: '120', 'Roll Length': '100 m', Composition: '100% Cotton' },
+    specifications: { Grade: 'Import', Packing: '100 m roll', 'Brand Name': 'TexWeave', 'Packing Type': 'Cartoon', 'Size or Count': '60×60', Origin: 'India' },
     unit: 'roll',
     moq: 15,
     availableStock: 0,
@@ -169,7 +169,7 @@ export const products: Product[] = [
     shortDescription: 'Slim recessed LED panels, 4000K, carton of 30.',
     description:
       'Energy-efficient 24W slim recessed LED panel lights with 4000K neutral white output and aluminium heat sink. 2-year warranty. Packed 30 per carton.',
-    specifications: { Power: '24W', 'Colour Temp': '4000K', Lumens: '2160 lm', Life: '50,000 hrs', Carton: '30 pcs' },
+    specifications: { Grade: 'Import', Packing: '30 pcs', 'Brand Name': 'Lumina', 'Packing Type': 'Cartoon', 'Size or Count': '24W', Origin: 'China' },
     unit: 'carton',
     moq: 8,
     availableStock: 210,
@@ -191,7 +191,7 @@ export const products: Product[] = [
     shortDescription: 'Triple-ply SS304 cookware, 5-piece sets, box of 12.',
     description:
       'Commercial-grade triple-ply stainless steel (SS304) cookware. Induction compatible with riveted handles. Each box contains 12 retail-ready 5-piece sets.',
-    specifications: { Material: 'SS304 Tri-ply', Pieces: '5 per set', Box: '12 sets', Induction: 'Yes', Finish: 'Mirror' },
+    specifications: { Grade: 'Import', Packing: '12 sets', 'Brand Name': 'ChefStyle', 'Packing Type': 'Cartoon', 'Size or Count': '5 per set', Origin: 'India' },
     unit: 'box',
     moq: 6,
     availableStock: 48,
@@ -212,7 +212,7 @@ export const products: Product[] = [
     shortDescription: 'High-curcumin turmeric powder, 10kg food-grade bags.',
     description:
       'Single-origin turmeric powder with 3.5%+ curcumin content. Steam-sterilised and lab-tested for pesticide residue. Food-grade 10kg poly-lined bags.',
-    specifications: { Curcumin: '≥ 3.5%', Packing: '10 kg bag', Process: 'Steam sterilised', Origin: 'Erode, India' },
+    specifications: { Grade: 'Import', Packing: '10 kg bag', 'Brand Name': 'Agriport Spices', 'Packing Type': 'Basket', 'Size or Count': '≥ 3.5% Curcumin', Origin: 'Erode, India' },
     unit: 'bag',
     moq: 25,
     availableStock: 540,
@@ -233,7 +233,7 @@ export const products: Product[] = [
     shortDescription: 'Industrial pallet stretch film, 500mm, pack of 6 rolls.',
     description:
       'High-cling 23-micron LLDPE stretch wrap film for pallet wrapping. 500mm width, 2kg net per roll. Pack of 6 rolls.',
-    specifications: { Thickness: '23 micron', Width: '500 mm', 'Net/Roll': '2 kg', Pack: '6 rolls', Type: 'LLDPE' },
+    specifications: { Grade: 'Import', Packing: '6 rolls', 'Brand Name': 'WrapShield', 'Packing Type': 'Cartoon', 'Size or Count': '23 micron', Origin: 'India' },
     unit: 'pack',
     moq: 12,
     availableStock: 380,
@@ -261,6 +261,11 @@ export const orders: Order[] = [
     status: 'placed',
     paymentStatus: 'pending',
     paymentMode: 'bank_transfer',
+    customerName: 'Rohan Mehta',
+    companyName: 'Megha Trading Co.',
+    customerPhone: '+91 98765 43210',
+    customerCity: 'Pune',
+    deliveryAddress: 'Unit 14, Bhosari MIDC Industrial Area, Pune 411026',
     lines: [
       { productId: 'p1', name: products[0].name, image: '', quantity: 40, unit: 'sack', unitPrice: 1978, lineTotal: 79120 },
       { productId: 'p7', name: products[6].name, image: '', quantity: 30, unit: 'bag', unitPrice: 1822, lineTotal: 54660 },
@@ -284,6 +289,11 @@ export const orders: Order[] = [
     status: 'confirmed',
     paymentStatus: 'paid',
     paymentMode: 'gateway',
+    customerName: 'Rohan Mehta',
+    companyName: 'Megha Trading Co.',
+    customerPhone: '+91 98765 43210',
+    customerCity: 'Pune',
+    deliveryAddress: 'Unit 14, Bhosari MIDC Industrial Area, Pune 411026',
     lines: [
       { productId: 'p2', name: products[1].name, image: '', quantity: 20, unit: 'bundle', unitPrice: 1334, lineTotal: 26680 },
     ],
@@ -310,6 +320,11 @@ export const orders: Order[] = [
     status: 'completed',
     paymentStatus: 'paid',
     paymentMode: 'upi',
+    customerName: 'Karthik S',
+    companyName: 'KS Electronics',
+    customerPhone: '+91 95678 90123',
+    customerCity: 'Chennai',
+    deliveryAddress: '32, Mount Road, Guindy, Chennai 600032',
     lines: [
       { productId: 'p5', name: products[4].name, image: '', quantity: 12, unit: 'carton', unitPrice: 8188, lineTotal: 98256 },
       { productId: 'p8', name: products[7].name, image: '', quantity: 24, unit: 'pack', unitPrice: 2061, lineTotal: 49464 },
@@ -337,6 +352,11 @@ export const orders: Order[] = [
     status: 'cancelled',
     paymentStatus: 'refunded',
     paymentMode: 'card',
+    customerName: 'Vikram Rao',
+    companyName: 'Rao Distributors',
+    customerPhone: '+91 90123 45678',
+    customerCity: 'Hyderabad',
+    deliveryAddress: 'Flat 402, Green Meadows, Gachibowli, Hyderabad 500032',
     lines: [
       { productId: 'p6', name: products[5].name, image: '', quantity: 6, unit: 'box', unitPrice: 12400, lineTotal: 74400 },
     ],

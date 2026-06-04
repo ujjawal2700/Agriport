@@ -1,6 +1,5 @@
-import { Box, Typography, Divider } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import type { CartItem } from '@/types'
-import { formatMoney } from '@/utils/format'
 
 export const TAX_RATE = 0.05
 export const SHIPPING_FLAT = 1800
@@ -13,41 +12,20 @@ export function computeTotals(items: CartItem[]) {
   return { subtotal, tax, shipping, total }
 }
 
-function Row({ label, value, strong, accent }: { label: string; value: string; strong?: boolean; accent?: boolean }) {
-  return (
-    <Box className="flex items-center justify-between">
-      <Typography sx={{ fontSize: strong ? 15 : 14, fontWeight: strong ? 700 : 500, color: strong ? 'var(--ink-900)' : 'var(--ink-600)' }}>
-        {label}
-      </Typography>
-      <Typography
-        className="tnum"
-        sx={{
-          fontSize: strong ? 22 : 14,
-          fontWeight: strong ? 800 : 600,
-          fontFamily: strong ? '"Bricolage Grotesque", serif' : 'inherit',
-          color: accent ? 'var(--brand-700)' : 'var(--ink-900)',
-        }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  )
-}
-
-export default function OrderSummary({ items, title = 'Order summary' }: { items: CartItem[]; title?: string }) {
-  const { subtotal, tax, shipping, total } = computeTotals(items)
+export default function OrderSummary({ items, title = 'Enquiry summary' }: { items: CartItem[]; title?: string }) {
   return (
     <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
-      <Typography variant="h6" sx={{ fontSize: 17, mb: 2 }}>
+      <Typography variant="h6" sx={{ fontSize: 17, mb: 1.5 }}>
         {title}
       </Typography>
-      <Box className="flex flex-col gap-2">
-        <Row label={`Subtotal (${items.length} items)`} value={formatMoney(subtotal)} />
-        <Row label="GST (5%)" value={formatMoney(tax)} />
-        <Row label="Shipping & handling" value={formatMoney(shipping)} />
+      <Box className="flex items-center justify-between">
+        <Typography sx={{ fontSize: 14, fontWeight: 500, color: 'var(--ink-600)' }}>
+          Total items
+        </Typography>
+        <Typography sx={{ fontSize: 15, fontWeight: 700, color: 'var(--brand-700)' }}>
+          {items.length} {items.length === 1 ? 'item' : 'items'}
+        </Typography>
       </Box>
-      <Divider sx={{ my: 2 }} />
-      <Row label="Total payable" value={formatMoney(total)} strong accent />
     </Box>
   )
 }

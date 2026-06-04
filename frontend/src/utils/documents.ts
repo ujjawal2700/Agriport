@@ -83,3 +83,99 @@ export function downloadGatePass(order: Order) {
     <div class="foot">Present this gate pass at the warehouse for collection. Security verification required.</div>`,
   )
 }
+
+/**
+ * Generate a quotation invoice with executive-entered prices.
+ * Opens a print window AND returns the plain-text WhatsApp message.
+ */
+export function generateQuotationInvoice(
+  order: Order,
+  linePrices: Record<string, number>,
+  shipping: number,
+): string {
+  const lines = order.lines.map((l) => {
+    const unitPrice = linePrices[l.productId] ?? l.unitPrice ?? 0
+    const lineTotal = unitPrice * l.quantity
+    return { ...l, unitPrice, lineTotal }
+  })
+
+  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0)
+  const gst = Math.round(subtotal * 0.05)
+  const grandTotal = subtotal + gst + shipping
+
+  const invoiceNo = order.invoiceNo ?? `QT-${order.reference.slice(4)}`
+  const customerName = order.customerName ?? 'Valued Customer'
+  const companyName = order.companyName ?? ''
+  const customerPhone = order.customerPhone ?? ''
+  const customerCity = order.customerCity ?? ''
+  const deliveryAddress = order.deliveryAddress ?? ''
+  const today = formatDate(new Date().toISOString())
+
+  // ── Printable HTML ──────────────────────────────────────────────────────────
+  const rows = lines
+    .map(
+      (l) =>
+        `<tr><td>${l.name}</td><td class="right">${l.quantity} ${l.unit}</td>
+        <td class="right">${formatMoney(l.unitPrice)}</td><td class="right">${formatMoney(l.lineTotal)}</td></tr>`,
+    )
+    .join('')
+
+  openPrintable(
+    `Quotation ${invoiceNo}`,
+    `<div class="head">
+      <div><div class="brand">Agriport</div><div class="muted">Wholesale Trading · B2B Platform</div></div>
+      <div class="right"><span class="tag">QUOTATION</span>
+      <div class="muted" style="margin-top:8px">${invoiceNo}</div>
+      <div class="muted">${today}</div></div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="muted">PREPARED FOR</div>
+        <strong>${companyName || customerName}</strong>
+        <div class="muted">${customerName}</div>
+        <div class="muted">${customerPhone}</div>
+        <div class="muted">${customerCity}</div>
+        ${deliveryAddress ? `<div class="muted">${deliveryAddress}</div>` : ''}
+      </div>
+      <div>
+        <div class="muted">ENQUIRY REF</div><strong>${order.reference}</strong>
+        <div class="muted">Raised on: ${formatDate(order.placedOn)}</div>
+        <div class="muted">Prepared by: Rahul Verma · Sales Executive</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Product</th><th class="right">Qty</th><th class="right">Unit Price</th><th class="right">Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="totals">
+      <div class="row"><span>Subtotal</span><span>${formatMoney(subtotal)}</span></div>
+      <div class="row"><span>GST (5%)</span><span>${formatMoney(gst)}</span></div>
+      <div class="row"><span>Shipping</span><span>${formatMoney(shipping)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${formatMoney(grandTotal)}</span></div>
+    </div>
+    <div style="margin-top:32px; padding:16px; background:#EAF6F0; border-radius:8px; font-size:13px; color:#0E432F;">
+      <strong>Note:</strong> This is a quotation/proforma. Final invoice will be issued upon order confirmation and payment.
+      Valid for 7 days from date of issue.
+    </div>
+    <div class="foot">© Agriport — B2B Wholesale Trading Platform · For queries contact your sales executive.</div>`,
+  )
+
+  // ── WhatsApp plain-text message ─────────────────────────────────────────────
+  const lineText = lines
+    .map((l) => `  • ${l.name} — ${l.quantity} ${l.unit} × ${formatMoney(l.unitPrice)} = ${formatMoney(l.lineTotal)}`)
+    .join('\n')
+
+  return (
+    `Hello ${customerName},\n\n` +
+    `Thank you for your enquiry! Please find your quotation from *Agriport* below:\n\n` +
+    `📋 *Quotation Ref:* ${invoiceNo}\n` +
+    `📅 *Date:* ${today}\n\n` +
+    `📦 *Products:*\n${lineText}\n\n` +
+    `💰 *Subtotal:* ${formatMoney(subtotal)}\n` +
+    `📊 *GST (5%):* ${formatMoney(gst)}\n` +
+    `🚚 *Shipping:* ${formatMoney(shipping)}\n` +
+    `✅ *Grand Total: ${formatMoney(grandTotal)}*\n\n` +
+    `This quotation is valid for 7 days. Please reply to confirm your order.\n\n` +
+    `Regards,\n*Rahul Verma* — Agriport Sales Executive\n📞 +91 90000 00003`
+  )
+}

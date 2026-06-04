@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -10,8 +10,8 @@ import {
   TableBody,
   TableCell,
   TableRow,
+  TextField,
 } from '@mui/material'
-import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
@@ -38,6 +38,15 @@ export default function ProductDetailPage() {
   const { data: product, isLoading } = useGetProductQuery(id)
   const [activeImg, setActiveImg] = useState(0)
   const [qty, setQty] = useState(1)
+  const [packingType, setPackingType] = useState<string>('Cartoon')
+  const [specificSize, setSpecificSize] = useState<string>('')
+  const [containerOption, setContainerOption] = useState<string>('full')
+
+  useEffect(() => {
+    if (product?.specifications?.['Packing Type']) {
+      setPackingType(product.specifications['Packing Type'])
+    }
+  }, [product])
 
   if (isLoading) return <Loader height={400} />
   if (!product)
@@ -53,8 +62,17 @@ export default function ProductDetailPage() {
   const outOfStock = product.stockStatus === 'out_of_stock'
 
   const handleAdd = () => {
-    dispatch(addToCart({ product, quantity: effectiveQty }))
-    toast.success(`Added ${effectiveQty} ${product.unit} to cart`)
+    const updatedProduct = {
+      ...product,
+      specifications: {
+        ...product.specifications,
+        'Packing Type': packingType,
+        'Specific Size': specificSize || 'Not specified',
+        'Container Option': containerOption === 'full' ? 'Full Container' : 'Half Container',
+      },
+    }
+    dispatch(addToCart({ product: updatedProduct, quantity: effectiveQty }))
+    toast.success(`Enquiry sent successfully for ${effectiveQty} ${product.unit}`)
   }
 
   return (
@@ -72,7 +90,7 @@ export default function ProductDetailPage() {
         {/* Gallery */}
         <Box>
           <Box sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid var(--ink-200)', height: { xs: 260, sm: 360, md: 420 } }}>
-            <ProductThumb id={product.id} name={product.name} variant={activeImg} rounded={0} height="100%" fontSize={{ xs: '2.5rem', md: '4rem' }} />
+            <ProductThumb id={product.id} name={product.name} variant={activeImg} rounded={0} height="100%" fontSize={{ xs: '2.5rem', md: '4rem' }} imageUrl={product.images?.[activeImg] || undefined} />
           </Box>
           <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 3 }, mt: { xs: 1.5, md: 3 } }}>
             {[0, 1, 2, 3].map((v) => (
@@ -89,7 +107,7 @@ export default function ProductDetailPage() {
                   outline: '1px solid var(--ink-200)',
                 }}
               >
-                <ProductThumb id={product.id} name={product.name} variant={v} rounded={0} fontSize={{ xs: '0.85rem', md: '1.2rem' }} />
+                <ProductThumb id={product.id} name={product.name} variant={v} rounded={0} fontSize={{ xs: '0.85rem', md: '1.2rem' }} imageUrl={product.images?.[v] || undefined} />
               </Box>
             ))}
           </Box>
@@ -112,13 +130,6 @@ export default function ProductDetailPage() {
           </Typography>
 
           <Box className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3">
-            <Box className="flex items-center gap-1">
-              <StarRoundedIcon sx={{ fontSize: 19, color: '#E0A95A' }} />
-              <Typography sx={{ fontWeight: 700 }} className="tnum">
-                {product.rating.toFixed(1)}
-              </Typography>
-            </Box>
-            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
             <Box className="flex items-center gap-1.5 text-[13px]" sx={{ color: 'var(--ink-500)' }}>
               <PublicRoundedIcon sx={{ fontSize: 17 }} /> Origin: {product.origin}
             </Box>
@@ -172,16 +183,7 @@ export default function ProductDetailPage() {
           <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', p: { xs: 2, md: 3 }, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(22,27,36,0.05)' }}>
             <Box className="flex items-end justify-between mb-4 flex-wrap gap-3">
               <Box>
-                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>YOUR PRICE</Typography>
-                <Box className="flex items-baseline gap-1.5">
-                  <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: { xs: 24, md: 34 }, lineHeight: 1 }}>
-                    {formatMoney(currentSlab.price)}
-                  </Typography>
-                  <Typography sx={{ color: 'var(--ink-500)', fontWeight: 600, fontSize: { xs: 13, md: 15 } }}>/{product.unit}</Typography>
-                  {savings > 0 && (
-                    <Chip size="small" color="success" label={`Save ${savings}%`} sx={{ ml: 0.5, height: 20, '& .MuiChip-label': { px: 0.75, fontSize: 10.5 } }} />
-                  )}
-                </Box>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>REQUIREMENTS</Typography>
               </Box>
               <Box className="text-right">
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>AVAILABLE</Typography>
@@ -191,7 +193,27 @@ export default function ProductDetailPage() {
               </Box>
             </Box>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'auto 1fr' }, gap: { xs: 2, md: 3 }, mb: { xs: 2.5, md: 4 } }}>
+            {/* Specific Size and Quantity */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: { xs: 2, md: 3 }, mb: 3 }}>
+              <Box>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
+                  SPECIFIC SIZE
+                </Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  placeholder={product.sizePlaceholder || 'e.g. 400x300x300 mm'}
+                  value={specificSize}
+                  onChange={(e) => setSpecificSize(e.target.value)}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2.5,
+                      bgcolor: 'var(--ink-50)',
+                      '& fieldset': { borderColor: 'var(--ink-200)' },
+                    }
+                  }}
+                />
+              </Box>
               <Box>
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
                   QUANTITY (MOQ {product.moq})
@@ -204,13 +226,56 @@ export default function ProductDetailPage() {
                   unit={product.unit}
                 />
               </Box>
-              <Box sx={{ flex: 1, minWidth: 140 }}>
-                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>ORDER TOTAL</Typography>
-                <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: { xs: 20, md: 26 }, color: 'var(--brand-700)' }}>
-                  {formatMoney(lineTotal)}
-                </Typography>
+            </Box>
+
+            {/* Container Options */}
+            {product.showContainerOptions !== false && (
+            <Box sx={{ mb: 3.5 }}>
+              <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 1 }}>
+                CONTAINER OPTION
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant={containerOption === 'full' ? 'contained' : 'outlined'}
+                  onClick={() => setContainerOption('full')}
+                  sx={{
+                    flex: 1,
+                    py: 1,
+                    borderRadius: 2.5,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    borderColor: 'var(--ink-200)',
+                    color: containerOption === 'full' ? '#fff' : 'var(--ink-800)',
+                    '&:hover': {
+                      borderColor: 'var(--ink-300)',
+                    }
+                  }}
+                >
+                  {product.containerOptionFull || 'Full Container'}
+                </Button>
+                <Button
+                  variant={containerOption === 'half' ? 'contained' : 'outlined'}
+                  onClick={() => setContainerOption('half')}
+                  sx={{
+                    flex: 1,
+                    py: 1,
+                    borderRadius: 2.5,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    borderColor: 'var(--ink-200)',
+                    color: containerOption === 'half' ? '#fff' : 'var(--ink-800)',
+                    '&:hover': {
+                      borderColor: 'var(--ink-300)',
+                    }
+                  }}
+                >
+                  {product.containerOptionHalf || 'Half Container'}
+                </Button>
               </Box>
             </Box>
+            )}
 
             <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 3 } }}>
               <Button
@@ -222,28 +287,10 @@ export default function ProductDetailPage() {
                   fontSize: { xs: 13, md: 15 },
                   whiteSpace: 'nowrap',
                 }}
-                startIcon={<ShoppingCartRoundedIcon />}
                 disabled={outOfStock}
                 onClick={handleAdd}
               >
-                {outOfStock ? 'Out of stock' : 'Add to cart'}
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                sx={{
-                  flex: 1,
-                  py: { xs: 1, md: 1.5 },
-                  fontSize: { xs: 13, md: 15 },
-                  whiteSpace: 'nowrap',
-                }}
-                disabled={outOfStock}
-                onClick={() => {
-                  handleAdd()
-                  navigate(ROUTES.cart)
-                }}
-              >
-                Buy now
+                {outOfStock ? 'Out of stock' : 'Send enquiry'}
               </Button>
             </Box>
           </Box>
@@ -297,7 +344,29 @@ export default function ProductDetailPage() {
                   <TableRow key={k} sx={{ '& td': { borderColor: 'var(--ink-100)' } }}>
                     <TableCell sx={{ color: 'var(--ink-500)', fontWeight: 500 }}>{k}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      {v}
+                      {k === 'Packing Type' ? (
+                        <select
+                          value={packingType}
+                          onChange={(e) => setPackingType(e.target.value)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--ink-200)',
+                            fontFamily: 'inherit',
+                            fontSize: '13.5px',
+                            fontWeight: 600,
+                            color: 'var(--ink-800)',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="Cartoon">Cartoon</option>
+                          <option value="Basket">Basket</option>
+                        </select>
+                      ) : (
+                        v
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
