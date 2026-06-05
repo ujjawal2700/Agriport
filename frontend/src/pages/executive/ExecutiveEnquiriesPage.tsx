@@ -617,7 +617,6 @@ export default function ExecutiveEnquiriesPage() {
                       color="success"
                       startIcon={<WhatsAppIcon />}
                       onClick={() => {
-                        const prices = selectedEnquiry.quotedPrices ?? Object.fromEntries(selectedEnquiry.lines.map((l) => [l.productId, l.unitPrice ?? 0]))
                         const msg = `Hello ${selectedEnquiry.customerName ?? 'Customer'},\n\nPlease find your quotation from *Agriport* for Enquiry ${selectedEnquiry.reference}. For full invoice, please contact your sales executive.\n\nRegards,\nRahul Verma — Agriport Sales`
                         handleSendWhatsApp(selectedEnquiry, msg)
                       }}
