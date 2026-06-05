@@ -19,7 +19,6 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { Product, StockStatus } from '@/types'
 import { generateSlabs } from '@/utils/pricing'
-import { formatMoney } from '@/utils/format'
 
 interface Props {
   open: boolean

@@ -12,7 +12,6 @@ import {
   TableRow,
   TextField,
 } from '@mui/material'
-import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PublicRoundedIcon from '@mui/icons-material/PublicRounded'
@@ -27,7 +26,6 @@ import PageHeader from '@/components/common/PageHeader'
 import { Loader } from '@/components/common/Loader'
 import EmptyState from '@/components/common/EmptyState'
 import { formatMoney } from '@/utils/format'
-import { resolveUnitPrice, slabSavingsPct } from '@/utils/pricing'
 import { ROUTES } from '@/constants'
 import toast from 'react-hot-toast'
 
@@ -57,9 +55,6 @@ export default function ProductDetailPage() {
 
   // Initialise qty to MOQ on first resolve
   const effectiveQty = Math.max(qty, product.moq)
-  const currentSlab = resolveUnitPrice(product.pricingSlabs, effectiveQty)
-  const savings = slabSavingsPct(product.pricingSlabs, effectiveQty)
-  const lineTotal = currentSlab.price * effectiveQty
   const outOfStock = product.stockStatus === 'out_of_stock'
 
   const handleAdd = () => {

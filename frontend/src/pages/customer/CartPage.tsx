@@ -1,4 +1,4 @@
-import { Box, Typography, Button, IconButton, Divider } from '@mui/material'
+import { Box, Typography, Button, IconButton } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
@@ -12,7 +12,6 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { setQuantity, removeFromCart } from '@/redux/slices/cartSlice'
 import { useGetProductsQuery } from '@/redux/api'
 import { ROUTES } from '@/constants'
-import { formatMoney } from '@/utils/format'
 
 export default function CartPage() {
   const dispatch = useAppDispatch()
