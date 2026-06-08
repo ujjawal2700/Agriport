@@ -39,6 +39,7 @@ const UsersAdminPage = lazy(() => import('@/pages/admin/UsersAdminPage'))
 const SalesAdminPage = lazy(() => import('@/pages/admin/SalesAdminPage'))
 const InventoryAdminPage = lazy(() => import('@/pages/admin/InventoryAdminPage'))
 const ReportsAdminPage = lazy(() => import('@/pages/admin/ReportsAdminPage'))
+const AdminStorefrontPage = lazy(() => import('@/pages/admin/AdminStorefrontPage'))
 
 // Manager
 const ManagerDashboardPage = lazy(() => import('@/pages/manager/ManagerDashboardPage'))
@@ -56,7 +57,6 @@ const ExecutiveEnquiriesPage = lazy(() => import('@/pages/executive/ExecutiveEnq
 const ExecutiveSalesPage = lazy(() => import('@/pages/executive/ExecutiveSalesPage'))
 const ExecutiveIncentivesPage = lazy(() => import('@/pages/executive/ExecutiveIncentivesPage'))
 const ExecutiveProductsPage = lazy(() => import('@/pages/executive/ExecutiveProductsPage'))
-const ExecutiveStorefrontPage = lazy(() => import('@/pages/executive/ExecutiveStorefrontPage'))
 
 // Misc
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
@@ -119,6 +119,7 @@ export default function App() {
             <Route path="sales" element={<SalesAdminPage />} />
             <Route path="inventory" element={<InventoryAdminPage />} />
             <Route path="reports" element={<ReportsAdminPage />} />
+            <Route path="storefront" element={<AdminStorefrontPage />} />
           </Route>
 
           {/* Sales Manager workspace */}
@@ -154,7 +155,6 @@ export default function App() {
             <Route path="sales" element={<ExecutiveSalesPage />} />
             <Route path="incentives" element={<ExecutiveIncentivesPage />} />
             <Route path="products" element={<ExecutiveProductsPage />} />
-            <Route path="storefront" element={<ExecutiveStorefrontPage />} />
           </Route>
 
           <Route path="/mobile-showcase" element={<MobileShowcase />} />

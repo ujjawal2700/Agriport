@@ -5,7 +5,6 @@ import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import RedeemRoundedIcon from '@mui/icons-material/RedeemRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
-import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import WorkspaceLayout from './WorkspaceLayout'
 import type { WorkspaceConfig } from './WorkspaceLayout'
 import { ROUTES } from '@/constants'
@@ -19,7 +18,6 @@ const config: WorkspaceConfig = {
     { label: 'Enquiries', to: '/executive/enquiries', icon: <ReceiptLongRoundedIcon /> },
     { label: 'New Sale', to: '/executive/sales', icon: <PointOfSaleRoundedIcon /> },
     { label: 'Products', to: '/executive/products', icon: <Inventory2RoundedIcon /> },
-    { label: 'Storefront', to: '/executive/storefront', icon: <PaletteRoundedIcon /> },
     { label: 'My Incentives', to: '/executive/incentives', icon: <RedeemRoundedIcon /> },
   ],
   titles: {
@@ -28,7 +26,6 @@ const config: WorkspaceConfig = {
     '/executive/enquiries': 'Customer Enquiries',
     '/executive/sales': 'Sales Operations',
     '/executive/products': 'Product Management',
-    '/executive/storefront': 'Storefront Content',
     '/executive/incentives': 'My Incentives',
   },
   user: { name: 'Rahul Verma', role: 'Sales Executive · Pune', initials: 'RV' },

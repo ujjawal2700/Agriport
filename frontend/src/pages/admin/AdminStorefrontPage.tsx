@@ -67,7 +67,7 @@ function Panel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function ExecutiveStorefrontPage() {
+export default function AdminStorefrontPage() {
   const dispatch = useAppDispatch()
   const { hero, banners, categories, trustBadges } = useAppSelector((s) => s.storefront)
   const [tab, setTab] = useState(0)

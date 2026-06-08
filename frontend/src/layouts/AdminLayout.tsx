@@ -6,6 +6,7 @@ import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
 import WorkspaceLayout from './WorkspaceLayout'
 import type { WorkspaceConfig } from './WorkspaceLayout'
 import { ROUTES } from '@/constants'
@@ -21,6 +22,7 @@ const config: WorkspaceConfig = {
     { label: 'Sales Team', to: '/admin/sales', icon: <HubRoundedIcon /> },
     { label: 'Inventory', to: '/admin/inventory', icon: <WarehouseRoundedIcon /> },
     { label: 'Reports', to: '/admin/reports', icon: <InsightsRoundedIcon /> },
+    { label: 'Storefront', to: '/admin/storefront', icon: <PaletteRoundedIcon /> },
   ],
   titles: {
     '/admin': 'Dashboard',
@@ -30,6 +32,7 @@ const config: WorkspaceConfig = {
     '/admin/sales': 'Sales Team Management',
     '/admin/inventory': 'Inventory & Stock Approvals',
     '/admin/reports': 'Reports & Analytics',
+    '/admin/storefront': 'Storefront Content',
   },
   user: { name: 'Admin', role: 'Super Admin', initials: 'AD' },
   exit: { to: ROUTES.home, label: 'Customer App', icon: <StorefrontRoundedIcon /> },
