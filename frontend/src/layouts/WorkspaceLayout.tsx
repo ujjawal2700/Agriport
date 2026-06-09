@@ -30,6 +30,7 @@ export interface NavItem {
   to: string
   icon: ReactNode
   end?: boolean
+  children?: { label: string; to: string; icon?: ReactNode; end?: boolean }[]
 }
 
 export interface WorkspaceConfig {
@@ -48,6 +49,21 @@ export interface WorkspaceConfig {
 }
 
 function Sidebar({ config, onNavigate }: { config: WorkspaceConfig; onNavigate?: () => void }) {
+  const location = useLocation()
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {}
+    config.nav.forEach((n) => {
+      if (n.children && n.children.some((c) => location.pathname === c.to)) {
+        initial[n.label] = true
+      }
+    })
+    return initial
+  })
+
+  const toggleSection = (label: string) => {
+    setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }))
+  }
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#0A3324', color: '#fff' }}>
       <Box sx={{ px: 2.5, py: 2.5 }}>
@@ -58,45 +74,119 @@ function Sidebar({ config, onNavigate }: { config: WorkspaceConfig; onNavigate?:
           {config.navLabel ?? 'WORKSPACE'}
         </Typography>
         <Box className="flex flex-col gap-1">
-          {config.nav.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} onClick={onNavigate} style={{ textDecoration: 'none' }}>
-              {({ isActive }) => (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    px: 1.5,
-                    py: 1.25,
-                    borderRadius: 2.5,
-                    color: isActive ? '#fff' : 'rgba(255,255,255,0.66)',
-                    bgcolor: isActive ? 'rgba(56,155,115,0.28)' : 'transparent',
-                    fontWeight: 600,
-                    fontSize: 14.5,
-                    position: 'relative',
-                    transition: 'all .15s',
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: '#fff' },
-                    '& svg': { fontSize: 21 },
-                    ...(isActive && {
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        left: -8,
-                        top: 8,
-                        bottom: 8,
-                        width: 3,
-                        borderRadius: 3,
-                        bgcolor: '#66B894',
-                      },
-                    }),
-                  }}
-                >
-                  {n.icon}
-                  {n.label}
+          {config.nav.map((n) => {
+            if (n.children) {
+              const isOpen = !!openSections[n.label]
+              return (
+                <Box key={n.label} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box
+                    onClick={() => toggleSection(n.label)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      px: 1.5,
+                      py: 1.25,
+                      borderRadius: 2.5,
+                      color: isOpen ? '#fff' : 'rgba(255,255,255,0.66)',
+                      bgcolor: isOpen ? 'rgba(255,255,255,0.04)' : 'transparent',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: 14.5,
+                      transition: 'all .15s',
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                      '& svg': { fontSize: 21 },
+                    }}
+                  >
+                    {n.icon}
+                    <Box sx={{ flex: 1 }}>{n.label}</Box>
+                    <Box sx={{ fontSize: 9, opacity: 0.7, transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                      ▶
+                    </Box>
+                  </Box>
+                  {isOpen && n.children.map((c) => (
+                    <NavLink key={c.to} to={c.to} end={c.end} onClick={onNavigate} style={{ textDecoration: 'none' }}>
+                      {({ isActive }) => (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5,
+                            pl: 4.5,
+                            pr: 1.5,
+                            py: 1,
+                            borderRadius: 2.5,
+                            color: isActive ? '#fff' : 'rgba(255,255,255,0.66)',
+                            bgcolor: isActive ? 'rgba(56,155,115,0.28)' : 'transparent',
+                            fontWeight: 600,
+                            fontSize: 13.5,
+                            position: 'relative',
+                            transition: 'all .15s',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                            '& svg': { fontSize: 18 },
+                            ...(isActive && {
+                              '&::before': {
+                                content: '""',
+                                position: 'absolute',
+                                left: -8,
+                                top: 6,
+                                bottom: 6,
+                                width: 3,
+                                borderRadius: 3,
+                                bgcolor: '#66B894',
+                              },
+                            }),
+                          }}
+                        >
+                          {c.icon}
+                          {c.label}
+                        </Box>
+                      )}
+                    </NavLink>
+                  ))}
                 </Box>
-              )}
-            </NavLink>
-          ))}
+              )
+            }
+            return (
+              <NavLink key={n.to} to={n.to} end={n.end} onClick={onNavigate} style={{ textDecoration: 'none' }}>
+                {({ isActive }) => (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      px: 1.5,
+                      py: 1.25,
+                      borderRadius: 2.5,
+                      color: isActive ? '#fff' : 'rgba(255,255,255,0.66)',
+                      bgcolor: isActive ? 'rgba(56,155,115,0.28)' : 'transparent',
+                      fontWeight: 600,
+                      fontSize: 14.5,
+                      position: 'relative',
+                      transition: 'all .15s',
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', color: '#fff' },
+                      '& svg': { fontSize: 21 },
+                      ...(isActive && {
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          left: -8,
+                          top: 8,
+                          bottom: 8,
+                          width: 3,
+                          borderRadius: 3,
+                          bgcolor: '#66B894',
+                        },
+                      }),
+                    }}
+                  >
+                    {n.icon}
+                    {n.label}
+                  </Box>
+                )}
+              </NavLink>
+            )
+          })}
         </Box>
       </Box>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />

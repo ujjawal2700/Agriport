@@ -27,6 +27,17 @@ export interface PricingSlab {
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock'
 
+export interface SizeVariant {
+  size: string
+  stock: number
+  price: number
+}
+
+export interface WeightVariant {
+  netWeight: number
+  grossWeight: number
+}
+
 export interface Product {
   id: string
   name: string
@@ -53,6 +64,8 @@ export interface Product {
   containerOptionFull?: string    // label for Full Container button
   containerOptionHalf?: string    // label for Half Container button
   showContainerOptions?: boolean  // whether to show container option buttons
+  sizeVariants?: SizeVariant[]
+  weightVariant?: WeightVariant
 }
 
 export interface Category {
@@ -265,6 +278,7 @@ export interface CRMCustomer {
   value: number
   lastContact: string
   owner: string
+  gst?: string
 }
 
 export interface FollowUp {

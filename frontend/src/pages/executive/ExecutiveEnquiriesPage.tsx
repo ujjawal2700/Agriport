@@ -19,6 +19,10 @@ import {
   FormControlLabel,
   InputAdornment,
   Alert,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from '@mui/material'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
@@ -33,6 +37,9 @@ import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded'
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import CurrencyRupeeRoundedIcon from '@mui/icons-material/CurrencyRupeeRounded'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
+import ShoppingBagRoundedIcon from '@mui/icons-material/ShoppingBagRounded'
 
 import { useGetOrdersQuery } from '@/redux/api'
 import { orders as mockOrders } from '@/mocks/data'
@@ -63,6 +70,19 @@ export default function ExecutiveEnquiriesPage() {
   const [shippingCharge, setShippingCharge] = useState(1500)
   // Stored WhatsApp message after invoice generation
   const [whatsappMsg, setWhatsappMsg] = useState<string | null>(null)
+
+  // ── Add Enquiry dialog state ─────────────────────────────────────────────
+  const [addEnquiryOpen, setAddEnquiryOpen] = useState(false)
+  const [newEnquiryForm, setNewEnquiryForm] = useState({
+    customerName: '',
+    companyName: '',
+    customerPhone: '',
+    customerCity: '',
+    deliveryAddress: '',
+  })
+  const [newEnquiryLines, setNewEnquiryLines] = useState([
+    { productName: '', quantity: 1, unit: 'unit' },
+  ])
 
   useEffect(() => {
     // Read directly from the shared array in data.ts to ensure session updates are visible
@@ -178,6 +198,61 @@ export default function ExecutiveEnquiriesPage() {
     window.open(url, '_blank')
   }
 
+  const handleAddEnquiry = () => {
+    if (!newEnquiryForm.customerName.trim()) {
+      toast.error('Please enter the customer name.')
+      return
+    }
+    if (newEnquiryLines.every((l) => !l.productName.trim())) {
+      toast.error('Please add at least one product requirement.')
+      return
+    }
+    const now = new Date().toISOString()
+    const yr = new Date().getFullYear().toString().slice(-2)
+    const mo = String(new Date().getMonth() + 1).padStart(2, '0')
+    const num = String(Math.floor(Math.random() * 8999) + 1000)
+    const ref = `AGP-${yr}${mo}-${num}`
+    const newOrder: Order = {
+      id: `o-offline-${Date.now()}`,
+      reference: ref,
+      placedOn: now,
+      status: 'placed',
+      paymentStatus: 'pending',
+      paymentMode: 'bank_transfer',
+      customerName: newEnquiryForm.customerName,
+      companyName: newEnquiryForm.companyName,
+      customerPhone: newEnquiryForm.customerPhone,
+      customerCity: newEnquiryForm.customerCity,
+      deliveryAddress: newEnquiryForm.deliveryAddress || 'Pickup from Agriport Warehouse',
+      lines: newEnquiryLines
+        .filter((l) => l.productName.trim())
+        .map((l, idx) => ({
+          productId: `offline-${Date.now()}-${idx}`,
+          name: l.productName,
+          image: '',
+          quantity: l.quantity,
+          unit: l.unit,
+          unitPrice: 0,
+          lineTotal: 0,
+        })),
+      subtotal: 0,
+      tax: 0,
+      shipping: 0,
+      total: 0,
+      trackingTimeline: [
+        { label: 'Order placed', at: now, done: true },
+        { label: 'Admin approval', at: null, done: false },
+        { label: 'Delivered', at: null, done: false },
+      ],
+    }
+    mockOrders.unshift(newOrder)
+    setRows([...mockOrders])
+    toast.success(`Offline enquiry ${ref} added!`)
+    setAddEnquiryOpen(false)
+    setNewEnquiryForm({ customerName: '', companyName: '', customerPhone: '', customerCity: '', deliveryAddress: '' })
+    setNewEnquiryLines([{ productName: '', quantity: 1, unit: 'unit' }])
+  }
+
   const handleRePrintInvoice = (o: Order) => {
     const prices = o.quotedPrices ?? Object.fromEntries(o.lines.map((l) => [l.productId, l.unitPrice ?? 0]))
     const msg = generateQuotationInvoice(o, prices, o.quotedShipping ?? 1500)
@@ -286,6 +361,23 @@ export default function ExecutiveEnquiriesPage() {
           }}
           sx={{ bgcolor: '#fff', borderRadius: 2 }}
         />
+        <Button
+          id="add-enquiry-btn"
+          variant="contained"
+          startIcon={<AddRoundedIcon />}
+          onClick={() => setAddEnquiryOpen(true)}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            borderRadius: 2,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            px: 2.5,
+            fontSize: 13.5,
+          }}
+        >
+          Add Enquiry
+        </Button>
       </Box>
 
       {/* Enquiries List */}
@@ -867,6 +959,218 @@ export default function ExecutiveEnquiriesPage() {
               </Button>
             </>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Add Offline Enquiry Dialog ─────────────────────────────────────── */}
+      <Dialog
+        open={addEnquiryOpen}
+        onClose={() => setAddEnquiryOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: 4 } } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: 17.5 }}>Add Offline Enquiry</Typography>
+            <Typography sx={{ fontSize: 12.5, color: 'var(--ink-400)', mt: 0.25 }}>
+              Log a customer enquiry received offline (phone/visit)
+            </Typography>
+          </Box>
+          <IconButton size="small" onClick={() => setAddEnquiryOpen(false)}>
+            <CloseRoundedIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2.5 }}>
+          {/* Customer Details */}
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <ContactsRoundedIcon sx={{ fontSize: 17, color: 'var(--brand-600)' }} />
+              <Typography sx={{ fontWeight: 700, fontSize: 13, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Customer Details
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <TextField
+                  id="enq-customer-name"
+                  label="Customer Name"
+                  size="small"
+                  required
+                  value={newEnquiryForm.customerName}
+                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, customerName: e.target.value }))}
+                  placeholder="e.g. Rahul Sharma"
+                />
+                <TextField
+                  id="enq-company-name"
+                  label="Company Name"
+                  size="small"
+                  value={newEnquiryForm.companyName}
+                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, companyName: e.target.value }))}
+                  placeholder="e.g. Sharma Traders"
+                />
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <TextField
+                  id="enq-phone"
+                  label="Phone Number"
+                  size="small"
+                  value={newEnquiryForm.customerPhone}
+                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, customerPhone: e.target.value }))}
+                  placeholder="+91 98765 00000"
+                  slotProps={{
+                    input: {
+                      startAdornment: <PhoneRoundedIcon sx={{ fontSize: 15, color: 'var(--ink-400)', mr: 0.75 }} />,
+                    },
+                  }}
+                />
+                <TextField
+                  id="enq-city"
+                  label="City"
+                  size="small"
+                  value={newEnquiryForm.customerCity}
+                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, customerCity: e.target.value }))}
+                  placeholder="e.g. Pune"
+                  slotProps={{
+                    input: {
+                      startAdornment: <PlaceRoundedIcon sx={{ fontSize: 15, color: 'var(--ink-400)', mr: 0.75 }} />,
+                    },
+                  }}
+                />
+              </Box>
+              <TextField
+                id="enq-delivery-address"
+                label="Delivery Address (optional)"
+                size="small"
+                fullWidth
+                multiline
+                rows={2}
+                value={newEnquiryForm.deliveryAddress}
+                onChange={(e) => setNewEnquiryForm((p) => ({ ...p, deliveryAddress: e.target.value }))}
+                placeholder="Leave blank if picking up from warehouse"
+              />
+            </Box>
+          </Box>
+
+          <Divider />
+
+          {/* Product Requirements */}
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <ShoppingBagRoundedIcon sx={{ fontSize: 17, color: 'var(--brand-600)' }} />
+              <Typography sx={{ fontWeight: 700, fontSize: 13, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Product Requirements
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {newEnquiryLines.map((line, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 90px 90px 36px',
+                    gap: 1.5,
+                    alignItems: 'center',
+                    bgcolor: 'var(--ink-50)',
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: '1px solid var(--ink-200)',
+                  }}
+                >
+                  <TextField
+                    id={`enq-product-name-${idx}`}
+                    label="Product / Item"
+                    size="small"
+                    value={line.productName}
+                    onChange={(e) => {
+                      const updated = [...newEnquiryLines]
+                      updated[idx] = { ...updated[idx], productName: e.target.value }
+                      setNewEnquiryLines(updated)
+                    }}
+                    placeholder="e.g. Basmati Rice 25kg"
+                  />
+                  <TextField
+                    id={`enq-product-qty-${idx}`}
+                    label="Qty"
+                    size="small"
+                    type="number"
+                    value={line.quantity}
+                    onChange={(e) => {
+                      const updated = [...newEnquiryLines]
+                      updated[idx] = { ...updated[idx], quantity: Math.max(1, Number(e.target.value)) }
+                      setNewEnquiryLines(updated)
+                    }}
+                    slotProps={{ htmlInput: { min: 1 } }}
+                  />
+                  <FormControl size="small">
+                    <InputLabel id={`enq-unit-label-${idx}`}>Unit</InputLabel>
+                    <Select
+                      labelId={`enq-unit-label-${idx}`}
+                      id={`enq-product-unit-${idx}`}
+                      label="Unit"
+                      value={line.unit}
+                      onChange={(e) => {
+                        const updated = [...newEnquiryLines]
+                        updated[idx] = { ...updated[idx], unit: e.target.value }
+                        setNewEnquiryLines(updated)
+                      }}
+                    >
+                      {['unit', 'kg', 'bag', 'sack', 'bundle', 'carton', 'box', 'roll', 'pack', 'piece', 'litre', 'ton'].map((u) => (
+                        <MenuItem key={u} value={u}>{u}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => {
+                      if (newEnquiryLines.length === 1) return
+                      setNewEnquiryLines(newEnquiryLines.filter((_, i) => i !== idx))
+                    }}
+                    disabled={newEnquiryLines.length === 1}
+                  >
+                    <DeleteOutlineRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+
+              <Button
+                id="enq-add-product-line"
+                variant="outlined"
+                size="small"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => setNewEnquiryLines([...newEnquiryLines, { productName: '', quantity: 1, unit: 'unit' }])}
+                sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, alignSelf: 'flex-start', mt: 0.5 }}
+              >
+                Add another product
+              </Button>
+            </Box>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2, gap: 1.5 }}>
+          <Button
+            onClick={() => {
+              setAddEnquiryOpen(false)
+              setNewEnquiryForm({ customerName: '', companyName: '', customerPhone: '', customerCity: '', deliveryAddress: '' })
+              setNewEnquiryLines([{ productName: '', quantity: 1, unit: 'unit' }])
+            }}
+            variant="outlined"
+            sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            id="enq-submit-btn"
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={handleAddEnquiry}
+            sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+          >
+            Save Enquiry
+          </Button>
         </DialogActions>
       </Dialog>
 

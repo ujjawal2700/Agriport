@@ -70,7 +70,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <Box sx={{ mt: { xs: 0.5, md: 1.5 } }}>
           <Box sx={{ mt: { xs: 0.5, md: 1 }, pt: { xs: 0.5, md: 1 }, borderTop: '1px dashed var(--ink-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography sx={{ fontSize: { xs: 10, md: 11 }, color: 'var(--ink-500)', fontWeight: 600 }}>
-              Min. Order (MOQ)
+              make enquiry
             </Typography>
             <Typography className="tnum" sx={{ fontWeight: 700, fontSize: { xs: 11, md: 13.5 }, color: 'var(--ink-800)' }}>
               {product.moq} {product.unit}

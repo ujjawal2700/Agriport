@@ -143,7 +143,7 @@ export default function ProductDetailPage() {
           <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', mb: 3 }}>
             <Box sx={{ px: 2, py: 1.25, bgcolor: 'var(--ink-50)', borderBottom: '1px solid var(--ink-200)' }}>
               <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink-600)' }}>
-                Lot-based wholesale pricing
+                size and count availability
               </Typography>
             </Box>
             <Table size="small">
@@ -179,7 +179,7 @@ export default function ProductDetailPage() {
           <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', p: { xs: 2, md: 3 }, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(22,27,36,0.05)' }}>
             <Box className="flex items-end justify-between mb-4 flex-wrap gap-3">
               <Box>
-                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>REQUIREMENTS</Typography>
+                <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, textTransform: 'uppercase' }}>size and count</Typography>
               </Box>
               <Box className="text-right">
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600 }}>AVAILABLE</Typography>
@@ -273,12 +273,12 @@ export default function ProductDetailPage() {
             </Box>
             )}
 
-            <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 3 } }}>
+            <Box sx={{ display: 'flex', gap: { xs: 1.5, md: 3 }, justifyContent: 'center' }}>
               <Button
                 variant="contained"
                 size="large"
                 sx={{
-                  flex: 1,
+                  width: '200px',
                   py: { xs: 1, md: 1.5 },
                   fontSize: { xs: 13, md: 15 },
                   whiteSpace: 'nowrap',
@@ -307,7 +307,6 @@ export default function ProductDetailPage() {
               // Executive-editable global trust badges
               ...trustBadges.map((b) => ({ icon: trustIcon(b.icon), label: b.label })),
               // Auto-derived from product data
-              { icon: <LocalShippingRoundedIcon />, label: `Dispatch in ${product.leadTimeDays} days` },
               { icon: <PublicRoundedIcon />, label: `Origin · ${product.origin}` },
             ].map((f, i) => (
               <Box

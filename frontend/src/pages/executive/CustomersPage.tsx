@@ -32,7 +32,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<CRMCustomer[]>([])
   const [followUps, setFollowUps] = useState<FollowUp[]>([])
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', phone: '', city: '' })
+  const [form, setForm] = useState({ name: '', company: '', phone: '+91', city: '', gst: '' })
 
   useEffect(() => {
     if (custData) setCustomers(custData)
@@ -56,11 +56,12 @@ export default function CustomersPage() {
       value: 0,
       lastContact: new Date().toISOString(),
       owner: 'Rahul Verma',
+      gst: form.gst.trim() || undefined,
     }
     setCustomers((prev) => [c, ...prev])
     toast.success('Customer added as a new lead')
     setOpen(false)
-    setForm({ name: '', company: '', phone: '', city: '' })
+    setForm({ name: '', company: '', phone: '+91', city: '', gst: '' })
   }
 
   return (
@@ -119,10 +120,11 @@ export default function CustomersPage() {
         <DialogTitle sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 700 }}>Add customer</DialogTitle>
         <DialogContent dividers>
           <Box className="flex flex-col gap-3 pt-1">
-            <TextField label="Contact name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} size="small" autoFocus />
-            <TextField label="Company / shop" value={form.company} onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))} size="small" />
-            <TextField label="Phone" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} size="small" />
-            <TextField label="City" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} size="small" />
+            <TextField label="Person name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} size="small" autoFocus />
+            <TextField label="GST (Optional)" value={form.gst} onChange={(e) => setForm((f) => ({ ...f, gst: e.target.value }))} size="small" />
+            <TextField label="Company name" value={form.company} onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))} size="small" />
+            <TextField label="Address" value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} size="small" />
+            <TextField label="Phone number" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} size="small" />
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>

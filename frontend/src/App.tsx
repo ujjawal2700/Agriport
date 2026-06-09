@@ -57,6 +57,8 @@ const ExecutiveEnquiriesPage = lazy(() => import('@/pages/executive/ExecutiveEnq
 const ExecutiveSalesPage = lazy(() => import('@/pages/executive/ExecutiveSalesPage'))
 const ExecutiveIncentivesPage = lazy(() => import('@/pages/executive/ExecutiveIncentivesPage'))
 const ExecutiveProductsPage = lazy(() => import('@/pages/executive/ExecutiveProductsPage'))
+const NewPurchasePage = lazy(() => import('@/pages/executive/NewPurchasePage'))
+const OnArrivalPage = lazy(() => import('@/pages/executive/OnArrivalPage'))
 
 // Misc
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
@@ -155,6 +157,8 @@ export default function App() {
             <Route path="sales" element={<ExecutiveSalesPage />} />
             <Route path="incentives" element={<ExecutiveIncentivesPage />} />
             <Route path="products" element={<ExecutiveProductsPage />} />
+            <Route path="add-stock/new-purchase" element={<NewPurchasePage />} />
+            <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
           </Route>
 
           <Route path="/mobile-showcase" element={<MobileShowcase />} />
