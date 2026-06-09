@@ -10,29 +10,77 @@ interface AuthState {
   status: 'authenticated' | 'unauthenticated'
 }
 
-const initialState: AuthState = {
-  user: null,
-  accessToken: null,
-  status: 'unauthenticated',
+const STORAGE_KEY = 'agriport_auth'
+
+const loadInitialState = (): AuthState => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        user: parsed.user ?? null,
+        accessToken: parsed.accessToken ?? null,
+        status: parsed.status ?? 'unauthenticated',
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return {
+    user: null,
+    accessToken: null,
+    status: 'unauthenticated',
+  }
 }
 
 const authSlice = createSlice({
   name: 'auth',
-  initialState,
+  initialState: loadInitialState(),
   reducers: {
     // Mock sign-in: any credentials resolve to the demo customer.
     signIn: (state, action: PayloadAction<{ token: string; user?: User } | undefined>) => {
       state.user = action.payload?.user ?? currentUser
       state.accessToken = action.payload?.token ?? 'mock.jwt.token'
       state.status = 'authenticated'
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            user: state.user,
+            accessToken: state.accessToken,
+            status: state.status,
+          })
+        )
+      } catch {
+        // ignore
+      }
     },
     signOut: (state) => {
       state.user = null
       state.accessToken = null
       state.status = 'unauthenticated'
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch {
+        // ignore
+      }
     },
     updateProfile: (state, action: PayloadAction<Partial<User>>) => {
-      if (state.user) state.user = { ...state.user, ...action.payload }
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload }
+        try {
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              user: state.user,
+              accessToken: state.accessToken,
+              status: state.status,
+            })
+          )
+        } catch {
+          // ignore
+        }
+      }
     },
   },
 })

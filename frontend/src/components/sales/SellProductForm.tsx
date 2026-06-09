@@ -1,42 +1,37 @@
-import { useMemo, useState } from 'react'
-import { Box, Typography, TextField, MenuItem, Button, Divider, Chip } from '@mui/material'
-import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
-import QuantityStepper from '@/components/common/QuantityStepper'
+import { useMemo, useState, useRef } from 'react'
+import { Box, Typography, TextField, MenuItem, Button, Divider } from '@mui/material'
 import { useGetProductsQuery } from '@/redux/api'
-import { resolveUnitPrice, slabSavingsPct } from '@/utils/pricing'
+import { resolveUnitPrice } from '@/utils/pricing'
 import { formatMoney } from '@/utils/format'
-import { PAYMENT_METHODS } from '@/constants'
-import type { PaymentMode, Product } from '@/types'
+import type { Product } from '@/types'
 import toast from 'react-hot-toast'
 import StockFormDialog from '@/components/executive/StockFormDialog'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
 
 export default function SellProductForm({
-  onComplete,
   formMode,
 }: {
-  onComplete?: (ref: string) => void
   formMode?: 'sale' | 'purchase' | 'arrival'
 }) {
   const isPurchaseOrArrival = formMode === 'purchase' || formMode === 'arrival'
   const { data: products } = useGetProductsQuery()
-  const [customer, setCustomer] = useState('')
-  const [shop, setShop] = useState('')
-  const [phone, setPhone] = useState('')
+  const openDialogOnSelectRef = useRef(false)
   const [productId, setProductId] = useState('')
   const [qty, setQty] = useState(1)
   const [price, setPrice] = useState(0)
-  const [mode, setMode] = useState<PaymentMode>('upi')
 
   const [stockDialogOpen, setStockDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [showSummary, setShowSummary] = useState(false)
 
   const product = useMemo(() => products?.find((p) => p.id === productId), [products, productId])
-  const slabPrice = product ? resolveUnitPrice(product.pricingSlabs, Math.max(qty, product.moq)).price : 0
-  const effectiveQty = product ? Math.max(qty, product.moq) : qty
+  const displayProduct = (selectedProduct && selectedProduct.id === productId) ? selectedProduct : product
+
+  const hasVariants = displayProduct?.sizeVariants && displayProduct.sizeVariants.length > 0
+
+  const slabPrice = displayProduct ? resolveUnitPrice(displayProduct.pricingSlabs, Math.max(qty, displayProduct.moq)).price : 0
+  const effectiveQty = displayProduct ? Math.max(qty, displayProduct.moq) : qty
   const unitPrice = price || slabPrice
-  const total = unitPrice * effectiveQty
-  const savings = product ? slabSavingsPct(product.pricingSlabs, effectiveQty) : 0
 
   const selectProduct = (id: string) => {
     setProductId(id)
@@ -45,10 +40,11 @@ export default function SellProductForm({
       setQty(p.moq)
       setPrice(resolveUnitPrice(p.pricingSlabs, p.moq).price)
       setShowSummary(false)
-      if (isPurchaseOrArrival) {
+      if (openDialogOnSelectRef.current) {
         setSelectedProduct(p)
         setStockDialogOpen(true)
       }
+      openDialogOnSelectRef.current = false
     }
   }
 
@@ -60,62 +56,45 @@ export default function SellProductForm({
     setShowSummary(true)
   }
 
-  const valid = customer.trim() && shop.trim() && product && effectiveQty > 0 && unitPrice > 0
-
-  const record = () => {
-    const ref = `SL-${Date.now().toString().slice(-6)}`
-    toast.success(`Sale ${ref} recorded · ${formatMoney(total)}`)
-    onComplete?.(ref)
-    setCustomer('')
-    setShop('')
-    setPhone('')
-    setProductId('')
-    setQty(1)
-    setPrice(0)
-  }
-
   return (
     <Box className={(isPurchaseOrArrival && !showSummary) ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-3 gap-6"}>
       <Box className={(isPurchaseOrArrival && !showSummary) ? "flex flex-col gap-6" : "lg:col-span-2 flex flex-col gap-6"}>
-        <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 2 }}>Customer details</Typography>
-          <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <TextField label="Customer name" value={customer} onChange={(e) => setCustomer(e.target.value)} size="small" />
-            <TextField label="Shop / company" value={shop} onChange={(e) => setShop(e.target.value)} size="small" />
-            <TextField label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} size="small" />
-          </Box>
-        </Box>
+
 
         <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
           <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 2 }}>Product & pricing</Typography>
           <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Box className="sm:col-span-2">
-              <TextField label="Select product" value={productId} onChange={(e) => selectProduct(e.target.value)} select fullWidth size="small">
+              <TextField
+                label="Select product"
+                value={productId}
+                onChange={(e) => selectProduct(e.target.value)}
+                select
+                fullWidth
+                size="small"
+                slotProps={{
+                  select: {
+                    renderValue: (value) => {
+                      const p = products?.find((x) => x.id === value)
+                      return p ? p.name : ''
+                    }
+                  }
+                }}
+              >
                 {products?.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
+                  <MenuItem key={p.id} value={p.id} sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     {p.name}
+                    <AddRoundedIcon
+                      sx={{ fontSize: 16, color: '#1C7C58', stroke: '#1C7C58', strokeWidth: 1.5 }}
+                      onClick={() => {
+                        openDialogOnSelectRef.current = true
+                      }}
+                    />
                   </MenuItem>
                 ))}
               </TextField>
             </Box>
-            {product && !isPurchaseOrArrival && (
-              <>
-                <Box>
-                  <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
-                    QUANTITY (MOQ {product.moq} {product.unit})
-                  </Typography>
-                  <QuantityStepper value={effectiveQty} onChange={setQty} min={product.moq} max={product.availableStock || undefined} unit={product.unit} size="small" />
-                </Box>
-                <TextField
-                  label="Selling price / unit"
-                  type="number"
-                  value={unitPrice}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  size="small"
-                  helperText={`Suggested lot price: ${formatMoney(slabPrice)}`}
-                />
-              </>
-            )}
+
           </Box>
         </Box>
       </Box>
@@ -125,36 +104,59 @@ export default function SellProductForm({
         <Box>
           <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3, position: 'sticky', top: 84 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 2 }}>Sale summary</Typography>
-            {product ? (
+            {displayProduct ? (
               <>
-                <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{product.name}</Typography>
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', mb: 2 }} className="tnum">
-                  {effectiveQty} {product.unit} × {formatMoney(unitPrice)}
-                </Typography>
-                {savings > 0 && <Chip size="small" color="success" label={`Lot saving ${savings}%`} sx={{ mb: 2 }} />}
-                <Divider sx={{ my: 1.5 }} />
-                <TextField select label="Payment mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} fullWidth size="small" sx={{ mb: 2 }}>
-                  {PAYMENT_METHODS.map((m) => (
-                    <MenuItem key={m.id} value={m.id}>
-                      {m.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <Box className="flex justify-between items-baseline mb-3">
-                  <Typography sx={{ fontWeight: 700 }}>Total</Typography>
-                  <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: 24, color: 'var(--brand-700)' }}>
-                    {formatMoney(total)}
+                <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{displayProduct.name}</Typography>
+                
+                {hasVariants ? (
+                  <Box sx={{ mt: 1, mb: 2 }}>
+                    {displayProduct?.sizeVariants?.map((v, i) => (
+                      <Box key={i} className="flex justify-between" sx={{ py: 0.25 }}>
+                        <Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>Size {v.size}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600 }} className="tnum">
+                          {v.stock} {displayProduct.unit} × {formatMoney(v.price)}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', mb: 2 }} className="tnum">
+                    {effectiveQty} {displayProduct.unit} × {formatMoney(unitPrice)}
                   </Typography>
-                </Box>
+                )}
+
+                {displayProduct.specifications && (
+                  <Box sx={{ mt: 1, mb: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {displayProduct.specifications['Brand Name'] && (
+                      <Box className="flex justify-between">
+                        <Typography sx={{ fontSize: 12, color: 'var(--ink-400)' }}>Brand</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600 }}>{displayProduct.specifications['Brand Name']}</Typography>
+                      </Box>
+                    )}
+                    {displayProduct.specifications['Packing Type'] && (
+                      <Box className="flex justify-between">
+                        <Typography sx={{ fontSize: 12, color: 'var(--ink-400)' }}>Packing</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600 }}>{displayProduct.specifications['Packing Type']}</Typography>
+                      </Box>
+                    )}
+                    {(displayProduct.specifications['Origin'] || displayProduct.origin) && (
+                      <Box className="flex justify-between">
+                        <Typography sx={{ fontSize: 12, color: 'var(--ink-400)' }}>Origin</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
+                          {displayProduct.specifications['Origin'] || displayProduct.origin}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
+
               </>
             ) : (
-              <Typography sx={{ fontSize: 13.5, color: 'var(--ink-500)', mb: 3 }}>
+              <Typography sx={{ fontSize: 13.5, color: 'var(--ink-500)' }}>
                 Select a product to build the sale.
               </Typography>
             )}
-            <Button variant="contained" fullWidth size="large" startIcon={<PointOfSaleRoundedIcon />} disabled={!valid} onClick={record}>
-              Record sale
-            </Button>
           </Box>
         </Box>
       )}
@@ -218,9 +220,6 @@ export default function SellProductForm({
                 setProductId('')
                 setSelectedProduct(null)
                 setShowSummary(false)
-                setCustomer('')
-                setShop('')
-                setPhone('')
               }}
             >
               {formMode === 'purchase' ? 'Record Purchase' : 'Record Arrival'}
@@ -229,7 +228,7 @@ export default function SellProductForm({
         </Box>
       )}
 
-      {isPurchaseOrArrival && (
+      {(isPurchaseOrArrival || stockDialogOpen) && (
         <StockFormDialog
           open={stockDialogOpen}
           onClose={() => setStockDialogOpen(false)}

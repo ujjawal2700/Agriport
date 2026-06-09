@@ -24,7 +24,6 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
-import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded'
 
 import { api, useGetCategoriesQuery, useGetCrmCustomersQuery } from '@/redux/api'
 import { useAppDispatch } from '@/redux/hooks'
@@ -166,7 +165,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       return
     }
     if (priceInput === '' || priceInput < 0 || isNaN(Number(priceInput))) {
-      toast.error('Price must be a non-negative number')
+      const priceLabel = formMode === 'purchase' ? 'Purchased Price' : (formMode === 'arrival' ? 'Price' : 'Selling Price')
+      toast.error(`${priceLabel} must be a non-negative number`)
       return
     }
 
@@ -256,16 +256,6 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     toast.success('Weight details deleted')
   }
 
-  // ── Pricing tier helpers ────────────────────────────────────────────────
-  const setSlabField = (idx: number, key: keyof PricingSlab, val: PricingSlab[keyof PricingSlab]) =>
-    setSlabs((prev) => prev.map((s, i) => (i === idx ? { ...s, [key]: val } : s)))
-
-  const addSlab = () =>
-    setSlabs((prev) => [...prev, { minQty: 1, maxQty: null, price: form.basePrice ?? 0, label: 'New tier' }])
-
-  const removeSlab = (idx: number) => setSlabs((prev) => prev.filter((_, i) => i !== idx))
-
-  const autoFillSlabs = () => setSlabs(generateSlabs(form.basePrice ?? 0))
 
   const handleImageUpload = (slotIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -398,6 +388,53 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       </DialogTitle>
 
       <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
+        {(formMode === 'purchase' || !formMode) && (
+          <>
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select Customer
+              </Typography>
+              <Box className="grid grid-cols-1 gap-3">
+                <TextField
+                  select
+                  label="Select Customer (Company or Mobile)"
+                  size="small"
+                  fullWidth
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                >
+                  {(customers ?? []).map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.company} — {c.phone}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Box>
+            </Box>
+            <Divider />
+          </>
+        )}
+
+        {(!formMode || formMode === 'arrival') && (
+          <>
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Company Name
+              </Typography>
+              <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <TextField
+                  label="Company Name"
+                  size="small"
+                  fullWidth
+                  disabled
+                  value="GLOBIRA INTERNATIONAL TRADING CO."
+                />
+              </Box>
+            </Box>
+            <Divider />
+          </>
+        )}
+
         {/* Basic Info */}
         <Box>
           <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -452,60 +489,6 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         </Box>
 
         <Divider />
-
-        {formMode === 'purchase' && (
-          <>
-            <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Select Customer
-              </Typography>
-              <Box className="grid grid-cols-1 gap-3">
-                <TextField
-                  select
-                  label="Select Customer (Company or Mobile)"
-                  size="small"
-                  fullWidth
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                >
-                  {(customers ?? []).map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.company} — {c.phone}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-            </Box>
-            <Divider />
-          </>
-        )}
-
-        {formMode === 'arrival' && (
-          <>
-            <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Select Company
-              </Typography>
-              <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <TextField
-                  select
-                  label="Select Company"
-                  size="small"
-                  fullWidth
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                >
-                  {(customers ?? []).map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.company}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-            </Box>
-            <Divider />
-          </>
-        )}
 
         {/* Requirements (Size & Count Variants) */}
         <Box>
@@ -568,7 +551,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     onChange={(e) => setStockInput(e.target.value === '' ? '' : Number(e.target.value))}
                   />
                   <TextField
-                    label={formMode === 'purchase' ? 'Purchased Price *' : 'Price *'}
+                    label={formMode === 'purchase' ? 'Purchased Price *' : (formMode === 'arrival' ? 'Price *' : 'Selling Price *')}
                     placeholder="e.g. 499"
                     size="small"
                     type="number"
@@ -679,7 +662,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                       <TableCell>Net Weight</TableCell>
                       <TableCell>Gross Weight</TableCell>
                       <TableCell>Stock</TableCell>
-                      <TableCell>{formMode === 'purchase' ? 'Purchased Price' : 'Price'}</TableCell>
+                      <TableCell>{formMode === 'purchase' ? 'Purchased Price' : (formMode === 'arrival' ? 'Price' : 'Selling Price')}</TableCell>
                       <TableCell align="right" sx={{ width: 80 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -937,123 +920,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           </Box>
         </Box>
 
-        <Divider />
 
-        {/* Bulk Pricing Tiers */}
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Bulk Pricing Tiers
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <TextField
-                label="Base price (₹)"
-                size="small"
-                type="number"
-                disabled
-                value={form.basePrice ?? ''}
-                onChange={(e) => setField('basePrice', Number(e.target.value))}
-                sx={{ width: 140 }}
-              />
-              <Button
-                size="small"
-                variant="outlined"
-                disabled
-                startIcon={<AutoFixHighRoundedIcon />}
-                onClick={autoFillSlabs}
-                sx={{ borderRadius: 2, fontWeight: 600, textTransform: 'none', whiteSpace: 'nowrap' }}
-              >
-                Auto-fill from base
-              </Button>
-            </Box>
-          </Box>
-          <Typography sx={{ fontSize: 11.5, color: 'var(--ink-400)', mb: 1.5 }}>
-            These wholesale tiers are shown on the customer product page. Leave Max Qty blank for the top "and above" tier.
-          </Typography>
-
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ '& th': { fontWeight: 700, fontSize: 11, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em', borderColor: 'var(--ink-200)' } }}>
-                <TableCell sx={{ width: 90 }}>Min Qty</TableCell>
-                <TableCell sx={{ width: 90 }}>Max Qty</TableCell>
-                <TableCell sx={{ width: 110 }}>Price (₹)</TableCell>
-                <TableCell>Label</TableCell>
-                <TableCell align="right" sx={{ width: 48 }} />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {slabs.map((s, idx) => (
-                <TableRow key={idx} sx={{ '& td': { borderColor: 'var(--ink-100)', py: 0.75 } }}>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      type="number"
-                      disabled
-                      value={s.minQty}
-                      onChange={(e) => setSlabField(idx, 'minQty', Number(e.target.value))}
-                      sx={{ '& input': { py: 0.75 } }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      type="number"
-                      placeholder="∞"
-                      disabled
-                      value={s.maxQty ?? ''}
-                      onChange={(e) =>
-                        setSlabField(idx, 'maxQty', e.target.value === '' ? null : Number(e.target.value))
-                      }
-                      sx={{ '& input': { py: 0.75 } }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      type="number"
-                      disabled
-                      value={s.price}
-                      onChange={(e) => setSlabField(idx, 'price', Number(e.target.value))}
-                      sx={{ '& input': { py: 0.75 } }}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      placeholder="e.g. 11–50 units"
-                      disabled
-                      value={s.label}
-                      onChange={(e) => setSlabField(idx, 'label', e.target.value)}
-                      sx={{ '& input': { py: 0.75 } }}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" disabled onClick={() => removeSlab(idx)} sx={{ color: '#c0392b' }}>
-                      <DeleteOutlineRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {slabs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 2, color: 'var(--ink-400)', fontSize: 12.5 }}>
-                    No tiers yet — add one or auto-fill from the base price.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          <Button
-            size="small"
-            disabled
-            startIcon={<AddRoundedIcon />}
-            onClick={addSlab}
-            sx={{ mt: 1, borderRadius: 2, fontWeight: 600, textTransform: 'none' }}
-          >
-            Add tier
-          </Button>
-        </Box>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2, gap: 1.5 }}>
