@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DataGrid } from '@mui/x-data-grid'
 import type { GridColDef } from '@mui/x-data-grid'
-import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material'
+import { Box, Typography, Button, IconButton, Tooltip, TextField } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
@@ -12,18 +12,20 @@ import StatusChip from '@/components/common/StatusChip'
 import ProductFormDialog from '@/components/admin/ProductFormDialog'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { useGetProductsQuery, useGetCategoriesQuery } from '@/redux/api'
+import { categories as mockCategories } from '@/mocks/data'
 import { formatMoney } from '@/utils/format'
 import type { Product } from '@/types'
 import toast from 'react-hot-toast'
 
 export default function ProductsAdminPage() {
   const { data: serverProducts, isLoading } = useGetProductsQuery()
-  const { data: categories } = useGetCategoriesQuery()
+  const { data: categories, refetch: refetchCategories } = useGetCategoriesQuery()
   const [rows, setRows] = useState<Product[]>([])
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState<Product | null>(null)
+  const [newCategoryName, setNewCategoryName] = useState('')
 
   useEffect(() => {
     if (serverProducts) setRows(serverProducts)
@@ -34,7 +36,33 @@ export default function ProductsAdminPage() {
     return rows.filter((p) => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s))
   }, [rows, search])
 
-  const categoryNames = categories?.map((c) => c.name) ?? []
+  const categoryNames = useMemo(() => {
+    return categories?.map((c) => c.name) ?? []
+  }, [categories])
+
+  const handleCreateCategory = () => {
+    const trimmed = newCategoryName.trim()
+    if (!trimmed) {
+      toast.error('Please enter a category name')
+      return
+    }
+    if (mockCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error('Category already exists')
+      return
+    }
+
+    mockCategories.push({
+      id: `c-${Date.now()}`,
+      name: trimmed,
+      slug: trimmed.toLowerCase().replace(/\s+/g, '-'),
+      productCount: 0,
+      icon: 'folder',
+    })
+
+    setNewCategoryName('')
+    toast.success(`Category "${trimmed}" created successfully`)
+    refetchCategories()
+  }
 
   const handleSave = (product: Product) => {
     setRows((prev) => {
@@ -126,7 +154,32 @@ export default function ProductsAdminPage() {
   ]
 
   return (
-    <Box>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* Create Category Section */}
+      <Box sx={{ p: 3, bgcolor: '#fff', borderRadius: 4, border: '1px solid var(--ink-200)' }}>
+        <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 0.5 }}>Create Category</Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', mb: 2 }}>
+          Add a new product category to populate in the dropdown when adding or editing products.
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1.5, maxWidth: 500 }}>
+          <TextField
+            size="small"
+            placeholder="Category name (e.g. Beverages)"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            fullWidth
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+          />
+          <Button
+            variant="contained"
+            onClick={handleCreateCategory}
+            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, whiteSpace: 'nowrap' }}
+          >
+            Create Category
+          </Button>
+        </Box>
+      </Box>
+
       <TableCard
         title="Products"
         count={rows.length}

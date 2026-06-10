@@ -41,6 +41,7 @@ const SalesAdminPage = lazy(() => import('@/pages/admin/SalesAdminPage'))
 const InventoryAdminPage = lazy(() => import('@/pages/admin/InventoryAdminPage'))
 const ReportsAdminPage = lazy(() => import('@/pages/admin/ReportsAdminPage'))
 const AdminStorefrontPage = lazy(() => import('@/pages/admin/AdminStorefrontPage'))
+const CategoriesAdminPage = lazy(() => import('@/pages/admin/CategoriesAdminPage'))
 
 // Manager
 const ManagerDashboardPage = lazy(() => import('@/pages/manager/ManagerDashboardPage'))
@@ -118,6 +119,7 @@ export default function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="products" element={<ProductsAdminPage />} />
+            <Route path="categories" element={<CategoriesAdminPage />} />
             <Route path="orders" element={<OrdersAdminPage />} />
             <Route path="users" element={<UsersAdminPage />} />
             <Route path="sales" element={<SalesAdminPage />} />

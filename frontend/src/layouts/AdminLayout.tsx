@@ -1,5 +1,6 @@
 import SpaceDashboardRoundedIcon from '@mui/icons-material/SpaceDashboardRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import HubRoundedIcon from '@mui/icons-material/HubRounded'
@@ -17,6 +18,7 @@ const config: WorkspaceConfig = {
   nav: [
     { label: 'Dashboard', to: '/admin', icon: <SpaceDashboardRoundedIcon />, end: true },
     { label: 'Products', to: '/admin/products', icon: <Inventory2RoundedIcon /> },
+    { label: 'Categories', to: '/admin/categories', icon: <CategoryRoundedIcon /> },
     { label: 'Orders & Payments', to: '/admin/orders', icon: <ReceiptLongRoundedIcon /> },
     { label: 'Users', to: '/admin/users', icon: <GroupRoundedIcon /> },
     { label: 'Sales Team', to: '/admin/sales', icon: <HubRoundedIcon /> },
@@ -27,6 +29,7 @@ const config: WorkspaceConfig = {
   titles: {
     '/admin': 'Dashboard',
     '/admin/products': 'Product Management',
+    '/admin/categories': 'Category Management',
     '/admin/orders': 'Order & Payment Management',
     '/admin/users': 'User Management',
     '/admin/sales': 'Sales Team Management',

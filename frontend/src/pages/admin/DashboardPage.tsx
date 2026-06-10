@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { Box, Typography, Button } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
@@ -23,7 +24,7 @@ import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import StatCard from '@/components/admin/StatCard'
 import StatusChip from '@/components/common/StatusChip'
-import { useGetDashboardStatsQuery, useGetSalesSeriesQuery, useGetCategorySalesQuery, useGetOrdersQuery } from '@/redux/api'
+import { useGetDashboardStatsQuery, useGetSalesSeriesQuery, useGetOrdersQuery } from '@/redux/api'
 import { formatMoney, formatMoneyCompact, formatDate } from '@/utils/format'
 import { brand, ink } from '@/theme/theme'
 
@@ -47,8 +48,21 @@ function ChartCard({ title, subtitle, children, action }: { title: string; subti
 export default function DashboardPage() {
   const { data: stats, isLoading } = useGetDashboardStatsQuery()
   const { data: series } = useGetSalesSeriesQuery()
-  const { data: cats } = useGetCategorySalesQuery()
   const { data: orders } = useGetOrdersQuery()
+
+  const productSales = useMemo(() => {
+    if (!orders) return []
+    const map: Record<string, number> = {}
+    orders.forEach((order) => {
+      if (order.status === 'cancelled') return
+      order.lines.forEach((line) => {
+        map[line.name] = (map[line.name] || 0) + line.lineTotal
+      })
+    })
+    return Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+  }, [orders])
 
   const recent = (orders ?? []).slice(0, 4)
 
@@ -91,20 +105,20 @@ export default function DashboardPage() {
           </ChartCard>
         </Box>
 
-        <ChartCard title="Sales by category" subtitle="Revenue share">
+        <ChartCard title="Sales by product" subtitle="Revenue share">
           <Box className="flex flex-col gap-2.5 mt-1">
-            {cats?.map((c, i) => {
-              const max = Math.max(...(cats?.map((x) => x.value) ?? [1]))
+            {productSales.map((p, i) => {
+              const max = Math.max(...(productSales.map((x) => x.value) ?? [1]))
               return (
-                <Box key={c.name}>
+                <Box key={p.name}>
                   <Box className="flex justify-between items-baseline mb-0.5">
-                    <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{c.name}</Typography>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{p.name}</Typography>
                     <Typography className="tnum" sx={{ fontSize: 12.5, color: 'var(--ink-500)', fontWeight: 600 }}>
-                      {formatMoneyCompact(c.value)}
+                      {formatMoneyCompact(p.value)}
                     </Typography>
                   </Box>
                   <Box sx={{ height: 8, borderRadius: 99, bgcolor: 'var(--ink-100)', overflow: 'hidden' }}>
-                    <Box sx={{ height: '100%', width: `${(c.value / max) * 100}%`, borderRadius: 99, bgcolor: CAT_COLORS[i % CAT_COLORS.length] }} />
+                    <Box sx={{ height: '100%', width: `${(p.value / max) * 100}%`, borderRadius: 99, bgcolor: CAT_COLORS[i % CAT_COLORS.length] }} />
                   </Box>
                 </Box>
               )
