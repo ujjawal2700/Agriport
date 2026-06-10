@@ -1,13 +1,16 @@
+import { useMemo } from 'react'
 import { Box, Typography } from '@mui/material'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts'
+import { ResponsiveContainer, PieChart, Pie, Tooltip, Legend, Cell } from 'recharts'
 import StatCard from '@/components/admin/StatCard'
 import SectionCard from '@/components/common/SectionCard'
 import RedeemRoundedIcon from '@mui/icons-material/RedeemRounded'
 import PercentRoundedIcon from '@mui/icons-material/PercentRounded'
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
-import { useGetIncentiveSeriesQuery } from '@/redux/api'
+import { useGetIncentiveSeriesQuery, useGetSalesRecordsQuery } from '@/redux/api'
 import { formatMoney, formatMoneyCompact } from '@/utils/format'
 import { brand, ink } from '@/theme/theme'
+
+const PIE_COLORS = ['#15694A', '#1C7C58', '#389B73', '#66B894', '#C9842F', '#9AA4B2']
 
 interface Props {
   earned: number
@@ -18,6 +21,17 @@ interface Props {
 
 export default function IncentivesView({ earned, commissionPct, overridePct, role }: Props) {
   const { data: series } = useGetIncentiveSeriesQuery()
+  const { data: salesRecords } = useGetSalesRecordsQuery()
+
+  const productSales = useMemo(() => {
+    if (!salesRecords) return []
+    const map: Record<string, number> = {}
+    salesRecords.forEach((r) => {
+      map[r.product] = (map[r.product] || 0) + r.quantity
+    })
+    return Object.entries(map).map(([name, value]) => ({ name, value }))
+  }, [salesRecords])
+
   const ytd = (series ?? []).reduce((s, p) => s + p.earned, 0)
   const lastTarget = series?.[series.length - 1]?.target ?? 0
   const lastEarned = series?.[series.length - 1]?.earned ?? earned
@@ -31,21 +45,26 @@ export default function IncentivesView({ earned, commissionPct, overridePct, rol
         <StatCard label={role === 'manager' ? 'Commission + Override' : 'Commission Rate'} value={overridePct ? `${commissionPct}% + ${overridePct}%` : `${commissionPct}%`} icon={<PercentRoundedIcon />} hint={role === 'manager' ? 'on team revenue' : 'on personal sales'} />
       </Box>
 
-      <SectionCard title="Earned vs target" subtitle="Monthly incentive performance">
+      <SectionCard title="Product Sales Share" subtitle="Units sold per product">
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={series} margin={{ left: -8, right: 8, top: 8 }} barGap={2}>
-            <CartesianGrid strokeDasharray="3 3" stroke={ink[100]} vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 12, fill: ink[500] }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={(v) => formatMoneyCompact(v).replace('₹', '')} tick={{ fontSize: 12, fill: ink[500] }} axisLine={false} tickLine={false} width={48} />
-            <Tooltip formatter={(v, n) => [formatMoney(Number(v)), n === 'earned' ? 'Earned' : 'Target']} contentStyle={{ borderRadius: 12, border: `1px solid ${ink[200]}`, fontSize: 13 }} />
-            <Legend wrapperStyle={{ fontSize: 13 }} />
-            <Bar dataKey="target" name="Target" fill={ink[200]} radius={[4, 4, 0, 0]} maxBarSize={26} />
-            <Bar dataKey="earned" name="Earned" radius={[4, 4, 0, 0]} maxBarSize={26}>
-              {series?.map((p, i) => (
-                <Cell key={i} fill={p.earned >= p.target ? brand[500] : '#C9842F'} />
+          <PieChart>
+            <Pie
+              data={productSales}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={110}
+              paddingAngle={2}
+            >
+              {productSales.map((_, i) => (
+                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
               ))}
-            </Bar>
-          </BarChart>
+            </Pie>
+            <Tooltip
+              contentStyle={{ borderRadius: 12, border: `1px solid ${ink[200]}`, fontSize: 13 }}
+              formatter={(v) => [`${v} units`, 'Quantity']}
+            />
+            <Legend wrapperStyle={{ fontSize: 12.5 }} />
+          </PieChart>
         </ResponsiveContainer>
       </SectionCard>
 

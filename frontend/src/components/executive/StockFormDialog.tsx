@@ -25,14 +25,24 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 
-import { api, useGetCategoriesQuery, useGetCrmCustomersQuery } from '@/redux/api'
+import { api, useGetCrmCustomersQuery } from '@/redux/api'
 import { useAppDispatch } from '@/redux/hooks'
 import { products as mockProducts } from '@/mocks/data'
 import { generateSlabs } from '@/utils/pricing'
 import type { Product, PricingSlab } from '@/types'
 import toast from 'react-hot-toast'
+import { COUNTRIES } from '@/constants/countries'
 
 const PACKING_TYPES = ['Cartoon', 'Basket']
+
+const CATEGORIES = [
+  'Agro Commodities',
+  'Packaging',
+  'Industrial Tools',
+  'Textiles & Fabric',
+  'Electronics',
+  'Home & Kitchen',
+]
 
 const emptyForm = (): Partial<Product> => ({
   name: '',
@@ -78,7 +88,6 @@ interface StockFormDialogProps {
 }
 
 export default function StockFormDialog({ open, onClose, productToEdit, onSave, formMode }: StockFormDialogProps) {
-  const { data: categories } = useGetCategoriesQuery()
   const { data: customers } = useGetCrmCustomersQuery()
   const dispatch = useAppDispatch()
 
@@ -95,10 +104,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
   const [sizeInput, setSizeInput] = useState('')
   const [stockInput, setStockInput] = useState<number | ''>('')
   const [priceInput, setPriceInput] = useState<number | ''>('')
+  const [packingTypeInput, setPackingTypeInput] = useState('Cartoon')
 
-  // Weight Variant Input Fields
-  const [netWeightInput, setNetWeightInput] = useState<number | ''>('')
-  const [grossWeightInput, setGrossWeightInput] = useState<number | ''>('')
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
 
@@ -130,8 +137,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       setSizeInput('')
       setStockInput('')
       setPriceInput('')
-      setNetWeightInput('')
-      setGrossWeightInput('')
+      setPackingTypeInput('Cartoon')
     }
   }, [open, productToEdit])
 
@@ -174,6 +180,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       size: sizeVal,
       stock: Number(stockInput),
       price: Number(priceInput),
+      packingType: packingTypeInput,
     }
 
     const updated = [...currentSizes]
@@ -188,30 +195,9 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     setSizeInput('')
     setStockInput('')
     setPriceInput('')
+    setPackingTypeInput('Cartoon')
     setEditingSizeIndex(null)
     toast.success(editingSizeIndex !== null ? 'Size variant updated' : 'Size variant added')
-  }
-
-  const handleSaveWeight = () => {
-    if (netWeightInput === '' || netWeightInput < 0 || isNaN(Number(netWeightInput))) {
-      toast.error('Net Weight must be a non-negative number')
-      return
-    }
-    if (grossWeightInput === '' || grossWeightInput < 0 || isNaN(Number(grossWeightInput))) {
-      toast.error('Gross Weight must be a non-negative number')
-      return
-    }
-
-    const newWeightVar = {
-      netWeight: Number(netWeightInput),
-      grossWeight: Number(grossWeightInput),
-    }
-
-    setForm((f) => ({ ...f, weightVariant: newWeightVar }))
-
-    setNetWeightInput('')
-    setGrossWeightInput('')
-    toast.success('Weight details saved')
   }
 
   const handleEditRow = (idx: number) => {
@@ -219,41 +205,16 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     setSizeInput(v.size)
     setStockInput(v.stock)
     setPriceInput(v.price)
+    setPackingTypeInput(v.packingType ?? 'Cartoon')
     setEditingSizeIndex(idx)
-
-    if (idx === 0 && form.weightVariant) {
-      setNetWeightInput(form.weightVariant.netWeight)
-      setGrossWeightInput(form.weightVariant.grossWeight)
-    } else {
-      setNetWeightInput('')
-      setGrossWeightInput('')
-    }
 
     setShowInlineEditor(true)
   }
 
   const handleDeleteRow = (idx: number) => {
     const updatedSizes = (form.sizeVariants ?? []).filter((_, i) => i !== idx)
-    let updatedWeight = form.weightVariant
-    if (idx === 0) {
-      updatedWeight = undefined
-    }
-    setForm((f) => ({ ...f, sizeVariants: updatedSizes, weightVariant: updatedWeight }))
+    setForm((f) => ({ ...f, sizeVariants: updatedSizes }))
     toast.success('Variant deleted')
-  }
-
-  const handleEditWeight = () => {
-    const w = form.weightVariant
-    if (w) {
-      setNetWeightInput(w.netWeight)
-      setGrossWeightInput(w.grossWeight)
-      setShowInlineEditor(true)
-    }
-  }
-
-  const handleDeleteWeight = () => {
-    setForm((f) => ({ ...f, weightVariant: undefined }))
-    toast.success('Weight details deleted')
   }
 
 
@@ -265,8 +226,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       const result = ev.target?.result as string
       setUploadedImages((prev) => {
         const next = [...prev]
-        // ensure array has 4 slots
-        while (next.length < 4) next.push('')
+        // ensure array has 7 slots
+        while (next.length < 7) next.push('')
         next[slotIdx] = result
         return next
       })
@@ -278,7 +239,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
   const removeImage = (slotIdx: number) =>
     setUploadedImages((prev) => {
       const next = [...prev]
-      while (next.length < 4) next.push('')
+      while (next.length < 7) next.push('')
       next[slotIdx] = ''
       return next
     })
@@ -290,10 +251,12 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     setForm((f) => ({ ...f, specifications: { ...(f.specifications ?? {}), [key]: val } }))
 
   const handleSave = () => {
-    if (!form.name?.trim() || !form.category?.trim() || !form.unit?.trim()) {
-      toast.error('Name, Category and Unit are required.')
+    if (!form.name?.trim() || !form.unit?.trim()) {
+      toast.error('Name and Unit are required.')
       return
     }
+    // Ensure category is always set to Agro Commodities
+    const finalCategory = form.category?.trim() || 'Agro Commodities'
     const tags = tagsInput
       .split(',')
       .map((t) => t.trim())
@@ -309,6 +272,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       const updated: Product = {
         ...productToEdit,
         ...form,
+        category: finalCategory,
         tags,
         images: uploadedImages,
         pricingSlabs: finalSlabs,
@@ -333,8 +297,9 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       const newProduct: Product = {
         id: newId,
         name: form.name!,
-        category: form.category!,
+        category: finalCategory,
         images: uploadedImages,
+
         shortDescription: form.shortDescription ?? '',
         description: form.description ?? '',
         specifications: {
@@ -444,29 +409,42 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
             <TextField
               label="Product Name *"
               size="small"
-              fullWidth
-              value={form.name ?? ''}
-              onChange={(e) => setField('name', e.target.value)}
-            />
-            <TextField
-              label="Category *"
-              size="small"
               select
               fullWidth
-              value={form.category ?? ''}
-              onChange={(e) => setField('category', e.target.value)}
+              value={form.name ?? ''}
+              onChange={(e) => {
+                const selectedName = e.target.value
+                setField('name', selectedName)
+                const matched = mockProducts.find((p) => p.name === selectedName)
+                if (matched) setField('category', matched.category)
+              }}
             >
-              {(categories ?? []).map((c) => (
-                <MenuItem key={c.id} value={c.name}>{c.name}</MenuItem>
+              {mockProducts.map((p) => (
+                <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
               ))}
             </TextField>
             <TextField
+              label="Category *"
+              size="small"
+              fullWidth
+              value="Agro Commodities"
+              slotProps={{ input: { readOnly: true } }}
+              onFocus={() => { if (!form.category?.trim()) setField('category', 'Agro Commodities') }}
+            />
+            <TextField
               label="Origin (Country)"
               size="small"
+              select
               fullWidth
               value={form.origin ?? ''}
               onChange={(e) => setField('origin', e.target.value)}
-            />
+            >
+              {COUNTRIES.map((country) => (
+                <MenuItem key={country} value={country}>
+                  {country}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField
               label="Lead Time (days)"
               size="small"
@@ -504,8 +482,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
               setSizeInput('')
               setStockInput('')
               setPriceInput('')
-              setNetWeightInput('')
-              setGrossWeightInput('')
+              setPackingTypeInput('Cartoon')
               setEditingSizeIndex(null)
             }}
             sx={{ borderRadius: 2, fontWeight: 600, textTransform: 'none', mb: 2 }}
@@ -517,22 +494,22 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           {showInlineEditor && (
             <Box
               sx={{
-                p: 2,
+                p: 1.5,
                 mb: 2.5,
                 borderRadius: 2.5,
                 border: '1px solid var(--brand-300)',
                 bgcolor: 'var(--brand-50)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 2.5,
+                gap: 1.5,
               }}
             >
               {/* Size Variant Section */}
               <Box>
                 <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand-700)', mb: 1 }}>
-                  {editingSizeIndex !== null ? 'Edit Size Variant' : 'A. Size Variant'}
+                  {editingSizeIndex !== null ? 'Edit Size Variant' : 'Size Variant'}
                 </Typography>
-                <Box className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Box className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <TextField
                     label="Available Size *"
                     placeholder="e.g. XL"
@@ -564,6 +541,18 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     value={priceInput}
                     onChange={(e) => setPriceInput(e.target.value === '' ? '' : Number(e.target.value))}
                   />
+                  <TextField
+                    label="Packing Type *"
+                    size="small"
+                    select
+                    fullWidth
+                    value={packingTypeInput}
+                    onChange={(e) => setPackingTypeInput(e.target.value)}
+                  >
+                    {PACKING_TYPES.map((pt) => (
+                      <MenuItem key={pt} value={pt}>{pt}</MenuItem>
+                    ))}
+                  </TextField>
                 </Box>
 
                 {/* Maximum 6 size variants check message */}
@@ -572,70 +561,18 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     Maximum 6 sizes allowed.
                   </Typography>
                 )}
-
-                <Box sx={{ display: 'flex', gap: 1.5, mt: 1.5 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleSaveSize}
-                    disabled={(form.sizeVariants ?? []).length >= 6 && editingSizeIndex === null}
-                    sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none' }}
-                  >
-                    {editingSizeIndex !== null ? 'Update Size' : 'Save Size'}
-                  </Button>
-                </Box>
               </Box>
 
-              <Divider />
-
-              {/* Weight Variant Section */}
-              <Box>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand-700)', mb: 1 }}>
-                  B. Weight Variant
-                </Typography>
-                <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TextField
-                    label="Net Weight *"
-                    placeholder="e.g. 5"
-                    size="small"
-                    type="number"
-                    fullWidth
-                    slotProps={{
-                      input: {
-                        endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
-                      },
-                    }}
-                    value={netWeightInput}
-                    onChange={(e) => setNetWeightInput(e.target.value === '' ? '' : Number(e.target.value))}
-                  />
-                  <TextField
-                    label="Gross Weight *"
-                    placeholder="e.g. 5.5"
-                    size="small"
-                    type="number"
-                    fullWidth
-                    slotProps={{
-                      input: {
-                        endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
-                      },
-                    }}
-                    value={grossWeightInput}
-                    onChange={(e) => setGrossWeightInput(e.target.value === '' ? '' : Number(e.target.value))}
-                  />
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1.5, mt: 1.5 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={handleSaveWeight}
-                    sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none' }}
-                  >
-                    Save Weight
-                  </Button>
-                </Box>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleSaveSize}
+                  disabled={(form.sizeVariants ?? []).length >= 6 && editingSizeIndex === null}
+                  sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none' }}
+                >
+                  {editingSizeIndex !== null ? 'Update Size' : 'Save Size'}
+                </Button>
                 <Button
                   variant="text"
                   size="small"
@@ -659,6 +596,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'var(--ink-50)', '& th': { fontWeight: 700, fontSize: 11, color: 'var(--ink-600)', borderColor: 'var(--ink-200)' } }}>
                       <TableCell>Size</TableCell>
+                      <TableCell>Packing</TableCell>
                       <TableCell>Net Weight</TableCell>
                       <TableCell>Gross Weight</TableCell>
                       <TableCell>Stock</TableCell>
@@ -672,6 +610,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                       form.sizeVariants.map((v, idx) => (
                         <TableRow key={`size-${idx}`} sx={{ '& td': { borderColor: 'var(--ink-100)', py: 0.5 } }}>
                           <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{v.size}</TableCell>
+                          <TableCell sx={{ fontSize: 13 }}>{v.packingType ?? 'Cartoon'}</TableCell>
                           
                           {/* If weightVariant exists and this is the first size row, show netWeight & grossWeight */}
                           {idx === 0 && form.weightVariant ? (
@@ -702,32 +641,82 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                         </TableRow>
                       ))
                     ) : (
-                      /* If sizeVariants is empty but weightVariant exists, render weight row */
-                      form.weightVariant && (
-                        <TableRow sx={{ '& td': { borderColor: 'var(--ink-100)', py: 0.5 } }}>
-                          <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                          <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.netWeight} kg</TableCell>
-                          <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.grossWeight} kg</TableCell>
-                          <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                          <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                          <TableCell align="right">
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
-                              <IconButton size="small" onClick={handleEditWeight} title="Edit Weight" sx={{ color: 'var(--brand-600)', p: 0.5 }}>
-                                <EditRoundedIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                              <IconButton size="small" onClick={handleDeleteWeight} title="Delete Weight" sx={{ color: '#c0392b', p: 0.5 }}>
-                                <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      )
+                      null
                     )}
                   </TableBody>
                 </Table>
               </Box>
             </Box>
           )}
+
+          {/* Weight Variant Option */}
+          <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Weight Variant
+              </Typography>
+            </Box>
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <TextField
+                label="Net Weight *"
+                placeholder="e.g. 5"
+                size="small"
+                type="number"
+                fullWidth
+                slotProps={{
+                  input: {
+                    endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
+                  },
+                }}
+                value={form.weightVariant?.netWeight ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? '' : Number(e.target.value)
+                  setForm((f) => {
+                    const gross = f.weightVariant?.grossWeight ?? 0
+                    if (val === '' && gross === 0) {
+                      return { ...f, weightVariant: undefined }
+                    }
+                    return {
+                      ...f,
+                      weightVariant: {
+                        netWeight: val === '' ? 0 : Number(val),
+                        grossWeight: gross,
+                      }
+                    }
+                  })
+                }}
+              />
+              <TextField
+                label="Gross Weight *"
+                placeholder="e.g. 5.5"
+                size="small"
+                type="number"
+                fullWidth
+                slotProps={{
+                  input: {
+                    endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
+                  },
+                }}
+                value={form.weightVariant?.grossWeight ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? '' : Number(e.target.value)
+                  setForm((f) => {
+                    const net = f.weightVariant?.netWeight ?? 0
+                    if (val === '' && net === 0) {
+                      return { ...f, weightVariant: undefined }
+                    }
+                    return {
+                      ...f,
+                      weightVariant: {
+                        netWeight: net,
+                        grossWeight: val === '' ? 0 : Number(val),
+                      }
+                    }
+                  })
+                }}
+              />
+            </Box>
+          </Box>
 
           {/* Container Options */}
           <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
@@ -795,40 +784,21 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
               value={specs['Brand Name'] ?? ''}
               onChange={(e) => setSpec('Brand Name', e.target.value)}
             />
-            <TextField
-              label="Packing Type"
-              size="small"
-              select
-              fullWidth
-              value={specs['Packing Type'] ?? 'Cartoon'}
-              onChange={(e) => setSpec('Packing Type', e.target.value)}
-            >
-              {PACKING_TYPES.map((pt) => (
-                <MenuItem key={pt} value={pt}>{pt}</MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Origin (Spec)"
-              size="small"
-              fullWidth
-              value={specs['Origin'] ?? ''}
-              onChange={(e) => setSpec('Origin', e.target.value)}
-            />
           </Box>
         </Box>
 
         <Divider />
 
-        {/* Image Upload — 5 fixed variant slots */}
+        {/* Image Upload — 7 fixed variant slots */}
         <Box>
           <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.25, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Product Images (5 Views)
+            Product Images (7 Views)
           </Typography>
           <Typography sx={{ fontSize: 11.5, color: 'var(--ink-400)', mb: 1.5 }}>
-            Upload one image per slot — Main View + 4 angles.
+            Upload one image per slot — Main View + 6 angles.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1.5 }}>
-            {['Main', 'Angle 2', 'Angle 3', 'Angle 4', 'Angle 5'].map((label, slotIdx) => {
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+            {['Main', 'Angle 2', 'Angle 3', 'Angle 4', 'Angle 5', 'Angle 6', 'Angle 7'].map((label, slotIdx) => {
               const src = uploadedImages[slotIdx] ?? ''
               return (
                 <Box key={slotIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: 72 }}>

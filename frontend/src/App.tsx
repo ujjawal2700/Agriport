@@ -20,6 +20,7 @@ const OtpPage = lazy(() => import('@/pages/auth/OtpPage'))
 const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'))
 const StaffLoginPage = lazy(() => import('@/pages/auth/StaffLoginPage'))
+const ExecutiveSignupPage = lazy(() => import('@/pages/auth/ExecutiveSignupPage'))
 
 // Customer
 const HomePage = lazy(() => import('@/pages/customer/HomePage'))
@@ -104,6 +105,7 @@ export default function App() {
           <Route path="/admin/login" element={<StaffLoginPage role="admin" />} />
           <Route path="/manager/login" element={<StaffLoginPage role="manager" />} />
           <Route path="/executive/login" element={<StaffLoginPage role="executive" />} />
+          <Route path="/executive/signup" element={<ExecutiveSignupPage />} />
 
           {/* Admin panel */}
           <Route

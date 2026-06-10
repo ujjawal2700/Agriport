@@ -178,6 +178,15 @@ export default function StaffLoginPage({ role }: { role: StaffRole }) {
             </Typography>
           </Box>
 
+          {role === 'executive' && (
+            <Typography sx={{ mt: 2, fontSize: 13.5, textAlign: 'center', color: 'var(--ink-600)' }}>
+              New Executive?{' '}
+              <MuiLink component={RouterLink} to="/executive/signup" underline="hover" sx={{ fontWeight: 600, color: 'var(--brand-700)' }}>
+                Create an Account
+              </MuiLink>
+            </Typography>
+          )}
+
           <Divider sx={{ my: 2.5, fontSize: 11.5, color: 'var(--ink-400)' }}>SWITCH PORTAL</Divider>
           <Box className="flex flex-wrap justify-center gap-1.5">
             {PORTALS.filter((p) => p.role !== role).map((p) => (

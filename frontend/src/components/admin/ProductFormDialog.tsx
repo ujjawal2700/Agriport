@@ -19,6 +19,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { Product, StockStatus } from '@/types'
 import { generateSlabs } from '@/utils/pricing'
+import { COUNTRIES } from '@/constants/countries'
 
 interface Props {
   open: boolean
@@ -196,7 +197,13 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
               ))}
             </TextField>
             <TextField label="Short description" value={form.shortDescription} onChange={str('shortDescription')} fullWidth size="small" />
-            <TextField label="Origin" value={form.origin} onChange={str('origin')} fullWidth size="small" />
+            <TextField label="Origin" value={form.origin} onChange={str('origin')} select fullWidth size="small">
+              {COUNTRIES.map((country) => (
+                <MenuItem key={country} value={country}>
+                  {country}
+                </MenuItem>
+              ))}
+            </TextField>
             <TextField label="Lead time (days)" type="number" value={form.leadTimeDays} onChange={num('leadTimeDays')} fullWidth size="small" />
             <TextField label="Tags (comma separated)" value={form.tags} onChange={str('tags')} fullWidth size="small" placeholder="e.g. Export grade, CE certified" />
             <Box className="sm:col-span-2">
@@ -301,7 +308,6 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
               ))}
             </TextField>
             <TextField label="Size or Count" value={specs['Size or Count'] ?? ''} onChange={(e) => setSpec('Size or Count', e.target.value)} fullWidth size="small" placeholder="e.g. 8.3 mm, 24W, 400×300" />
-            <TextField label="Origin (Spec)" value={specs['Origin'] ?? ''} onChange={(e) => setSpec('Origin', e.target.value)} fullWidth size="small" />
           </Box>
         </Box>
 

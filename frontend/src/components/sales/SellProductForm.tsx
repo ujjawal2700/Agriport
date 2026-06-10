@@ -1,5 +1,5 @@
-import { useMemo, useState, useRef } from 'react'
-import { Box, Typography, TextField, MenuItem, Button, Divider } from '@mui/material'
+import { useMemo, useState } from 'react'
+import { Box, Typography, Button, Divider } from '@mui/material'
 import { useGetProductsQuery } from '@/redux/api'
 import { resolveUnitPrice } from '@/utils/pricing'
 import { formatMoney } from '@/utils/format'
@@ -15,7 +15,7 @@ export default function SellProductForm({
 }) {
   const isPurchaseOrArrival = formMode === 'purchase' || formMode === 'arrival'
   const { data: products } = useGetProductsQuery()
-  const openDialogOnSelectRef = useRef(false)
+
   const [productId, setProductId] = useState('')
   const [qty, setQty] = useState(1)
   const [price, setPrice] = useState(0)
@@ -40,11 +40,6 @@ export default function SellProductForm({
       setQty(p.moq)
       setPrice(resolveUnitPrice(p.pricingSlabs, p.moq).price)
       setShowSummary(false)
-      if (openDialogOnSelectRef.current) {
-        setSelectedProduct(p)
-        setStockDialogOpen(true)
-      }
-      openDialogOnSelectRef.current = false
     }
   }
 
@@ -62,39 +57,63 @@ export default function SellProductForm({
 
 
         <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 2 }}>Product & pricing</Typography>
-          <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Box className="sm:col-span-2">
-              <TextField
-                label="Select product"
-                value={productId}
-                onChange={(e) => selectProduct(e.target.value)}
-                select
-                fullWidth
-                size="small"
-                slotProps={{
-                  select: {
-                    renderValue: (value) => {
-                      const p = products?.find((x) => x.id === value)
-                      return p ? p.name : ''
-                    }
-                  }
-                }}
-              >
-                {products?.map((p) => (
-                  <MenuItem key={p.id} value={p.id} sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    {p.name}
-                    <AddRoundedIcon
-                      sx={{ fontSize: 16, color: '#1C7C58', stroke: '#1C7C58', strokeWidth: 1.5 }}
-                      onClick={() => {
-                        openDialogOnSelectRef.current = true
-                      }}
-                    />
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 16 }}>Product & pricing</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => {
+                setSelectedProduct(null)
+                setStockDialogOpen(true)
+              }}
+              sx={{
+                bgcolor: '#1C7C58',
+                '&:hover': { bgcolor: '#155f44' },
+                fontWeight: 600,
+                textTransform: 'none',
+                borderRadius: 2,
+                px: 2.5,
+                fontSize: 13.5,
+                boxShadow: 'none',
+              }}
+            >
+              Add
+            </Button>
+          </Box>
 
+          <Box
+            sx={{
+              border: '1.5px dashed var(--ink-200)',
+              borderRadius: 3,
+              py: 5,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              bgcolor: '#fafafa',
+            }}
+          >
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                bgcolor: 'rgba(28,124,88,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 0.5,
+              }}
+            >
+              <AddRoundedIcon sx={{ color: '#1C7C58', fontSize: 24 }} />
+            </Box>
+            <Typography sx={{ fontWeight: 600, fontSize: 14, color: 'var(--ink-700)' }}>
+              No product added yet
+            </Typography>
+            <Typography sx={{ fontSize: 12.5, color: 'var(--ink-400)', textAlign: 'center' }}>
+              Click "Add Product" to select and configure a product
+            </Typography>
           </Box>
         </Box>
       </Box>

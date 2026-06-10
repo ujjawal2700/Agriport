@@ -31,6 +31,7 @@ export interface SizeVariant {
   size: string
   stock: number
   price: number
+  packingType?: string
 }
 
 export interface WeightVariant {
