@@ -456,7 +456,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
             <Box className="flex gap-4">
               <FormControlLabel
                 control={<Switch checked={form.isNew ?? false} onChange={(e) => setField('isNew', e.target.checked)} />}
-                label={<Typography sx={{ fontSize: 13.5 }}>New Arrival</Typography>}
+                label={<Typography sx={{ fontSize: 13.5 }}>Upcoming Arrivals</Typography>}
               />
               <FormControlLabel
                 control={<Switch checked={form.isFeatured ?? false} onChange={(e) => setField('isFeatured', e.target.checked)} />}

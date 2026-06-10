@@ -114,7 +114,7 @@ export default function ProductDetailPage() {
           <Box className="flex flex-wrap items-center gap-2 mb-2">
             <StatusChip kind="stock" value={product.stockStatus} />
             {product.isNew && (
-              <Chip size="small" icon={<BoltRoundedIcon sx={{ fontSize: 14 }} />} label="New arrival" color="secondary" variant="outlined" />
+              <Chip size="small" icon={<BoltRoundedIcon sx={{ fontSize: 14 }} />} label="Upcoming arrivals" color="secondary" variant="outlined" />
             )}
             {product.tags?.map((t) => (
               <Chip key={t} size="small" label={t} variant="outlined" />

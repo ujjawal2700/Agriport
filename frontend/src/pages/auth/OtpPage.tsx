@@ -17,7 +17,7 @@ export default function OtpPage() {
   const state = (location.state as { mobile?: string; from?: string; signup?: boolean } | null) ?? {}
   const mobile = state.mobile ?? 'your mobile'
 
-  const [digits, setDigits] = useState<string[]>(Array(LEN).fill(''))
+  const [digits, setDigits] = useState<string[]>(['1', '2', '3', '4', '5', '6'])
   const [seconds, setSeconds] = useState(30)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
 

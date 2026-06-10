@@ -3,8 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Box,
   Typography,
-  ToggleButton,
-  ToggleButtonGroup,
   MenuItem,
   TextField,
   FormControlLabel,
@@ -15,7 +13,7 @@ import PageHeader from '@/components/common/PageHeader'
 import ProductCard from '@/components/product/ProductCard'
 import EmptyState from '@/components/common/EmptyState'
 import { CardGridSkeleton } from '@/components/common/Loader'
-import { useGetProductsQuery, useGetCategoriesQuery } from '@/redux/api'
+import { useGetProductsQuery } from '@/redux/api'
 import type { ProductQuery } from '@/redux/api'
 import { ROUTES } from '@/constants'
 
@@ -40,7 +38,6 @@ export default function ProductsPage() {
     [search, category, sort, inStockOnly],
   )
   const { data: products, isLoading, isFetching } = useGetProductsQuery(query)
-  const { data: categories } = useGetCategoriesQuery()
 
   const update = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params)
@@ -62,7 +59,6 @@ export default function ProductsPage() {
         crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Marketplace' }]}
       />
 
-      {/* Controls */}
       <Box
         sx={{
           display: 'flex',
@@ -77,42 +73,23 @@ export default function ProductsPage() {
           backgroundColor: '#fff',
         }}
       >
-        <Box className="flex flex-wrap items-center gap-2">
-          <ToggleButtonGroup
-            exclusive
-            value={category}
-            onChange={(_, v) => v && update({ category: v })}
-            size="small"
-            sx={{ flexWrap: 'wrap', '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 600, px: 1.75, border: '1px solid var(--ink-200)', borderRadius: '999px !important', mr: 1, mb: 1 } }}
-          >
-            <ToggleButton value="all">All</ToggleButton>
-            {categories?.map((c) => (
-              <ToggleButton key={c.id} value={c.name}>
-                {c.name}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-        </Box>
-
-        <Box className="flex items-center gap-3">
-          <FormControlLabel
-            control={<Switch checked={inStockOnly} onChange={(e) => update({ inStock: e.target.checked ? '1' : null })} />}
-            label={<Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>In stock only</Typography>}
-          />
-          <TextField
-            select
-            size="small"
-            value={sort}
-            onChange={(e) => update({ sort: e.target.value })}
-            sx={{ minWidth: 190 }}
-          >
-            {SORTS.map((s) => (
-              <MenuItem key={s.value} value={s.value}>
-                {s.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Box>
+        <FormControlLabel
+          control={<Switch checked={inStockOnly} onChange={(e) => update({ inStock: e.target.checked ? '1' : null })} />}
+          label={<Typography sx={{ fontSize: 13.5, fontWeight: 600 }}>In stock only</Typography>}
+        />
+        <TextField
+          select
+          size="small"
+          value={sort}
+          onChange={(e) => update({ sort: e.target.value })}
+          sx={{ minWidth: 190 }}
+        >
+          {SORTS.map((s) => (
+            <MenuItem key={s.value} value={s.value}>
+              {s.label}
+            </MenuItem>
+          ))}
+        </TextField>
       </Box>
 
       {/* Result meta */}

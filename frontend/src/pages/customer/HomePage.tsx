@@ -1,17 +1,32 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Box, Typography, Button, Chip, InputBase } from '@mui/material'
+import {
+  Box,
+  Typography,
+  Button,
+  Chip,
+  InputBase,
+  TextField,
+  Select,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  CircularProgress,
+} from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import SendRoundedIcon from '@mui/icons-material/SendRounded'
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import { useGetProductsQuery } from '@/redux/api'
 import { useAppSelector } from '@/redux/hooks'
 import ProductCard from '@/components/product/ProductCard'
 import { CardGridSkeleton } from '@/components/common/Loader'
-import { categoryIcon } from '@/utils/contentIcons'
 import { ROUTES } from '@/constants'
+import { orders as mockOrders } from '@/mocks/data'
+import toast from 'react-hot-toast'
 
 function SectionTitle({ title, to, icon }: { title: string; to?: string; icon?: ReactNode }) {
   return (
@@ -31,15 +46,26 @@ function SectionTitle({ title, to, icon }: { title: string; to?: string; icon?: 
   )
 }
 
+const UNITS = ['kg', 'MT', 'Quintal', 'Bag', 'Unit', 'Litre', 'Ton']
+
 export default function HomePage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const { data: products, isLoading } = useGetProductsQuery()
   // Storefront content is executive-editable (Redux + localStorage), so read it
   // from the storefront slice rather than the static mock API.
-  const { hero, categories, banners } = useAppSelector((s) => s.storefront)
+  const { hero, banners } = useAppSelector((s) => s.storefront)
+  const user = useAppSelector((s) => s.auth.user)
 
-  const featured = products?.filter((p) => p.isFeatured) ?? []
+  // Enquiry form state
+  const [enqProduct, setEnqProduct] = useState('')
+  const [enqQty, setEnqQty] = useState('')
+  const [enqUnit, setEnqUnit] = useState('kg')
+  const [enqOrigin, setEnqOrigin] = useState('')
+  const [enqNotes, setEnqNotes] = useState('')
+  const [enqSubmitting, setEnqSubmitting] = useState(false)
+
+  const featured = products ?? []
   const fresh = products?.filter((p) => p.isNew) ?? []
 
   const onSearch = (e: React.FormEvent) => {
@@ -47,6 +73,73 @@ export default function HomePage() {
     if (search.trim()) {
       navigate(`${ROUTES.products}?search=${encodeURIComponent(search)}`)
     }
+  }
+
+  const handleEnquirySubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!enqProduct.trim()) {
+      toast.error('Please enter the product name.')
+      return
+    }
+    if (!enqQty || isNaN(Number(enqQty)) || Number(enqQty) <= 0) {
+      toast.error('Please enter a valid quantity.')
+      return
+    }
+    if (!enqOrigin.trim()) {
+      toast.error('Please enter the origin.')
+      return
+    }
+    setEnqSubmitting(true)
+    setTimeout(() => {
+      const now = new Date().toISOString()
+      const yr = new Date().getFullYear().toString().slice(-2)
+      const mo = String(new Date().getMonth() + 1).padStart(2, '0')
+      const ref = `AGP-${yr}${mo}-${String(Math.floor(Math.random() * 8999) + 1000)}`
+      mockOrders.unshift({
+        id: `o-enq-${Date.now()}`,
+        reference: ref,
+        placedOn: now,
+        status: 'placed',
+        paymentStatus: 'pending',
+        paymentMode: 'bank_transfer',
+        customerName: user?.fullName ?? 'Customer',
+        companyName: user?.companyName ?? '',
+        customerPhone: user?.mobile ?? '',
+        customerCity: user?.city ?? '',
+        deliveryAddress: user?.address ?? 'To be confirmed',
+        lines: [
+          {
+            productId: `enq-${Date.now()}`,
+            name: enqProduct.trim(),
+            image: '',
+            quantity: Number(enqQty),
+            unit: enqUnit,
+            unitPrice: 0,
+            lineTotal: 0,
+            specifications: {
+              ...(enqOrigin.trim() ? { Origin: enqOrigin.trim() } : {}),
+              ...(enqNotes.trim() ? { Notes: enqNotes.trim() } : {}),
+            },
+          },
+        ],
+        subtotal: 0,
+        tax: 0,
+        shipping: 0,
+        total: 0,
+        trackingTimeline: [
+          { label: 'Order placed', at: now, done: true },
+          { label: 'Admin approval', at: null, done: false },
+          { label: 'Delivered', at: null, done: false },
+        ],
+      })
+      toast.success(`Enquiry submitted! Reference: ${ref}`)
+      setEnqProduct('')
+      setEnqQty('')
+      setEnqUnit('kg')
+      setEnqOrigin('')
+      setEnqNotes('')
+      setEnqSubmitting(false)
+    }, 700)
   }
 
   return (
@@ -149,50 +242,6 @@ export default function HomePage() {
         </Box>
       </Box>
 
-      {/* Categories */}
-      <Box>
-        <SectionTitle title="Shop by category" to={ROUTES.products} />
-        <Box className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {categories?.map((c) => (
-            <Box
-              key={c.id}
-              component={RouterLink}
-              to={`${ROUTES.products}?category=${encodeURIComponent(c.name)}`}
-              sx={{
-                textDecoration: 'none',
-                p: 2.5,
-                borderRadius: 3,
-                border: '1px solid var(--ink-200)',
-                backgroundColor: '#fff',
-                transition: 'all .15s',
-                display: 'block',
-                '&:hover': { borderColor: 'var(--brand-500)', boxShadow: '0 4px 12px rgba(22,27,36,0.06)' },
-              }}
-            >
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 2,
-                  background: 'linear-gradient(145deg, var(--brand-50), #fff)',
-                  border: '1px solid var(--ink-200)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  mb: 1.5,
-                }}
-              >
-                {categoryIcon(c.icon, { sx: { color: 'var(--brand-600)', fontSize: 22 } })}
-              </Box>
-              <Typography sx={{ fontWeight: 700, fontSize: 14, color: 'var(--ink-900)', lineHeight: 1.25 }}>
-                {c.name}
-              </Typography>
-              <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }} className="tnum">
-                {c.productCount} products
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      </Box>
 
       {/* Promotional banners */}
       {banners && banners.length > 0 && (
@@ -254,7 +303,7 @@ export default function HomePage() {
 
       {/* Featured */}
       <Box>
-        <SectionTitle title="Featured products" to={ROUTES.products} icon={<TrendingUpRoundedIcon sx={{ color: 'var(--brand-600)' }} />} />
+        <SectionTitle title="Featured products" icon={<TrendingUpRoundedIcon sx={{ color: 'var(--brand-600)' }} />} />
         {isLoading ? (
           <CardGridSkeleton count={3} />
         ) : (
@@ -266,10 +315,155 @@ export default function HomePage() {
         )}
       </Box>
 
-      {/* New arrivals */}
+      {/* ── Product Enquiry Section ──────────────────────────────────────── */}
+      <Box
+        sx={{
+          borderRadius: { xs: 3, md: 5 },
+          overflow: 'hidden',
+          background: 'linear-gradient(135deg, #F0FAF5 0%, #E6F5EE 50%, #EBF7F2 100%)',
+          border: '1.5px solid var(--brand-100)',
+          p: { xs: 3, md: 5 },
+        }}
+      >
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3.5 }}>
+          <Box
+            sx={{
+              width: 46,
+              height: 46,
+              borderRadius: 3,
+              bgcolor: 'var(--brand-600)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              mt: 0.25,
+            }}
+          >
+            <HelpOutlineRoundedIcon sx={{ color: '#fff', fontSize: 24 }} />
+          </Box>
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: '"Bricolage Grotesque", serif',
+                fontWeight: 800,
+                fontSize: { xs: 18, md: 22 },
+                color: 'var(--ink-900)',
+                lineHeight: 1.2,
+              }}
+            >
+              Can't find what you need?
+            </Typography>
+            <Typography sx={{ fontSize: { xs: 13, md: 14 }, color: 'var(--ink-500)', mt: 0.5 }}>
+              Submit a product enquiry and our sales team will get back to you shortly.
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Form */}
+        <Box
+          component="form"
+          onSubmit={handleEnquirySubmit}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+        >
+          {/* Row 1: Product Name dropdown */}
+          <FormControl required size="small" fullWidth sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
+            <InputLabel>Product Name</InputLabel>
+            <Select
+              value={enqProduct}
+              label="Product Name"
+              onChange={(e) => setEnqProduct(e.target.value)}
+            >
+              {featured.map((p) => (
+                <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Row 1b: Origin */}
+          <TextField
+            label="Origin"
+            placeholder="e.g. Punjab, Gujarat, Rajasthan…"
+            value={enqOrigin}
+            onChange={(e) => setEnqOrigin(e.target.value)}
+            required
+            size="small"
+            fullWidth
+            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+          />
+
+          {/* Row 2: Quantity + Unit */}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="Quantity"
+              type="number"
+              placeholder="e.g. 500"
+              value={enqQty}
+              onChange={(e) => setEnqQty(e.target.value)}
+              required
+              size="small"
+              slotProps={{ htmlInput: { min: 1 } }}
+              sx={{ bgcolor: '#fff', borderRadius: 2, flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            <FormControl size="small" sx={{ minWidth: 120, bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
+              <InputLabel>Unit</InputLabel>
+              <Select
+                value={enqUnit}
+                label="Unit"
+                onChange={(e) => setEnqUnit(e.target.value)}
+              >
+                {UNITS.map((u) => (
+                  <MenuItem key={u} value={u}>{u}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Row 3: Notes */}
+          <TextField
+            label="Notes / Specifications (optional)"
+            placeholder="Any specific grade, packing type, delivery location, or other requirements…"
+            value={enqNotes}
+            onChange={(e) => setEnqNotes(e.target.value)}
+            multiline
+            minRows={2}
+            size="small"
+            fullWidth
+            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+          />
+
+          {/* Submit */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={enqSubmitting}
+              endIcon={
+                enqSubmitting
+                  ? <CircularProgress size={16} color="inherit" />
+                  : <SendRoundedIcon sx={{ fontSize: 18 }} />
+              }
+              sx={{
+                px: 3.5,
+                py: 1,
+                fontWeight: 700,
+                fontSize: 14,
+                borderRadius: 2.5,
+                bgcolor: 'var(--brand-600)',
+                '&:hover': { bgcolor: 'var(--brand-700)' },
+                '&.Mui-disabled': { bgcolor: 'var(--brand-200)', color: '#fff' },
+              }}
+            >
+              {enqSubmitting ? 'Submitting…' : 'Submit Enquiry'}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Upcoming arrivals */}
       {fresh.length > 0 && (
         <Box>
-          <SectionTitle title="New arrivals" to={ROUTES.products} />
+          <SectionTitle title="Upcoming arrivals" to={ROUTES.products} />
           <Box className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
             {fresh.map((p) => (
               <ProductCard key={p.id} product={p} />
