@@ -9,7 +9,7 @@ import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import PageHeader from '@/components/common/PageHeader'
 import StatusChip from '@/components/common/StatusChip'
 import ProductThumb from '@/components/common/ProductThumb'
-import { Loader } from '@/components/common/Loader'
+import { OrderDetailSkeleton } from '@/components/common/Loader'
 import EmptyState from '@/components/common/EmptyState'
 import { useGetOrderQuery, useGetProductsQuery } from '@/redux/api'
 import { useAppDispatch } from '@/redux/hooks'
@@ -66,7 +66,7 @@ export default function OrderDetailPage() {
   const { data: order, isLoading } = useGetOrderQuery(id)
   const { data: products } = useGetProductsQuery()
 
-  if (isLoading) return <Loader height={400} />
+  if (isLoading) return <OrderDetailSkeleton />
   if (!order)
     return <EmptyState title="Order not found" actionLabel="Back to orders" onAction={() => navigate(ROUTES.orders)} />
 

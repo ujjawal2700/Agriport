@@ -11,6 +11,11 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
+  Card,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   CircularProgress,
 } from '@mui/material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -18,8 +23,7 @@ import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import SendRoundedIcon from '@mui/icons-material/SendRounded'
-import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import { useGetProductsQuery } from '@/redux/api'
 import { useAppSelector } from '@/redux/hooks'
 import ProductCard from '@/components/product/ProductCard'
@@ -64,6 +68,7 @@ export default function HomePage() {
   const [enqOrigin, setEnqOrigin] = useState('')
   const [enqNotes, setEnqNotes] = useState('')
   const [enqSubmitting, setEnqSubmitting] = useState(false)
+  const [enqOpen, setEnqOpen] = useState(false)
 
   const featured = products ?? []
   const fresh = products?.filter((p) => p.isNew) ?? []
@@ -133,6 +138,7 @@ export default function HomePage() {
         ],
       })
       toast.success(`Enquiry submitted! Reference: ${ref}`)
+      setEnqOpen(false)
       setEnqProduct('')
       setEnqQty('')
       setEnqUnit('kg')
@@ -311,154 +317,158 @@ export default function HomePage() {
             {featured.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
+
+            {/* ── Enquiry “+” card ── */}
+            <Card
+              onClick={() => setEnqOpen(true)}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                borderRadius: { xs: 1.5, md: 3.5 },
+                border: '1.5px dashed var(--brand-300)',
+                bgcolor: '#f8fdf9',
+                boxShadow: 'none',
+                transition: 'all 0.15s',
+                '&:hover': {
+                  borderColor: 'var(--brand-600)',
+                  bgcolor: '#EAF6F0',
+                  boxShadow: '0 4px 12px rgba(28,124,88,0.08)',
+                },
+              }}
+            >
+              <Box sx={{ p: { xs: 1, md: 1.75 }, pb: 0 }}>
+                <Box
+                  sx={{
+                    height: { xs: 85, md: 180 },
+                    borderRadius: { xs: 1.25, md: 2.5 },
+                    border: '1px dashed var(--brand-200)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: '#fff',
+                  }}
+                >
+                  <AddRoundedIcon sx={{ fontSize: { xs: 38, md: 60 }, color: 'var(--brand-400)' }} />
+                </Box>
+              </Box>
+              <Box sx={{ p: { xs: 0.75, md: 2 }, pt: { xs: 0.5, md: 1.5 } }}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: { xs: 12, md: 14 },
+                    color: 'var(--brand-700)',
+                    textAlign: 'center',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  Request a Product
+                </Typography>
+                <Typography sx={{ fontSize: { xs: 10, md: 11.5 }, color: 'var(--ink-400)', textAlign: 'center', mt: 0.5 }}>
+                  Can't find what you need?
+                </Typography>
+              </Box>
+            </Card>
           </Box>
         )}
       </Box>
 
-      {/* ── Product Enquiry Section ──────────────────────────────────────── */}
-      <Box
-        sx={{
-          borderRadius: { xs: 3, md: 5 },
-          overflow: 'hidden',
-          background: 'linear-gradient(135deg, #F0FAF5 0%, #E6F5EE 50%, #EBF7F2 100%)',
-          border: '1.5px solid var(--brand-100)',
-          p: { xs: 3, md: 5 },
-        }}
-      >
-        {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3.5 }}>
+      {/* ── Enquiry Dialog ──────────────────────────────────────── */}
+      <Dialog open={enqOpen} onClose={() => !enqSubmitting && setEnqOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 17, pb: 1 }}>Request a Product</DialogTitle>
+        <DialogContent dividers>
           <Box
-            sx={{
-              width: 46,
-              height: 46,
-              borderRadius: 3,
-              bgcolor: 'var(--brand-600)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              mt: 0.25,
-            }}
+            component="form"
+            id="enq-form"
+            onSubmit={handleEnquirySubmit}
+            sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 0.5 }}
           >
-            <HelpOutlineRoundedIcon sx={{ color: '#fff', fontSize: 24 }} />
-          </Box>
-          <Box>
-            <Typography
-              sx={{
-                fontFamily: '"Bricolage Grotesque", serif',
-                fontWeight: 800,
-                fontSize: { xs: 18, md: 22 },
-                color: 'var(--ink-900)',
-                lineHeight: 1.2,
-              }}
-            >
-              Can't find what you need?
-            </Typography>
-            <Typography sx={{ fontSize: { xs: 13, md: 14 }, color: 'var(--ink-500)', mt: 0.5 }}>
-              Submit a product enquiry and our sales team will get back to you shortly.
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Form */}
-        <Box
-          component="form"
-          onSubmit={handleEnquirySubmit}
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
-        >
-          {/* Row 1: Product Name dropdown */}
-          <FormControl required size="small" fullWidth sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
-            <InputLabel>Product Name</InputLabel>
-            <Select
-              value={enqProduct}
-              label="Product Name"
-              onChange={(e) => setEnqProduct(e.target.value)}
-            >
-              {featured.map((p) => (
-                <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Row 1b: Origin */}
-          <TextField
-            label="Origin"
-            placeholder="e.g. Punjab, Gujarat, Rajasthan…"
-            value={enqOrigin}
-            onChange={(e) => setEnqOrigin(e.target.value)}
-            required
-            size="small"
-            fullWidth
-            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-          />
-
-          {/* Row 2: Quantity + Unit */}
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              label="Quantity"
-              type="number"
-              placeholder="e.g. 500"
-              value={enqQty}
-              onChange={(e) => setEnqQty(e.target.value)}
-              required
-              size="small"
-              slotProps={{ htmlInput: { min: 1 } }}
-              sx={{ bgcolor: '#fff', borderRadius: 2, flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-            <FormControl size="small" sx={{ minWidth: 120, bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
-              <InputLabel>Unit</InputLabel>
+            {/* Product Name */}
+            <FormControl required size="small" fullWidth>
+              <InputLabel>Product Name</InputLabel>
               <Select
-                value={enqUnit}
-                label="Unit"
-                onChange={(e) => setEnqUnit(e.target.value)}
+                value={enqProduct}
+                label="Product Name"
+                onChange={(e) => setEnqProduct(e.target.value)}
               >
-                {UNITS.map((u) => (
-                  <MenuItem key={u} value={u}>{u}</MenuItem>
+                {featured.map((p) => (
+                  <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
-          </Box>
 
-          {/* Row 3: Notes */}
-          <TextField
-            label="Notes / Specifications (optional)"
-            placeholder="Any specific grade, packing type, delivery location, or other requirements…"
-            value={enqNotes}
-            onChange={(e) => setEnqNotes(e.target.value)}
-            multiline
-            minRows={2}
-            size="small"
-            fullWidth
-            sx={{ bgcolor: '#fff', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-          />
+            {/* Origin */}
+            <TextField
+              label="Origin"
+              placeholder="e.g. Punjab, Gujarat, Rajasthan…"
+              value={enqOrigin}
+              onChange={(e) => setEnqOrigin(e.target.value)}
+              required
+              size="small"
+              fullWidth
+            />
 
-          {/* Submit */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={enqSubmitting}
-              endIcon={
-                enqSubmitting
-                  ? <CircularProgress size={16} color="inherit" />
-                  : <SendRoundedIcon sx={{ fontSize: 18 }} />
-              }
-              sx={{
-                px: 3.5,
-                py: 1,
-                fontWeight: 700,
-                fontSize: 14,
-                borderRadius: 2.5,
-                bgcolor: 'var(--brand-600)',
-                '&:hover': { bgcolor: 'var(--brand-700)' },
-                '&.Mui-disabled': { bgcolor: 'var(--brand-200)', color: '#fff' },
-              }}
-            >
-              {enqSubmitting ? 'Submitting…' : 'Submit Enquiry'}
-            </Button>
+            {/* Quantity + Unit */}
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Quantity"
+                type="number"
+                placeholder="e.g. 500"
+                value={enqQty}
+                onChange={(e) => setEnqQty(e.target.value)}
+                required
+                size="small"
+                slotProps={{ htmlInput: { min: 1 } }}
+                sx={{ flex: 1 }}
+              />
+              <FormControl size="small" sx={{ minWidth: 110 }}>
+                <InputLabel>Unit</InputLabel>
+                <Select
+                  value={enqUnit}
+                  label="Unit"
+                  onChange={(e) => setEnqUnit(e.target.value)}
+                >
+                  {UNITS.map((u) => (
+                    <MenuItem key={u} value={u}>{u}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Notes */}
+            <TextField
+              label="Notes / Specifications (optional)"
+              placeholder="Grade, packing type, delivery preference…"
+              value={enqNotes}
+              onChange={(e) => setEnqNotes(e.target.value)}
+              multiline
+              minRows={2}
+              size="small"
+              fullWidth
+            />
           </Box>
-        </Box>
-      </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5, gap: 1 }}>
+          <Button
+            onClick={() => setEnqOpen(false)}
+            disabled={enqSubmitting}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="enq-form"
+            variant="contained"
+            disabled={enqSubmitting}
+            endIcon={enqSubmitting ? <CircularProgress size={15} color="inherit" /> : undefined}
+            sx={{ bgcolor: 'var(--brand-600)', '&:hover': { bgcolor: 'var(--brand-700)' } }}
+          >
+            {enqSubmitting ? 'Submitting…' : 'Submit Enquiry'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Upcoming arrivals */}
       {fresh.length > 0 && (

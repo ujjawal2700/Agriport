@@ -19,7 +19,7 @@ import PendingRoundedIcon from '@mui/icons-material/PendingRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import PageHeader from '@/components/common/PageHeader'
 import StatusChip from '@/components/common/StatusChip'
-import { Loader } from '@/components/common/Loader'
+import { DocListSkeleton, TransactionListSkeleton } from '@/components/common/Loader'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { updateProfile } from '@/redux/slices/authSlice'
 import { useGetTransactionsQuery, useGetDocumentsQuery } from '@/redux/api'
@@ -207,7 +207,7 @@ export default function ProfilePage() {
               Upload your business documents for verification. Accepted: PDF, JPG, PNG.
             </Typography>
             {docLoading ? (
-              <Loader height={200} />
+              <DocListSkeleton count={4} />
             ) : (
               <Box className="flex flex-col gap-3">
                 {documents?.map((d) => (
@@ -221,7 +221,7 @@ export default function ProfilePage() {
         {tab === 'transactions' && (
           <Box>
             {txLoading ? (
-              <Loader height={200} />
+              <TransactionListSkeleton count={5} />
             ) : (
               <Box className="flex flex-col">
                 <Box className="hidden sm:grid" sx={{ gridTemplateColumns: '1.4fr 1fr 1fr 1fr', px: 2, pb: 1.5 }}>

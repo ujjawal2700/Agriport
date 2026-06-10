@@ -23,7 +23,7 @@ import ProductThumb from '@/components/common/ProductThumb'
 import StatusChip from '@/components/common/StatusChip'
 import QuantityStepper from '@/components/common/QuantityStepper'
 import PageHeader from '@/components/common/PageHeader'
-import { Loader } from '@/components/common/Loader'
+import { ProductDetailSkeleton } from '@/components/common/Loader'
 import EmptyState from '@/components/common/EmptyState'
 import { formatMoney } from '@/utils/format'
 import { ROUTES } from '@/constants'
@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
     }
   }, [product])
 
-  if (isLoading) return <Loader height={400} />
+  if (isLoading) return <ProductDetailSkeleton />
   if (!product)
     return (
       <EmptyState title="Product not found" actionLabel="Back to marketplace" onAction={() => navigate(ROUTES.products)} />

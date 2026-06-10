@@ -6,7 +6,7 @@ import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import PageHeader from '@/components/common/PageHeader'
 import StatusChip from '@/components/common/StatusChip'
 import EmptyState from '@/components/common/EmptyState'
-import { Loader } from '@/components/common/Loader'
+import { OrderListSkeleton } from '@/components/common/Loader'
 import { useGetOrdersQuery } from '@/redux/api'
 import { ROUTES, PAYMENT_MODE_LABEL } from '@/constants'
 import { formatMoney, formatDate } from '@/utils/format'
@@ -129,7 +129,7 @@ export default function OrdersPage() {
       </Tabs>
 
       {isLoading ? (
-        <Loader />
+        <OrderListSkeleton count={5} />
       ) : filtered.length > 0 ? (
         <Box className="flex flex-col gap-3">
           {filtered.map((o) => (
