@@ -14,7 +14,10 @@ import {
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import type { Product, StockStatus } from '@/types'
 import { generateSlabs } from '@/utils/pricing'
+<<<<<<< HEAD
 import { COUNTRIES } from '@/constants/countries'
+=======
+>>>>>>> 42b33e2 (fix: resolve frontend build errors on unused variables and imports)
 
 interface Props {
   open: boolean
