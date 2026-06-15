@@ -33,15 +33,6 @@ export default function SellProductForm({
   const effectiveQty = displayProduct ? Math.max(qty, displayProduct.moq) : qty
   const unitPrice = price || slabPrice
 
-  const selectProduct = (id: string) => {
-    setProductId(id)
-    const p = products?.find((x) => x.id === id)
-    if (p) {
-      setQty(p.moq)
-      setPrice(resolveUnitPrice(p.pricingSlabs, p.moq).price)
-      setShowSummary(false)
-    }
-  }
 
   const handleDialogSave = (savedProduct: Product) => {
     setSelectedProduct(savedProduct)

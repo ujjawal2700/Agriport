@@ -35,15 +35,6 @@ import { COUNTRIES } from '@/constants/countries'
 
 const PACKING_TYPES = ['Cartoon', 'Basket']
 
-const CATEGORIES = [
-  'Agro Commodities',
-  'Packaging',
-  'Industrial Tools',
-  'Textiles & Fabric',
-  'Electronics',
-  'Home & Kitchen',
-]
-
 const emptyForm = (): Partial<Product> => ({
   name: '',
   category: '',
