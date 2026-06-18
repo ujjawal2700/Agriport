@@ -60,10 +60,6 @@ export default function ExecutiveProductsPage() {
     setOpen(true)
   }
 
-  const openEdit = (p: Product) => {
-    setEditing(p)
-    setOpen(true)
-  }
 
   const handleSaveCallback = (savedProduct: Product, mode: 'add' | 'update') => {
     if (mode === 'update') {
