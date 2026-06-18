@@ -8,7 +8,7 @@ import PercentRoundedIcon from '@mui/icons-material/PercentRounded'
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
 import { useGetIncentiveSeriesQuery, useGetSalesRecordsQuery } from '@/redux/api'
 import { formatMoney, formatMoneyCompact } from '@/utils/format'
-import { brand, ink } from '@/theme/theme'
+import { ink } from '@/theme/theme'
 
 const PIE_COLORS = ['#15694A', '#1C7C58', '#389B73', '#66B894', '#C9842F', '#9AA4B2']
 

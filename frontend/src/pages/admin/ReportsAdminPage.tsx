@@ -14,7 +14,7 @@ import {
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
 import { useGetSalesSeriesQuery } from '@/redux/api'
 import { formatMoney, formatMoneyCompact } from '@/utils/format'
-import { brand, ink } from '@/theme/theme'
+import { ink } from '@/theme/theme'
 import toast from 'react-hot-toast'
 
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
