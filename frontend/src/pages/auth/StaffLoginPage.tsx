@@ -16,7 +16,6 @@ import {
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
-import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import type { ReactNode } from 'react'
@@ -29,7 +28,7 @@ import { ROUTES } from '@/constants'
 import type { UserRole } from '@/types'
 import toast from 'react-hot-toast'
 
-type StaffRole = Extract<UserRole, 'admin' | 'manager' | 'executive'>
+type StaffRole = Extract<UserRole, 'admin' | 'executive'>
 
 const CFG: Record<
   StaffRole,
@@ -42,13 +41,6 @@ const CFG: Record<
     demoEmail: 'admin@agriport.com',
     icon: <AdminPanelSettingsRoundedIcon />,
   },
-  manager: {
-    title: 'Sales Manager Workspace',
-    tagline: 'Run your team, process selling & purchasing, and track targets and incentives.',
-    home: ROUTES.manager,
-    demoEmail: 'arjun@agriport.com',
-    icon: <HubRoundedIcon />,
-  },
   executive: {
     title: 'Sales Executive App',
     tagline: 'Manage customers, follow-ups, create sales and watch your incentives grow.',
@@ -60,7 +52,6 @@ const CFG: Record<
 
 const PORTALS: { role: StaffRole; label: string }[] = [
   { role: 'admin', label: 'Admin' },
-  { role: 'manager', label: 'Manager' },
   { role: 'executive', label: 'Executive' },
 ]
 

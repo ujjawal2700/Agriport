@@ -91,8 +91,8 @@ export default function ExecutiveSignupPage() {
       return
     }
 
-    // Determine target mock role based on selected businessType (sales manager vs sales executive)
-    const targetRole = data.businessType === 'Sales Manager' ? 'manager' : 'executive'
+    // Determine target mock role
+    const targetRole = 'executive'
     const templateUser = demoUsers[targetRole]
 
     // Login the user with mock credentials and navigate to their homepage
@@ -111,7 +111,7 @@ export default function ExecutiveSignupPage() {
     )
 
     toast.success(`Registered successfully as ${data.businessType}!`)
-    navigate(targetRole === 'manager' ? '/manager' : '/executive', { replace: true })
+    navigate('/executive', { replace: true })
   }
 
   return (
@@ -186,7 +186,7 @@ export default function ExecutiveSignupPage() {
             Create Staff Account
           </Typography>
           <Typography color="text.secondary" sx={{ fontSize: 13, mb: 2.5 }}>
-            Register as a Sales Executive or Sales Manager to access the workspaces.
+            Register as a Sales Executive to access the workspace.
           </Typography>
 
           <Box component="form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2.5">
@@ -204,7 +204,6 @@ export default function ExecutiveSignupPage() {
               <RHFTextField control={control} name="companyName" label="Company Name (Optional)" size="small" />
               <RHFTextField control={control} name="businessType" label="Business Type / Role" select size="small">
                 <MenuItem value="Sales Executive">Sales Executive</MenuItem>
-                <MenuItem value="Sales Manager">Sales Manager</MenuItem>
               </RHFTextField>
             </Box>
 

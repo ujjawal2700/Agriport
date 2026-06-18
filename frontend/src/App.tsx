@@ -10,7 +10,6 @@ import PageFallback from '@/components/common/PageFallback'
 import AuthLayout from '@/layouts/AuthLayout'
 import CustomerLayout from '@/layouts/CustomerLayout'
 import AdminLayout from '@/layouts/AdminLayout'
-import ManagerLayout from '@/layouts/ManagerLayout'
 import ExecutiveLayout from '@/layouts/ExecutiveLayout'
 
 // Auth
@@ -43,14 +42,7 @@ const ReportsAdminPage = lazy(() => import('@/pages/admin/ReportsAdminPage'))
 const AdminStorefrontPage = lazy(() => import('@/pages/admin/AdminStorefrontPage'))
 const CategoriesAdminPage = lazy(() => import('@/pages/admin/CategoriesAdminPage'))
 
-// Manager
-const ManagerDashboardPage = lazy(() => import('@/pages/manager/ManagerDashboardPage'))
-const TeamPage = lazy(() => import('@/pages/manager/TeamPage'))
-const SellingPage = lazy(() => import('@/pages/manager/SellingPage'))
-const PurchasePage = lazy(() => import('@/pages/manager/PurchasePage'))
-const StockRequestsPage = lazy(() => import('@/pages/manager/StockRequestsPage'))
-const ManagerIncentivesPage = lazy(() => import('@/pages/manager/IncentivesPage'))
-const AnalyticsPage = lazy(() => import('@/pages/manager/AnalyticsPage'))
+
 
 // Executive
 const ExecutiveDashboardPage = lazy(() => import('@/pages/executive/ExecutiveDashboardPage'))
@@ -104,7 +96,6 @@ export default function App() {
 
           {/* Staff login portals */}
           <Route path="/admin/login" element={<StaffLoginPage role="admin" />} />
-          <Route path="/manager/login" element={<StaffLoginPage role="manager" />} />
           <Route path="/executive/login" element={<StaffLoginPage role="executive" />} />
           <Route path="/executive/signup" element={<ExecutiveSignupPage />} />
 
@@ -128,23 +119,7 @@ export default function App() {
             <Route path="storefront" element={<AdminStorefrontPage />} />
           </Route>
 
-          {/* Sales Manager workspace */}
-          <Route
-            path="/manager"
-            element={
-              <RoleRoute role="manager">
-                <ManagerLayout />
-              </RoleRoute>
-            }
-          >
-            <Route index element={<ManagerDashboardPage />} />
-            <Route path="team" element={<TeamPage />} />
-            <Route path="selling" element={<SellingPage />} />
-            <Route path="purchase" element={<PurchasePage />} />
-            <Route path="stock" element={<StockRequestsPage />} />
-            <Route path="incentives" element={<ManagerIncentivesPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-          </Route>
+
 
           {/* Sales Executive workspace */}
           <Route
