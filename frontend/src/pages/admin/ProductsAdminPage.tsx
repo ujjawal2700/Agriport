@@ -11,8 +11,14 @@ import ProductThumb from '@/components/common/ProductThumb'
 import StatusChip from '@/components/common/StatusChip'
 import ProductFormDialog from '@/components/admin/ProductFormDialog'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
-import { useGetProductsQuery, useGetCategoriesQuery } from '@/redux/api'
-import { categories as mockCategories } from '@/mocks/data'
+import {
+  useGetProductsQuery,
+  useGetCategoriesQuery,
+  useCreateCategoryMutation,
+  useCreateProductMutation,
+  useUpdateProductMutation,
+  useDeleteProductMutation,
+} from '@/redux/api'
 import { formatMoney } from '@/utils/format'
 import type { Product } from '@/types'
 import toast from 'react-hot-toast'
@@ -20,62 +26,96 @@ import toast from 'react-hot-toast'
 export default function ProductsAdminPage() {
   const { data: serverProducts, isLoading } = useGetProductsQuery()
   const { data: categories, refetch: refetchCategories } = useGetCategoriesQuery()
-  const [rows, setRows] = useState<Product[]>([])
+
+  const [createCategory] = useCreateCategoryMutation()
+  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation()
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation()
+  const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation()
+
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState<Product | null>(null)
   const [newCategoryName, setNewCategoryName] = useState('')
 
-  useEffect(() => {
-    if (serverProducts) setRows(serverProducts)
-  }, [serverProducts])
-
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
-    return rows.filter((p) => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s))
-  }, [rows, search])
+    const list = serverProducts || []
+    return list.filter((p) => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s))
+  }, [serverProducts, search])
 
   const categoryNames = useMemo(() => {
     return categories?.map((c) => c.name) ?? []
   }, [categories])
 
-  const handleCreateCategory = () => {
+  const handleCreateCategory = async () => {
     const trimmed = newCategoryName.trim()
     if (!trimmed) {
       toast.error('Please enter a category name')
       return
     }
-    if (mockCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (categories?.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
       toast.error('Category already exists')
       return
     }
 
-    mockCategories.push({
-      id: `c-${Date.now()}`,
-      name: trimmed,
-      slug: trimmed.toLowerCase().replace(/\s+/g, '-'),
-      productCount: 0,
-      icon: 'folder',
-    })
-
-    setNewCategoryName('')
-    toast.success(`Category "${trimmed}" created successfully`)
-    refetchCategories()
+    try {
+      await createCategory({ name: trimmed }).unwrap()
+      setNewCategoryName('')
+      toast.success(`Category "${trimmed}" created successfully`)
+      refetchCategories()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to create category')
+    }
   }
 
-  const handleSave = (product: Product) => {
-    setRows((prev) => {
-      const exists = prev.some((p) => p.id === product.id)
-      return exists ? prev.map((p) => (p.id === product.id ? product : p)) : [product, ...prev]
-    })
-    toast.success(editing ? 'Product updated' : 'Product added')
+  const handleSave = async (product: Product) => {
+    const catDoc = categories?.find((c) => c.name === product.category)
+    if (!catDoc) {
+      toast.error('Selected category is invalid or not found')
+      return
+    }
+
+    const priceSlabs = product.pricingSlabs.map((slab) => ({
+      minQty: slab.minQty,
+      unitPrice: slab.price,
+    }))
+
+    const payload = {
+      name: product.name,
+      category: catDoc.id, // Mongoose ObjectId
+      unit: product.unit,
+      moq: product.moq,
+      stock: product.availableStock,
+      priceSlabs,
+      description: product.description || product.name,
+      specs: product.specifications,
+    }
+
+    try {
+      if (editing) {
+        await updateProduct({ id: editing.id, ...payload }).unwrap()
+        toast.success('Product updated successfully')
+      } else {
+        const generatedSku = product.name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)
+        await createProduct({ ...payload, sku: generatedSku }).unwrap()
+        toast.success('Product added successfully')
+      }
+      setFormOpen(false)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to save product')
+    }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleting) return
-    setRows((prev) => prev.filter((p) => p.id !== deleting.id))
-    toast.success('Product deleted')
+    try {
+      await deleteProduct(deleting.id).unwrap()
+      toast.success('Product deleted')
+      setDeleting(null)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to delete product')
+    }
   }
 
   const columns: GridColDef<Product>[] = [
@@ -182,7 +222,7 @@ export default function ProductsAdminPage() {
 
       <TableCard
         title="Products"
-        count={rows.length}
+        count={filtered.length}
         search={search}
         onSearch={setSearch}
         searchPlaceholder="Search products…"
@@ -218,6 +258,7 @@ export default function ProductsAdminPage() {
         categories={categoryNames}
         onClose={() => setFormOpen(false)}
         onSave={handleSave}
+        loading={isCreating || isUpdating}
       />
       <ConfirmDialog
         open={Boolean(deleting)}
@@ -231,6 +272,7 @@ export default function ProductsAdminPage() {
         destructive
         onConfirm={handleDelete}
         onClose={() => setDeleting(null)}
+        loading={isDeleting}
       />
     </Box>
   )

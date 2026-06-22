@@ -11,6 +11,7 @@ import {
   TextField,
   Divider,
   Chip,
+  CircularProgress,
 } from '@mui/material'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded'
@@ -22,7 +23,12 @@ import StatusChip from '@/components/common/StatusChip'
 import { DocListSkeleton, TransactionListSkeleton } from '@/components/common/Loader'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { updateProfile } from '@/redux/slices/authSlice'
-import { useGetTransactionsQuery, useGetDocumentsQuery } from '@/redux/api'
+import {
+  useGetTransactionsQuery,
+  useGetDocumentsQuery,
+  useUpdateProfileMutation,
+  useUploadDocumentMutation,
+} from '@/redux/api'
 import { currentUser } from '@/mocks/data'
 import { ROUTES, PAYMENT_MODE_LABEL } from '@/constants'
 import { formatMoney, formatDate, initials } from '@/utils/format'
@@ -32,12 +38,30 @@ import toast from 'react-hot-toast'
 type TabKey = 'personal' | 'business' | 'documents' | 'transactions'
 
 function DocRow({ doc }: { doc: BusinessDocument }) {
-  const onDrop = () => toast.success(`${doc.name} uploaded — pending verification`)
+  const [uploadDoc, { isLoading }] = useUploadDocumentMutation()
+
+  const onDrop = async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return
+    const file = acceptedFiles[0]
+
+    try {
+      const formData = new FormData()
+      formData.append('type', doc.type)
+      formData.append('file', file)
+
+      await uploadDoc(formData).unwrap()
+      toast.success(`${doc.name} uploaded successfully!`)
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to upload document')
+    }
+  }
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: 1,
     accept: { 'application/pdf': ['.pdf'], 'image/*': ['.png', '.jpg', '.jpeg'] },
   })
+
   const statusIcon =
     doc.status === 'verified' ? (
       <CheckCircleRoundedIcon sx={{ color: 'var(--brand-600)' }} />
@@ -82,7 +106,7 @@ function DocRow({ doc }: { doc: BusinessDocument }) {
           py: 1,
           borderRadius: 2,
           border: `1.5px dashed ${isDragActive ? 'var(--brand-500)' : 'var(--ink-300)'}`,
-          cursor: 'pointer',
+          cursor: isLoading ? 'not-allowed' : 'pointer',
           fontSize: 13,
           fontWeight: 600,
           color: 'var(--brand-700)',
@@ -90,11 +114,16 @@ function DocRow({ doc }: { doc: BusinessDocument }) {
           alignItems: 'center',
           gap: 0.75,
           bgcolor: isDragActive ? 'var(--brand-50)' : 'transparent',
+          pointerEvents: isLoading ? 'none' : 'auto',
         }}
       >
         <input {...getInputProps()} />
-        <CloudUploadRoundedIcon sx={{ fontSize: 18 }} />
-        {doc.status === 'missing' ? 'Upload' : 'Replace'}
+        {isLoading ? (
+          <CircularProgress size={16} color="inherit" />
+        ) : (
+          <CloudUploadRoundedIcon sx={{ fontSize: 18 }} />
+        )}
+        {isLoading ? 'Uploading...' : doc.status === 'missing' ? 'Upload' : 'Replace'}
       </Box>
     </Box>
   )
@@ -107,13 +136,19 @@ export default function ProfilePage() {
   const [form, setForm] = useState(user)
   const { data: transactions, isLoading: txLoading } = useGetTransactionsQuery()
   const { data: documents, isLoading: docLoading } = useGetDocumentsQuery()
+  const [updateProfileApi, { isLoading: updating }] = useUpdateProfileMutation()
 
   const set = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
 
-  const save = () => {
-    dispatch(updateProfile(form))
-    toast.success('Profile updated')
+  const save = async () => {
+    try {
+      const result = await updateProfileApi(form).unwrap()
+      dispatch(updateProfile(result.data || result))
+      toast.success('Profile updated successfully!')
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to update profile')
+    }
   }
 
   const verifiedCount = documents?.filter((d) => d.status === 'verified').length ?? 0
@@ -175,8 +210,8 @@ export default function ProfilePage() {
               <TextField label="City" value={form.city ?? ''} onChange={set('city')} fullWidth />
             </Box>
             <Divider sx={{ my: 3 }} />
-            <Button variant="contained" onClick={save}>
-              Save changes
+            <Button variant="contained" onClick={save} disabled={updating}>
+              {updating ? <CircularProgress size={24} color="inherit" /> : 'Save changes'}
             </Button>
           </Box>
         )}
@@ -195,8 +230,8 @@ export default function ProfilePage() {
               </Box>
             </Box>
             <Divider sx={{ my: 3 }} />
-            <Button variant="contained" onClick={save}>
-              Save business details
+            <Button variant="contained" onClick={save} disabled={updating}>
+              {updating ? <CircularProgress size={24} color="inherit" /> : 'Save business details'}
             </Button>
           </Box>
         )}

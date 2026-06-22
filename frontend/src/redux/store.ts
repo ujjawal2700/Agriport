@@ -3,6 +3,7 @@ import { api } from './api'
 import authReducer from './slices/authSlice'
 import cartReducer from './slices/cartSlice'
 import storefrontReducer, { STOREFRONT_STORAGE_KEY } from './slices/storefrontSlice'
+import { injectStore } from './apiClient'
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,8 @@ export const store = configureStore({
   },
   middleware: (getDefault) => getDefault().concat(api.middleware),
 })
+
+injectStore(store)
 
 // Persist storefront content to localStorage so executive edits survive reloads
 // and reflect across the customer app (frontend-only, no backend).

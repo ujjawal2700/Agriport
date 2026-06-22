@@ -9,7 +9,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import TableCard from '@/components/admin/TableCard'
 import { gridSx } from '@/components/admin/gridStyles'
-import { useGetAdminUsersQuery } from '@/redux/api'
+import { useGetAdminUsersQuery, useUpdateUserStatusMutation, useVerifyUserKycMutation } from '@/redux/api'
 import { formatMoney, initials } from '@/utils/format'
 import type { AdminUser, AccountStatus } from '@/types'
 import toast from 'react-hot-toast'
@@ -22,30 +22,35 @@ const STATUS_META: Record<AccountStatus, { label: string; color: 'success' | 'wa
 
 export default function UsersAdminPage() {
   const { data: serverUsers, isLoading } = useGetAdminUsersQuery()
-  const [rows, setRows] = useState<AdminUser[]>([])
+  const [updateUserStatus] = useUpdateUserStatusMutation()
+  const [verifyUserKyc] = useVerifyUserKycMutation()
+
   const [search, setSearch] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [active, setActive] = useState<AdminUser | null>(null)
 
-  useEffect(() => {
-    if (serverUsers) setRows(serverUsers)
-  }, [serverUsers])
-
-  const patch = (id: string, changes: Partial<AdminUser>) =>
-    setRows((prev) => prev.map((u) => (u.id === id ? { ...u, ...changes } : u)))
-
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
-    return rows.filter((u) => u.name.toLowerCase().includes(s) || u.company.toLowerCase().includes(s) || u.email.toLowerCase().includes(s))
-  }, [rows, search])
+    const list = serverUsers || []
+    return list.filter((u) => u.name.toLowerCase().includes(s) || u.company.toLowerCase().includes(s) || u.email.toLowerCase().includes(s))
+  }, [serverUsers, search])
 
-  const setStatus = (u: AdminUser, status: AccountStatus) => {
-    patch(u.id, { status })
-    toast.success(`${u.company} ${STATUS_META[status].label.toLowerCase()}`)
+  const setStatus = async (u: AdminUser, status: AccountStatus) => {
+    try {
+      await updateUserStatus({ id: u.id, status }).unwrap()
+      toast.success(`${u.company} ${STATUS_META[status].label.toLowerCase()}`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to update user status')
+    }
   }
-  const verifyDocs = (u: AdminUser) => {
-    patch(u.id, { docStatus: 'verified' })
-    toast.success(`Documents verified for ${u.company}`)
+
+  const verifyDocs = async (u: AdminUser) => {
+    try {
+      await verifyUserKyc({ id: u.id, kycVerified: true }).unwrap()
+      toast.success(`Documents verified for ${u.company}`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to verify documents')
+    }
   }
 
   const columns: GridColDef<AdminUser>[] = [
@@ -113,7 +118,7 @@ export default function UsersAdminPage() {
 
   return (
     <Box>
-      <TableCard title="Customers" count={rows.length} search={search} onSearch={setSearch} searchPlaceholder="Search by name, company, email…">
+      <TableCard title="Customers" count={filtered.length} search={search} onSearch={setSearch} searchPlaceholder="Search by name, company, email…">
         <DataGrid
           rows={filtered}
           columns={columns}

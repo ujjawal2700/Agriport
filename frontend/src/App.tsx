@@ -56,7 +56,6 @@ const OnArrivalPage = lazy(() => import('@/pages/executive/OnArrivalPage'))
 
 // Misc
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
-const MobileShowcase = lazy(() => import('@/pages/mobile/MobileShowcase'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -103,7 +102,7 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <RoleRoute role="admin">
+              <RoleRoute role={['admin', 'manager']}>
                 <AdminLayout />
               </RoleRoute>
             }
@@ -140,7 +139,6 @@ export default function App() {
             <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
           </Route>
 
-          <Route path="/mobile-showcase" element={<MobileShowcase />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

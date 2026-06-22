@@ -2,10 +2,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Typography, Button, MenuItem, Link as MuiLink } from '@mui/material'
+import { Box, Typography, Button, MenuItem, Link as MuiLink, CircularProgress } from '@mui/material'
 import RHFTextField from '@/components/forms/RHFTextField'
 import { ROUTES } from '@/constants'
 import { COUNTRIES } from '@/constants/countries'
+import { useSendOtpMutation } from '@/redux/api'
+import toast from 'react-hot-toast'
 
 const schema = z.object({
   fullName: z.string().min(2, 'Enter your full name'),
@@ -19,6 +21,7 @@ type Form = z.infer<typeof schema>
 
 export default function SignupPage() {
   const navigate = useNavigate()
+  const [sendOtp, { isLoading }] = useSendOtpMutation()
   const { control, handleSubmit } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -27,8 +30,14 @@ export default function SignupPage() {
     },
   })
 
-  const onSubmit = (data: Form) => {
-    navigate(ROUTES.otp, { state: { mobile: data.mobile, signup: true } })
+  const onSubmit = async (data: Form) => {
+    try {
+      await sendOtp({ mobile: data.mobile, purpose: 'signup' }).unwrap()
+      toast.success('OTP sent successfully. Please check your mobile.')
+      navigate(ROUTES.otp, { state: { mobile: data.mobile, signup: true, signupData: data } })
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to send OTP')
+    }
   }
 
   return (
@@ -68,8 +77,8 @@ export default function SignupPage() {
         </RHFTextField>
         <RHFTextField control={control} name="address" label="Address" multiline minRows={2} />
         <Box sx={{ mt: 1 }}>
-          <Button type="submit" variant="contained" size="large" fullWidth>
-            Continue — Verify mobile
+          <Button type="submit" variant="contained" size="large" fullWidth disabled={isLoading}>
+            {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Continue — Verify mobile'}
           </Button>
         </Box>
       </Box>

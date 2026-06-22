@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Box, Typography, Button } from '@mui/material'
+import { Box, Typography, Button, Menu, MenuItem } from '@mui/material'
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
 import { useGetSalesSeriesQuery } from '@/redux/api'
+import { apiClient } from '@/redux/apiClient'
 import { formatMoney, formatMoneyCompact } from '@/utils/format'
 import { ink } from '@/theme/theme'
 import toast from 'react-hot-toast'
@@ -29,6 +30,41 @@ function Panel({ title, subtitle, children }: { title: string; subtitle?: string
 
 export default function ReportsAdminPage() {
   const { data: series } = useGetSalesSeriesQuery()
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const openMenu = Boolean(anchorEl)
+
+  const handleExportClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+  }
+
+  const handleExport = async (type: string) => {
+    handleMenuClose()
+    setIsExporting(true)
+    try {
+      const response = await apiClient.get(`/reports/export?type=${type}`, {
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${type}_report_${Date.now()}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success(`${type.toUpperCase()} report exported successfully`)
+    } catch (err) {
+      toast.error('Failed to export report')
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const reportsData = useMemo(() => {
     if (!series) return []
@@ -50,9 +86,32 @@ export default function ReportsAdminPage() {
   return (
     <Box className="flex flex-col gap-5">
       <Box className="flex justify-end">
-        <Button variant="outlined" startIcon={<FileDownloadRoundedIcon />} onClick={() => toast.success('Report exported (demo)')}>
-          Export report
+        <Button
+          id="export-button"
+          aria-controls={openMenu ? 'export-menu' : undefined}
+          aria-haspopup="true"
+          aria-expanded={openMenu ? 'true' : undefined}
+          variant="outlined"
+          startIcon={<FileDownloadRoundedIcon />}
+          onClick={handleExportClick}
+          disabled={isExporting}
+        >
+          {isExporting ? 'Exporting...' : 'Export report'}
         </Button>
+        <Menu
+          id="export-menu"
+          anchorEl={anchorEl}
+          open={openMenu}
+          onClose={handleMenuClose}
+          MenuListProps={{
+            'aria-labelledby': 'export-button',
+          }}
+        >
+          <MenuItem onClick={() => handleExport('orders')}>Orders Report</MenuItem>
+          <MenuItem onClick={() => handleExport('products')}>Products Report</MenuItem>
+          <MenuItem onClick={() => handleExport('users')}>Users Report</MenuItem>
+          <MenuItem onClick={() => handleExport('sales')}>Sales Report</MenuItem>
+        </Menu>
       </Box>
 
       {/* Sale Trends Chart */}

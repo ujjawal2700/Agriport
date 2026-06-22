@@ -10,6 +10,7 @@ interface Props {
   destructive?: boolean
   onConfirm: () => void
   onClose: () => void
+  loading?: boolean
 }
 
 export default function ConfirmDialog({
@@ -21,9 +22,11 @@ export default function ConfirmDialog({
   destructive,
   onConfirm,
   onClose,
+  loading,
 }: Props) {
+  const isPending = loading ?? false
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={isPending ? undefined : onClose} maxWidth="xs" fullWidth>
       <DialogContent sx={{ pt: 3 }}>
         <Typography variant="h6" sx={{ fontSize: 18, mb: 1 }}>
           {title}
@@ -31,18 +34,21 @@ export default function ConfirmDialog({
         <Box sx={{ fontSize: 14, color: 'var(--ink-600)' }}>{message}</Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
-        <Button onClick={onClose} variant="outlined">
+        <Button onClick={onClose} variant="outlined" disabled={isPending}>
           {cancelLabel}
         </Button>
         <Button
           onClick={() => {
             onConfirm()
-            onClose()
+            if (loading === undefined) {
+              onClose()
+            }
           }}
           variant="contained"
           color={destructive ? 'error' : 'primary'}
+          disabled={isPending}
         >
-          {confirmLabel}
+          {isPending ? 'Processing...' : confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>
