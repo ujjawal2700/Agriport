@@ -324,6 +324,44 @@ export interface VendorPurchase {
   status: 'received' | 'pending' | 'ordered'
 }
 
+export interface PurchaseDraft {
+  vendorName: string
+  productId: string
+  productName: string
+  quantity: number
+  unit: string
+  buyPrice: number
+  purchaseDate: string
+  status: 'received' | 'pending' | 'ordered'
+  notes: string
+}
+
+export interface ArrivalDraft {
+  productId: string
+  productName: string
+  category: string
+  currentStock: number
+  requestedChange: number
+  type: 'add' | 'update'
+  notes: string
+}
+
+export interface SaleDraft {
+  customerId: string
+  customerName: string
+  productId: string
+  productName: string
+  category: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  deliveryAddress: string
+  paymentMode: string
+  notes: string
+}
+
+
+
 export interface IncentivePoint {
   label: string
   earned: number
