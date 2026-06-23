@@ -135,45 +135,16 @@ export default function ProductDetailPage() {
             </Box>
           </Box>
 
+          <Typography sx={{ fontSize: 24, fontWeight: 800, color: 'var(--brand-700)', mb: 2 }}>
+            {formatMoney(product.basePrice)}
+            <Box component="span" sx={{ fontSize: 14, color: 'var(--ink-500)', fontWeight: 500, ml: 0.5 }}>
+              / {product.unit}
+            </Box>
+          </Typography>
+
           <Typography color="text.secondary" sx={{ mb: 3 }}>
             {product.shortDescription}
           </Typography>
-
-          {/* Lot-based pricing */}
-          <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', mb: 3 }}>
-            <Box sx={{ px: 2, py: 1.25, bgcolor: 'var(--ink-50)', borderBottom: '1px solid var(--ink-200)' }}>
-              <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink-600)' }}>
-                size and count availability
-              </Typography>
-            </Box>
-            <Table size="small">
-              <TableBody>
-                {product.pricingSlabs.map((s) => {
-                  const active = effectiveQty >= s.minQty && (s.maxQty === null || effectiveQty <= s.maxQty)
-                  return (
-                    <TableRow
-                      key={s.label}
-                      sx={{
-                        bgcolor: active ? 'var(--brand-50)' : 'transparent',
-                        '& td': { borderColor: 'var(--ink-100)' },
-                      }}
-                    >
-                      <TableCell sx={{ fontWeight: active ? 700 : 500 }}>
-                        {active && '▸ '}
-                        {s.label}
-                      </TableCell>
-                      <TableCell align="right" className="tnum" sx={{ fontWeight: 700, color: active ? 'var(--brand-700)' : 'inherit' }}>
-                        {formatMoney(s.price)}
-                        <Box component="span" sx={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 500 }}>
-                          /{product.unit}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </Box>
 
           {/* Buy box */}
           <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', p: { xs: 2, md: 3 }, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(22,27,36,0.05)' }}>
@@ -212,7 +183,7 @@ export default function ProductDetailPage() {
               </Box>
               <Box>
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
-                  QUANTITY (MOQ {product.moq})
+                  QUANTITY
                 </Typography>
                 <QuantityStepper
                   value={effectiveQty}

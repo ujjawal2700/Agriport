@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Transaction from './transaction.model.js';
 import Order from '../orders/order.model.js';
 import SaleRecord from '../sales/saleRecord.model.js';
+import SystemSetting from '../sales/systemSetting.model.js';
 import User from '../users/user.model.js';
 import eventBus from '../../events/index.js';
 import { paginate } from '../../utils/paginate.js';
@@ -72,6 +73,11 @@ export const verifyOfflinePayment = asyncWrapper(async (req, res, next) => {
     // Check if sales records already exist for this order to prevent duplicates
     const recordsExist = await SaleRecord.exists({ orderId: order._id });
     if (!recordsExist) {
+      const commissionSetting = await SystemSetting.findOne({ key: 'sales_commission' });
+      const overrideSetting = await SystemSetting.findOne({ key: 'manager_override' });
+      const commRate = commissionSetting ? commissionSetting.value / 100 : 0.05;
+      const overRate = overrideSetting ? overrideSetting.value / 100 : 0.02;
+
       for (const line of order.lines) {
         let executiveId = order.executiveId;
         let managerId = null;
@@ -98,9 +104,9 @@ export const verifyOfflinePayment = asyncWrapper(async (req, res, next) => {
           }
         }
 
-        // Calculate commissions (e.g. flat 5% for executive, 2% for manager)
-        const commissionAmount = executiveId ? Math.round(line.lineTotal * 0.05 * 100) / 100 : 0;
-        const overrideAmount = managerId ? Math.round(line.lineTotal * 0.02 * 100) / 100 : 0;
+        // Calculate commissions (using dynamic rates)
+        const commissionAmount = executiveId ? Math.round(line.lineTotal * commRate * 100) / 100 : 0;
+        const overrideAmount = managerId ? Math.round(line.lineTotal * overRate * 100) / 100 : 0;
 
         await SaleRecord.create({
           orderId: order._id,

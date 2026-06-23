@@ -5,13 +5,14 @@ import type { GridColDef } from '@mui/x-data-grid'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import TableCard from '@/components/admin/TableCard'
 import { gridSx } from '@/components/admin/gridStyles'
-import { useGetCategoriesQuery } from '@/redux/api'
-import { categories as mockCategories } from '@/mocks/data'
+import { useGetCategoriesQuery, useCreateCategoryMutation, useDeleteCategoryMutation } from '@/redux/api'
 import type { Category } from '@/types'
 import toast from 'react-hot-toast'
 
 export default function CategoriesAdminPage() {
-  const { data: categories, isLoading, refetch } = useGetCategoriesQuery()
+  const { data: categories, isLoading } = useGetCategoriesQuery()
+  const [createCategory] = useCreateCategoryMutation()
+  const [deleteCategory] = useDeleteCategoryMutation()
   const [search, setSearch] = useState('')
   const [newCategoryName, setNewCategoryName] = useState('')
 
@@ -21,40 +22,35 @@ export default function CategoriesAdminPage() {
     return categories.filter((c) => c.name.toLowerCase().includes(s))
   }, [categories, search])
 
-  const handleCreateCategory = () => {
+  const handleCreateCategory = async () => {
     const trimmed = newCategoryName.trim()
     if (!trimmed) {
       toast.error('Please enter a category name')
       return
     }
-    if (mockCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (categories?.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
       toast.error('Category already exists')
       return
     }
 
-    // Add to global mock data
-    mockCategories.push({
-      id: `c-${Date.now()}`,
-      name: trimmed,
-      slug: trimmed.toLowerCase().replace(/\s+/g, '-'),
-      productCount: 0,
-      icon: 'folder',
-    })
-
-    setNewCategoryName('')
-    toast.success(`Category "${trimmed}" created successfully`)
-    refetch()
-  }
-
-  const handleDeleteCategory = (id: string) => {
-    const idx = mockCategories.findIndex((c) => c.id === id)
-    if (idx !== -1) {
-      const name = mockCategories[idx].name
-      mockCategories.splice(idx, 1)
-      toast.success(`Category "${name}" deleted`)
-      refetch()
+    try {
+      await createCategory({ name: trimmed }).unwrap()
+      setNewCategoryName('')
+      toast.success(`Category "${trimmed}" created successfully`)
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to create category')
     }
   }
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      await deleteCategory(id).unwrap()
+      toast.success('Category deleted successfully')
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to delete category')
+    }
+  }
+
 
   const columns: GridColDef<Category>[] = [
     {

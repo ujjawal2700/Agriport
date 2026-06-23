@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import {
   Box,
   Typography,
-  Button,
   TextField,
   Chip,
   Table,
@@ -15,19 +14,14 @@ import {
   Paper,
   Slide,
   Backdrop,
+  CircularProgress,
 } from '@mui/material'
-import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import StatusChip from '@/components/common/StatusChip'
-import StockFormDialog from '@/components/executive/StockFormDialog'
 import { formatMoney } from '@/utils/format'
-
-import { products as mockProducts } from '@/mocks/data'
+import { useGetProductsQuery } from '@/redux/api'
 import type { Product } from '@/types'
-
-// Local runtime store (mirrors mock data, resets on page reload — no backend yet)
-const runtimeProducts: Product[] = [...mockProducts]
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -39,35 +33,20 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 export default function ExecutiveProductsPage() {
-  const [localProducts, setLocalProducts] = useState<Product[]>([...runtimeProducts])
+  const { data: serverProducts, isLoading } = useGetProductsQuery()
   const [search, setSearch] = useState('')
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Product | null>(null)
   const [detailProduct, setDetailProduct] = useState<Product | null>(null)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return localProducts.filter(
+    const list = serverProducts || []
+    return list.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
         p.origin.toLowerCase().includes(q),
     )
-  }, [localProducts, search])
-
-  const openAdd = () => {
-    setEditing(null)
-    setOpen(true)
-  }
-
-
-  const handleSaveCallback = (savedProduct: Product, mode: 'add' | 'update') => {
-    if (mode === 'update') {
-      setLocalProducts((prev) => prev.map((p) => (p.id === savedProduct.id ? savedProduct : p)))
-    } else {
-      setLocalProducts((prev) => [savedProduct, ...prev])
-    }
-  }
+  }, [serverProducts, search])
 
   return (
     <Box className="flex flex-col gap-5">
@@ -76,17 +55,9 @@ export default function ExecutiveProductsPage() {
         <Box>
           <Typography sx={{ fontWeight: 700, fontSize: 20 }}>Product Management</Typography>
           <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }}>
-            {localProducts.length} products · manage catalogue, stock & specifications
+            {filtered.length} products · view catalogue, stock & specifications
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddRoundedIcon />}
-          onClick={openAdd}
-          sx={{ borderRadius: 2.5, fontWeight: 700 }}
-        >
-          Add Stock
-        </Button>
       </Box>
 
       {/* Search */}
@@ -272,13 +243,6 @@ export default function ExecutiveProductsPage() {
         </Paper>
       </Slide>
 
-      {/* Stock Form Dialog */}
-      <StockFormDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        productToEdit={editing}
-        onSave={handleSaveCallback}
-      />
     </Box>
   )
 }

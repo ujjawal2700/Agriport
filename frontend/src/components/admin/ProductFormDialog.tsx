@@ -35,6 +35,7 @@ const blankSpecs = () => ({
 })
 
 const blank = {
+  sku: '',
   name: '',
   category: '',
   unit: 'piece',
@@ -66,10 +67,11 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
     if (open) {
       if (initial) {
         setForm({
+          sku: initial.sku || '',
           name: initial.name,
           category: initial.category,
           unit: initial.unit,
-          moq: initial.moq,
+          moq: initial.moq || 1,
           availableStock: initial.availableStock,
           stockStatus: initial.stockStatus,
           basePrice: initial.basePrice || 100,
@@ -88,7 +90,8 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
         setSpecs({ ...blankSpecs(), ...initial.specifications })
         setImages(initial.images ?? [])
       } else {
-        setForm({ ...blank, category: categories[0] ?? '' })
+        const generatedSku = 'PROD-' + Math.floor(1000 + Math.random() * 9000);
+        setForm({ ...blank, sku: generatedSku, category: categories[0] ?? '' })
         setSpecs(blankSpecs())
         setImages([])
       }
@@ -103,7 +106,13 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
     setForm((f) => ({ ...f, [key]: isNaN(val) ? 0 : val }))
   }
 
-  const slabs = generateSlabs(form.basePrice || 100)
+  const specChange = (key: string) => (e: ChangeEvent<HTMLInputElement>) => {
+    setSpecs((s) => ({ ...s, [key]: e.target.value }))
+  }
+
+  const slabs = [
+    { minQty: 1, maxQty: null, price: form.basePrice || 100, label: '1+ units' }
+  ]
   
   const valid =
     form.name.trim().length >= 2 &&
@@ -111,21 +120,26 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
     form.description.trim().length >= 5 &&
     typeof form.basePrice === 'number' && form.basePrice >= 0 &&
     typeof form.availableStock === 'number' && form.availableStock >= 0 &&
-    typeof form.moq === 'number' && form.moq >= 1 &&
     form.unit.trim().length > 0
 
   const handleSave = () => {
     const tags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+    const finalSpecs = {
+      ...specs,
+      Origin: form.origin,
+      'Lead Time (Days)': form.leadTimeDays.toString(),
+    }
     const product: Product = {
       id: initial?.id ?? `p-${Date.now()}`,
+      sku: initial?.sku ?? (form.name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)),
       name: form.name.trim(),
       category: form.category,
       images,
       shortDescription: form.description.substring(0, 100) + '...',
       description: form.description.trim(),
-      specifications: { ...specs, Origin: form.origin },
+      specifications: finalSpecs,
       unit: form.unit,
-      moq: form.moq,
+      moq: 1,
       availableStock: form.availableStock,
       stockStatus: form.availableStock === 0 ? 'out_of_stock' : (form.availableStock < 10 ? 'low_stock' : 'in_stock'),
       basePrice: form.basePrice,
@@ -213,9 +227,9 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
           </TextField>
 
           <TextField
-            label="MOQ *"
-            value={form.moq}
-            onChange={num('moq')}
+            label="Lead Time (Days) *"
+            value={form.leadTimeDays}
+            onChange={num('leadTimeDays')}
             type="number"
             fullWidth
             size="small"
@@ -244,6 +258,62 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
             disabled={isPending}
           />
         </Box>
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <TextField
+            label="Grade"
+            placeholder="e.g. Premium / A+"
+            value={specs['Grade'] || ''}
+            onChange={specChange('Grade')}
+            fullWidth
+            size="small"
+            disabled={isPending}
+          />
+          <TextField
+            label="Brand Name"
+            placeholder="e.g. Local / Private Brand"
+            value={specs['Brand Name'] || ''}
+            onChange={specChange('Brand Name')}
+            fullWidth
+            size="small"
+            disabled={isPending}
+          />
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <TextField
+            label="Packing"
+            placeholder="e.g. 50kg gunny bag"
+            value={specs['Packing'] || ''}
+            onChange={specChange('Packing')}
+            fullWidth
+            size="small"
+            disabled={isPending}
+          />
+          <TextField
+            label="Size or Count"
+            placeholder="e.g. 80-100 count"
+            value={specs['Size or Count'] || ''}
+            onChange={specChange('Size or Count')}
+            fullWidth
+            size="small"
+            disabled={isPending}
+          />
+        </Box>
+
+        <TextField
+          label="Packing Type"
+          value={specs['Packing Type'] || 'Cartoon'}
+          onChange={specChange('Packing Type')}
+          select
+          fullWidth
+          size="small"
+          disabled={isPending}
+        >
+          {['Cartoon', 'Basket', 'Bag', 'Box'].map((t) => (
+            <MenuItem key={t} value={t}>{t}</MenuItem>
+          ))}
+        </TextField>
 
         <TextField
           label="Description *"

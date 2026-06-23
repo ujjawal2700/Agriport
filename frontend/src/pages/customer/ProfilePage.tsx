@@ -29,7 +29,6 @@ import {
   useUpdateProfileMutation,
   useUploadDocumentMutation,
 } from '@/redux/api'
-import { currentUser } from '@/mocks/data'
 import { ROUTES, PAYMENT_MODE_LABEL } from '@/constants'
 import { formatMoney, formatDate, initials } from '@/utils/format'
 import type { BusinessDocument } from '@/types'
@@ -131,7 +130,7 @@ function DocRow({ doc }: { doc: BusinessDocument }) {
 
 export default function ProfilePage() {
   const dispatch = useAppDispatch()
-  const user = useAppSelector((s) => s.auth.user) ?? currentUser
+  const user = useAppSelector((s) => s.auth.user)!
   const [tab, setTab] = useState<TabKey>('personal')
   const [form, setForm] = useState(user)
   const { data: transactions, isLoading: txLoading } = useGetTransactionsQuery()

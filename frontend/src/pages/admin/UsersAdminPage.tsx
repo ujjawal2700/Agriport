@@ -1,15 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DataGrid } from '@mui/x-data-grid'
 import type { GridColDef } from '@mui/x-data-grid'
-import { Box, Typography, Button, Avatar, Chip, Menu, MenuItem, ListItemIcon } from '@mui/material'
+import {
+  Box,
+  Typography,
+  Button,
+  Avatar,
+  Chip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
+} from '@mui/material'
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
 import PauseCircleRoundedIcon from '@mui/icons-material/PauseCircleRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded'
 import TableCard from '@/components/admin/TableCard'
 import { gridSx } from '@/components/admin/gridStyles'
-import { useGetAdminUsersQuery, useUpdateUserStatusMutation, useVerifyUserKycMutation } from '@/redux/api'
+import {
+  useGetAdminUsersQuery,
+  useUpdateUserStatusMutation,
+  useVerifyUserKycMutation,
+  useGetAdminUserDocumentsQuery,
+} from '@/redux/api'
 import { formatMoney, initials } from '@/utils/format'
 import type { AdminUser, AccountStatus } from '@/types'
 import toast from 'react-hot-toast'
@@ -28,6 +53,7 @@ export default function UsersAdminPage() {
   const [search, setSearch] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [active, setActive] = useState<AdminUser | null>(null)
+  const [docViewerOpen, setDocViewerOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
@@ -133,6 +159,10 @@ export default function UsersAdminPage() {
       </TableCard>
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
+        <MenuItem onClick={() => { setDocViewerOpen(true); setMenuAnchor(null) }}>
+          <ListItemIcon><VerifiedRoundedIcon fontSize="small" /></ListItemIcon>
+          View documents
+        </MenuItem>
         {active?.docStatus === 'pending' && (
           <MenuItem onClick={() => { if (active) verifyDocs(active); setMenuAnchor(null) }}>
             <ListItemIcon><VerifiedRoundedIcon fontSize="small" /></ListItemIcon>
@@ -158,6 +188,95 @@ export default function UsersAdminPage() {
           </MenuItem>
         )}
       </Menu>
+
+      <DocumentViewerDialog
+        open={docViewerOpen}
+        userId={active?.id || ''}
+        onClose={() => setDocViewerOpen(false)}
+      />
     </Box>
+  )
+}
+
+interface DocViewerProps {
+  open: boolean
+  userId: string
+  onClose: () => void
+}
+
+function DocumentViewerDialog({ open, userId, onClose }: DocViewerProps) {
+  const { data: documents, isLoading } = useGetAdminUserDocumentsQuery(userId, { skip: !userId })
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 4 } } }}>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 16 }}>
+        Business Documents
+        <IconButton size="small" onClick={onClose}>
+          <CloseRoundedIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers sx={{ p: 2 }}>
+        {isLoading ? (
+          <Box className="flex justify-center py-6">
+            <CircularProgress size={24} />
+          </Box>
+        ) : !documents || documents.length === 0 ? (
+          <Typography sx={{ py: 3, textAlign: 'center', color: 'var(--ink-500)', fontSize: 13.5 }}>
+            No documents uploaded yet.
+          </Typography>
+        ) : (
+          <List disablePadding>
+            {documents.map((doc) => (
+              <ListItem
+                key={doc.id}
+                sx={{
+                  border: '1px solid var(--ink-200)',
+                  borderRadius: 2.5,
+                  mb: 1.5,
+                  p: 1.5,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  '&:last-child': { mb: 0 },
+                }}
+              >
+                <ListItemText
+                  primary={<Typography sx={{ fontWeight: 600, fontSize: 13.5 }}>{doc.name}</Typography>}
+                  secondary={
+                    <Typography component="span" sx={{ fontSize: 11.5, display: 'block', mt: 0.25 }}>
+                      Status:{' '}
+                      <Typography component="span" sx={{
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        fontSize: 10.5,
+                        color: doc.status === 'verified' ? 'success.main' : doc.status === 'pending' ? 'warning.main' : 'error.main'
+                      }}>
+                        {doc.status}
+                      </Typography>
+                    </Typography>
+                  }
+                />
+                {doc.fileUrl ? (
+                  <IconButton
+                    component="a"
+                    href={doc.fileUrl.startsWith('/uploads/') ? `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${doc.fileUrl}` : doc.fileUrl}
+                    target="_blank"
+                    size="small"
+                    sx={{ color: 'var(--brand-700)' }}
+                  >
+                    <OpenInNewRoundedIcon fontSize="small" />
+                  </IconButton>
+                ) : null}
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, py: 1.5 }}>
+        <Button onClick={onClose} variant="contained" size="small" sx={{ borderRadius: 2.5 }}>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
   )
 }

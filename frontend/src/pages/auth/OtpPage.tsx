@@ -20,7 +20,7 @@ export default function OtpPage() {
 
   const [verifyOtp, { isLoading: verifying }] = useVerifyOtpMutation()
   const [signupCustomer, { isLoading: signingUp }] = useSignupCustomerMutation()
-  const [digits, setDigits] = useState<string[]>(['1', '2', '3', '4', '5', '6'])
+  const [digits, setDigits] = useState<string[]>(Array(LEN).fill(''))
   const [seconds, setSeconds] = useState(30)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -113,7 +113,7 @@ export default function OtpPage() {
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 4 }}>
         We sent a 6-digit code to <strong style={{ color: 'var(--ink-900)' }}>{mobile}</strong>.
-        Enter it below to continue. <em>(Demo: any 6 digits work.)</em>
+        Enter it below to continue.
       </Typography>
 
       <Box className="flex gap-2 sm:gap-3 mb-6" onPaste={handlePaste}>

@@ -76,20 +76,23 @@ export default function ProductsAdminPage() {
       return
     }
 
-    const priceSlabs = product.pricingSlabs.map((slab) => ({
-      minQty: slab.minQty,
-      unitPrice: slab.price,
-    }))
+    const priceSlabs = [
+      {
+        minQty: 1,
+        unitPrice: product.basePrice,
+      },
+    ]
 
     const payload = {
       name: product.name,
       category: catDoc.id, // Mongoose ObjectId
       unit: product.unit,
-      moq: product.moq,
+      moq: 1,
       stock: product.availableStock,
       priceSlabs,
       description: product.description || product.name,
       specs: product.specifications,
+      sku: product.sku,
     }
 
     try {
@@ -97,8 +100,7 @@ export default function ProductsAdminPage() {
         await updateProduct({ id: editing.id, ...payload }).unwrap()
         toast.success('Product updated successfully')
       } else {
-        const generatedSku = product.name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase() + '-' + Math.floor(1000 + Math.random() * 9000)
-        await createProduct({ ...payload, sku: generatedSku }).unwrap()
+        await createProduct(payload).unwrap()
         toast.success('Product added successfully')
       }
       setFormOpen(false)
@@ -139,10 +141,10 @@ export default function ProductsAdminPage() {
       ),
     },
     {
-      field: 'moq',
-      headerName: 'MOQ',
-      width: 90,
-      renderCell: (p) => <span className="tnum">{p.row.moq} {p.row.unit}</span>,
+      field: 'sku',
+      headerName: 'SKU',
+      width: 140,
+      renderCell: (p) => <span className="tnum">{p.row.sku}</span>,
     },
     {
       field: 'basePrice',
@@ -195,31 +197,6 @@ export default function ProductsAdminPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Create Category Section */}
-      <Box sx={{ p: 3, bgcolor: '#fff', borderRadius: 4, border: '1px solid var(--ink-200)' }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 0.5 }}>Create Category</Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', mb: 2 }}>
-          Add a new product category to populate in the dropdown when adding or editing products.
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1.5, maxWidth: 500 }}>
-          <TextField
-            size="small"
-            placeholder="Category name (e.g. Beverages)"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            fullWidth
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleCreateCategory}
-            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, whiteSpace: 'nowrap' }}
-          >
-            Create Category
-          </Button>
-        </Box>
-      </Box>
-
       <TableCard
         title="Products"
         count={filtered.length}

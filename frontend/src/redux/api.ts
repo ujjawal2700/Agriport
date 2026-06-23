@@ -21,6 +21,8 @@ import type {
   VendorPurchase,
   IncentivePoint,
   SalesStats,
+  HeroContent,
+  TrustBadge,
 } from '@/types'
 
 
@@ -31,9 +33,9 @@ export interface ProductQuery {
   inStockOnly?: boolean
 }
 
-const axiosBaseQuery = () => async ({ url, method, data, params, headers }: any) => {
+const axiosBaseQuery = () => async ({ url, method, data, body, params, headers }: any) => {
   try {
-    const result = await apiClient({ url, method, data, params, headers });
+    const result = await apiClient({ url, method, data: data || body, params, headers });
     return { data: result.data };
   } catch (axiosError: any) {
     return {
@@ -44,6 +46,7 @@ const axiosBaseQuery = () => async ({ url, method, data, params, headers }: any)
     };
   }
 };
+
 
 const mapProductResponse = (p: any): Product => {
   const pricingSlabs = (p.priceSlabs || []).map((slab: any, idx: number, arr: any[]) => {
@@ -75,6 +78,7 @@ const mapProductResponse = (p: any): Product => {
 
   return {
     id: p._id,
+    sku: p.sku || '',
     name: p.name,
     category: p.category?.name || p.category?.toString() || 'General',
     images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop'],
@@ -90,14 +94,14 @@ const mapProductResponse = (p: any): Product => {
     pricingSlabs,
     rating: 4.5,
     origin: specifications['Origin'] || 'India',
-    leadTimeDays: 3,
+    leadTimeDays: Number(specifications['Lead Time (Days)']) || 3,
   };
 };
 
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: axiosBaseQuery(),
-  tagTypes: ['Product', 'Category', 'Order', 'Document', 'AdminUser', 'StockRequest', 'Executive'],
+  tagTypes: ['Product', 'Category', 'Order', 'Document', 'AdminUser', 'StockRequest', 'Executive', 'Manager', 'SalesSetting', 'Storefront', 'CrmCustomer', 'FollowUp'],
   endpoints: (build) => ({
     getProducts: build.query<Product[], ProductQuery | void>({
       query: (arg) => {
@@ -139,7 +143,7 @@ export const api = createApi({
           name: cat.name,
           slug: cat.slug,
           productCount: 0,
-          icon: cat.image,
+          icon: 'category',
         }));
       },
       providesTags: ['Category'],
@@ -301,6 +305,8 @@ export const api = createApi({
           label: item.label,
           revenue: item.revenue || 0,
           orders: item.count || 0,
+          purchased: item.purchased || 0,
+          onArrival: item.onArrival || 0,
         }));
       },
     }),
@@ -333,12 +339,20 @@ export const api = createApi({
           city: u.city || '',
           joinedOn: u.createdAt || new Date().toISOString(),
           status: u.status || 'active',
-          ordersCount: 0,
-          totalSpend: 0,
+          ordersCount: u.ordersCount || 0,
+          totalSpend: u.totalSpend || 0,
           docStatus: u.kycVerified ? 'verified' : 'pending',
         }));
       },
       providesTags: ['AdminUser'],
+    }),
+    getAdminUserDocuments: build.query<BusinessDocument[], string>({
+      query: (userId) => ({
+        url: `/users/admin/${userId}/documents`,
+        method: 'GET',
+      }),
+      transformResponse: (response: any) => response.data || [],
+      providesTags: ['Document'],
     }),
     getManagers: build.query<ManagerRow[], void>({
       query: () => ({
@@ -352,12 +366,37 @@ export const api = createApi({
           name: m.name || '',
           email: m.email || '',
           region: m.region || '',
-          teamSize: 0,
-          revenue: 0,
+          teamSize: m.teamSize || 0,
+          revenue: m.revenue || 0,
           target: m.target || 0,
           status: m.status || 'active',
         }));
       },
+      providesTags: ['Manager'],
+    }),
+    createManager: build.mutation<any, any>({
+      query: (body) => ({
+        url: '/users/admin/sales/managers',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: ['Manager'],
+    }),
+    getSalesSettings: build.query<{ commission: number; override: number }, void>({
+      query: () => ({
+        url: '/users/admin/sales/settings',
+        method: 'GET',
+      }),
+      transformResponse: (response: any) => response.data || { commission: 5, override: 2 },
+      providesTags: ['SalesSetting'],
+    }),
+    updateSalesSettings: build.mutation<any, { commission?: number; override?: number }>({
+      query: (body) => ({
+        url: '/users/admin/sales/settings',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: ['SalesSetting'],
     }),
     getExecutiveApprovals: build.query<ExecutiveApproval[], void>({
       query: () => ({
@@ -431,7 +470,22 @@ export const api = createApi({
         url: '/crm/customers',
         method: 'GET',
       }),
-      transformResponse: (response: any) => response.data || [],
+      transformResponse: (response: any) => {
+        const data = response.data || []
+        return data.map((c: any) => ({
+          id: c._id || c.id,
+          name: c.name,
+          company: c.company,
+          phone: c.phone,
+          city: c.city,
+          stage: c.stage,
+          value: c.totalValue || c.value || 0,
+          lastContact: c.lastContactAt || c.lastContact || '',
+          owner: c.owner || '',
+          gst: c.gst,
+        }))
+      },
+      providesTags: ['CrmCustomer'],
     }),
     getFollowUps: build.query<FollowUp[], void>({
       query: () => ({
@@ -450,6 +504,39 @@ export const api = createApi({
           done: !!f.isDone,
         }));
       },
+      providesTags: ['FollowUp'],
+    }),
+    createCrmCustomer: build.mutation<any, Omit<CRMCustomer, 'id' | 'value' | 'lastContact' | 'stage' | 'owner'>>({
+      query: (body) => ({
+        url: '/crm/customers',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: ['CrmCustomer'],
+    }),
+    updateCrmCustomer: build.mutation<any, { id: string; patch: Partial<CRMCustomer> }>({
+      query: ({ id, patch }) => ({
+        url: `/crm/customers/${id}`,
+        method: 'PATCH',
+        data: patch,
+      }),
+      invalidatesTags: ['CrmCustomer'],
+    }),
+    createFollowUp: build.mutation<any, { crmCustomerId: string; dueAt: string; type: string; note?: string }>({
+      query: (body) => ({
+        url: '/crm/follow-ups',
+        method: 'POST',
+        data: body,
+      }),
+      invalidatesTags: ['FollowUp', 'CrmCustomer'],
+    }),
+    updateFollowUp: build.mutation<any, { id: string; isDone?: boolean; note?: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/crm/follow-ups/${id}`,
+        method: 'PATCH',
+        data: body,
+      }),
+      invalidatesTags: ['FollowUp', 'CrmCustomer'],
     }),
     getSalesRecords: build.query<SaleRecord[], void>({
       query: () => ({
@@ -619,6 +706,13 @@ export const api = createApi({
       }),
       invalidatesTags: ['Category'],
     }),
+    deleteCategory: build.mutation<any, string>({
+      query: (id) => ({
+        url: `/categories/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Category'],
+    }),
     createProduct: build.mutation<any, any>({
       query: (body) => ({
         url: '/products',
@@ -626,6 +720,22 @@ export const api = createApi({
         body,
       }),
       invalidatesTags: ['Product'],
+    }),
+    createVendorPurchase: build.mutation<any, any>({
+      query: (body) => ({
+        url: '/inventory/vendor-purchases',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Product'],
+    }),
+    createStockRequest: build.mutation<any, any>({
+      query: (body) => ({
+        url: '/inventory/stock-requests',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['StockRequest', 'Product'],
     }),
     updateProduct: build.mutation<any, { id: string; [key: string]: any }>({
       query: ({ id, ...body }) => ({
@@ -641,6 +751,55 @@ export const api = createApi({
         method: 'DELETE',
       }),
       invalidatesTags: ['Product'],
+    }),
+    getStorefront: build.query<{ hero: HeroContent; banners: Banner[]; trustBadges: TrustBadge[] }, void>({
+      query: () => ({
+        url: '/storefront',
+        method: 'GET',
+      }),
+      transformResponse: (response: any) => {
+        return response.data;
+      },
+      providesTags: ['Storefront'],
+    }),
+    updateStorefrontHero: build.mutation<any, Partial<HeroContent>>({
+      query: (body) => ({
+        url: '/storefront/hero',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Storefront'],
+    }),
+    updateStorefrontTrustBadges: build.mutation<any, { trustBadges: TrustBadge[] }>({
+      query: (body) => ({
+        url: '/storefront/trust-badges',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Storefront'],
+    }),
+    addStorefrontBanner: build.mutation<any, Omit<Banner, 'id'>>({
+      query: (body) => ({
+        url: '/storefront/banners',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Storefront'],
+    }),
+    updateStorefrontBanner: build.mutation<any, { id: string; banner: Partial<Banner> }>({
+      query: ({ id, banner }) => ({
+        url: `/storefront/banners/${id}`,
+        method: 'PUT',
+        body: banner,
+      }),
+      invalidatesTags: ['Storefront'],
+    }),
+    deleteStorefrontBanner: build.mutation<any, string>({
+      query: (id) => ({
+        url: `/storefront/banners/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Storefront'],
     }),
   }),
 })
@@ -658,7 +817,11 @@ export const {
   useGetSalesSeriesQuery,
   useGetCategorySalesQuery,
   useGetAdminUsersQuery,
+  useGetAdminUserDocumentsQuery,
   useGetManagersQuery,
+  useCreateManagerMutation,
+  useGetSalesSettingsQuery,
+  useUpdateSalesSettingsMutation,
   useGetExecutiveApprovalsQuery,
   useGetStockRequestsQuery,
   useGetManagerStatsQuery,
@@ -685,7 +848,20 @@ export const {
   useVerifyUserKycMutation,
   useUpdateStockRequestMutation,
   useCreateCategoryMutation,
+  useDeleteCategoryMutation,
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useCreateVendorPurchaseMutation,
+  useCreateStockRequestMutation,
+  useGetStorefrontQuery,
+  useUpdateStorefrontHeroMutation,
+  useUpdateStorefrontTrustBadgesMutation,
+  useAddStorefrontBannerMutation,
+  useUpdateStorefrontBannerMutation,
+  useDeleteStorefrontBannerMutation,
+  useCreateCrmCustomerMutation,
+  useUpdateCrmCustomerMutation,
+  useCreateFollowUpMutation,
+  useUpdateFollowUpMutation,
 } = api

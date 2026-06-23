@@ -58,6 +58,12 @@ const storefrontSlice = createSlice({
   name: 'storefront',
   initialState: loadState(),
   reducers: {
+    setStorefront: (state, action: PayloadAction<Partial<StorefrontState>>) => {
+      if (action.payload.hero) state.hero = action.payload.hero
+      if (action.payload.banners) state.banners = action.payload.banners
+      if (action.payload.trustBadges) state.trustBadges = action.payload.trustBadges
+    },
+
     // ── Hero ───────────────────────────────────────────────────────────────
     updateHero: (state, action: PayloadAction<Partial<HeroContent>>) => {
       state.hero = { ...state.hero, ...action.payload }
@@ -81,24 +87,6 @@ const storefrontSlice = createSlice({
       state.banners = state.banners.filter((b) => b.id !== action.payload)
     },
 
-    // ── Categories ───────────────────────────────────────────────────────────
-    addCategory: (state) => {
-      state.categories.push({
-        id: nanoid(6),
-        name: 'New Category',
-        slug: `category-${state.categories.length + 1}`,
-        productCount: 0,
-        icon: 'category',
-      })
-    },
-    updateCategory: (state, action: PayloadAction<{ id: string; patch: Partial<Category> }>) => {
-      const c = state.categories.find((x) => x.id === action.payload.id)
-      if (c) Object.assign(c, action.payload.patch)
-    },
-    removeCategory: (state, action: PayloadAction<string>) => {
-      state.categories = state.categories.filter((c) => c.id !== action.payload)
-    },
-
     // ── Trust badges ─────────────────────────────────────────────────────────
     addTrustBadge: (state) => {
       state.trustBadges.push({ id: nanoid(6), icon: 'shield', label: 'New badge' })
@@ -117,13 +105,11 @@ const storefrontSlice = createSlice({
 })
 
 export const {
+  setStorefront,
   updateHero,
   addBanner,
   updateBanner,
   removeBanner,
-  addCategory,
-  updateCategory,
-  removeCategory,
   addTrustBadge,
   updateTrustBadge,
   removeTrustBadge,

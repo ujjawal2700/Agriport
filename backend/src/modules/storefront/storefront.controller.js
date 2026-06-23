@@ -90,3 +90,18 @@ export const deleteBanner = asyncWrapper(async (req, res, next) => {
   await doc.save();
   return successResponse(res, doc, 200, 'Storefront banner deleted successfully.');
 });
+
+// 6. Update storefront Trust Badges (Admin only)
+export const updateTrustBadges = asyncWrapper(async (req, res, next) => {
+  const { trustBadges } = req.body;
+
+  if (!Array.isArray(trustBadges)) {
+    return next(new AppError('trustBadges must be an array.', 400));
+  }
+
+  const doc = await getStorefrontDocument();
+  doc.trustBadges = trustBadges;
+  await doc.save();
+
+  return successResponse(res, doc, 200, 'Storefront trust badges updated successfully.');
+});

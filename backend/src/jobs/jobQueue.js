@@ -3,12 +3,19 @@ import User from '../modules/users/user.model.js';
 import Product from '../modules/products/product.model.js';
 import SaleRecord from '../modules/sales/saleRecord.model.js';
 import IncentiveRecord from '../modules/sales/incentiveRecord.model.js';
+import SystemSetting from '../modules/sales/systemSetting.model.js';
 import { Agenda } from 'agenda';
 import env from '../config/env.js';
 
 // 1. Core Incentive calculator function (can be called manually or scheduled)
 export const calculateMonthlyIncentives = async (monthStr) => {
   logger.info(`[JobManager] Starting monthly incentive calculation for: ${monthStr}`);
+
+  // Fetch dynamic settings or fallback to default rates
+  const commissionSetting = await SystemSetting.findOne({ key: 'sales_commission' });
+  const overrideSetting = await SystemSetting.findOne({ key: 'manager_override' });
+  const commRate = commissionSetting ? commissionSetting.value : 5;
+  const overRate = overrideSetting ? overrideSetting.value : 2;
 
   // Find all executives and managers
   const salesTeam = await User.find({ role: { $in: ['executive', 'manager'] } });
@@ -71,8 +78,8 @@ export const calculateMonthlyIncentives = async (monthStr) => {
         role: staff.role,
         earnedAmount,
         targetAmount,
-        commissionRate: staff.role === 'executive' ? 5 : 0,
-        overrideRate: staff.role === 'manager' ? 2 : 0,
+        commissionRate: staff.role === 'executive' ? commRate : 0,
+        overrideRate: staff.role === 'manager' ? overRate : 0,
         salesVolume,
         teamSalesVolume,
       },

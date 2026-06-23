@@ -68,10 +68,10 @@ export default function ReportsAdminPage() {
 
   const reportsData = useMemo(() => {
     if (!series) return []
-    return series.map((pt, idx) => {
-      const sale = pt.revenue
-      const purchased = Math.round(sale * (0.68 + (idx % 3) * 0.05))
-      const onArrival = Math.round(sale * (0.08 + (idx % 2) * 0.04))
+    return series.map((pt) => {
+      const sale = pt.revenue || 0
+      const purchased = pt.purchased || 0
+      const onArrival = pt.onArrival || 0
       return {
         label: pt.label,
         sale,
@@ -103,8 +103,10 @@ export default function ReportsAdminPage() {
           anchorEl={anchorEl}
           open={openMenu}
           onClose={handleMenuClose}
-          MenuListProps={{
-            'aria-labelledby': 'export-button',
+          slotProps={{
+            list: {
+              'aria-labelledby': 'export-button',
+            },
           }}
         >
           <MenuItem onClick={() => handleExport('orders')}>Orders Report</MenuItem>

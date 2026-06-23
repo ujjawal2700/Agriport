@@ -3,6 +3,8 @@ import Transaction from '../payments/transaction.model.js';
 import User from '../users/user.model.js';
 import Product from '../products/product.model.js';
 import Category from '../categories/category.model.js';
+import VendorPurchase from '../inventory/vendorPurchase.model.js';
+import StockRequest from '../inventory/stockRequest.model.js';
 import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
@@ -165,70 +167,128 @@ export const getDashboardStats = asyncWrapper(async (req, res) => {
 export const getSalesSeries = asyncWrapper(async (req, res) => {
   const { interval = 'month' } = req.query;
 
-  let groupStage = {};
-  let sortStage = {};
+  let salesGroupField = {};
+  let purchaseGroupField = {};
+  let arrivalGroupField = {};
 
   if (interval === 'week') {
-    groupStage = {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          week: { $week: '$createdAt' }
-        },
-        revenue: { $sum: '$amount' },
-        count: { $sum: 1 }
-      }
+    salesGroupField = {
+      year: { $year: '$createdAt' },
+      week: { $week: '$createdAt' }
     };
-    sortStage = { $sort: { '_id.year': 1, '_id.week': 1 } };
+    purchaseGroupField = {
+      year: { $year: '$purchaseDate' },
+      week: { $week: '$purchaseDate' }
+    };
+    arrivalGroupField = {
+      year: { $year: { $ifNull: ['$reviewedAt', '$createdAt'] } },
+      week: { $week: { $ifNull: ['$reviewedAt', '$createdAt'] } }
+    };
   } else if (interval === 'day') {
-    groupStage = {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' },
-          day: { $dayOfMonth: '$createdAt' }
-        },
-        revenue: { $sum: '$amount' },
-        count: { $sum: 1 }
-      }
+    salesGroupField = {
+      year: { $year: '$createdAt' },
+      month: { $month: '$createdAt' },
+      day: { $dayOfMonth: '$createdAt' }
     };
-    sortStage = { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } };
+    purchaseGroupField = {
+      year: { $year: '$purchaseDate' },
+      month: { $month: '$purchaseDate' },
+      day: { $dayOfMonth: '$purchaseDate' }
+    };
+    arrivalGroupField = {
+      year: { $year: { $ifNull: ['$reviewedAt', '$createdAt'] } },
+      month: { $month: { $ifNull: ['$reviewedAt', '$createdAt'] } },
+      day: { $dayOfMonth: { $ifNull: ['$reviewedAt', '$createdAt'] } }
+    };
   } else {
-    // default: month
-    groupStage = {
-      $group: {
-        _id: {
-          year: { $year: '$createdAt' },
-          month: { $month: '$createdAt' }
-        },
-        revenue: { $sum: '$amount' },
-        count: { $sum: 1 }
-      }
+    // Default: month
+    salesGroupField = {
+      year: { $year: '$createdAt' },
+      month: { $month: '$createdAt' }
     };
-    sortStage = { $sort: { '_id.year': 1, '_id.month': 1 } };
+    purchaseGroupField = {
+      year: { $year: '$purchaseDate' },
+      month: { $month: '$purchaseDate' }
+    };
+    arrivalGroupField = {
+      year: { $year: { $ifNull: ['$reviewedAt', '$createdAt'] } },
+      month: { $month: { $ifNull: ['$reviewedAt', '$createdAt'] } }
+    };
   }
 
-  const series = await Transaction.aggregate([
+  // 1. Sales Aggregation
+  const sales = await Transaction.aggregate([
     { $match: { status: 'paid' } },
-    groupStage,
-    sortStage
+    {
+      $group: {
+        _id: salesGroupField,
+        revenue: { $sum: '$amount' },
+        count: { $sum: 1 }
+      }
+    }
   ]);
 
-  const formattedSeries = series.map(item => {
-    let label = '';
-    if (interval === 'week') {
-      label = `${item._id.year}-W${item._id.week}`;
-    } else if (interval === 'day') {
-      label = `${item._id.year}-${String(item._id.month).padStart(2, '0')}-${String(item._id.day).padStart(2, '0')}`;
-    } else {
-      label = `${item._id.year}-${String(item._id.month).padStart(2, '0')}`;
+  // 2. Vendor Purchase Aggregation
+  const purchases = await VendorPurchase.aggregate([
+    { $match: { status: 'received' } },
+    {
+      $group: {
+        _id: purchaseGroupField,
+        totalPurchased: { $sum: '$total' }
+      }
     }
-    return {
-      label,
-      revenue: item.revenue,
-      count: item.count
-    };
+  ]);
+
+  // 3. Stock Request (Arrivals) Aggregation
+  const arrivals = await StockRequest.aggregate([
+    { $match: { status: 'approved', type: 'add' } },
+    {
+      $group: {
+        _id: arrivalGroupField,
+        totalArrived: { $sum: '$requestedChange' }
+      }
+    }
+  ]);
+
+  const getLabel = (item) => {
+    if (interval === 'week') {
+      return `${item._id.year}-W${item._id.week}`;
+    } else if (interval === 'day') {
+      return `${item._id.year}-${String(item._id.month).padStart(2, '0')}-${String(item._id.day).padStart(2, '0')}`;
+    } else {
+      return `${item._id.year}-${String(item._id.month).padStart(2, '0')}`;
+    }
+  };
+
+  const dataMap = {};
+
+  sales.forEach(item => {
+    const label = getLabel(item);
+    if (!dataMap[label]) {
+      dataMap[label] = { label, revenue: 0, count: 0, purchased: 0, onArrival: 0 };
+    }
+    dataMap[label].revenue = item.revenue;
+    dataMap[label].count = item.count;
   });
+
+  purchases.forEach(item => {
+    const label = getLabel(item);
+    if (!dataMap[label]) {
+      dataMap[label] = { label, revenue: 0, count: 0, purchased: 0, onArrival: 0 };
+    }
+    dataMap[label].purchased = item.totalPurchased;
+  });
+
+  arrivals.forEach(item => {
+    const label = getLabel(item);
+    if (!dataMap[label]) {
+      dataMap[label] = { label, revenue: 0, count: 0, purchased: 0, onArrival: 0 };
+    }
+    dataMap[label].onArrival = item.totalArrived;
+  });
+
+  // Sort chronologically by label name
+  const formattedSeries = Object.values(dataMap).sort((a, b) => a.label.localeCompare(b.label));
 
   return successResponse(res, formattedSeries, 200, 'Sales series trends retrieved successfully.');
 });

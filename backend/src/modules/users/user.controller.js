@@ -1,4 +1,7 @@
 import User from './user.model.js';
+import Order from '../orders/order.model.js';
+import SaleRecord from '../sales/saleRecord.model.js';
+import SystemSetting from '../sales/systemSetting.model.js';
 import { paginate } from '../../utils/paginate.js';
 import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
@@ -27,10 +30,38 @@ export const getAdminUsers = asyncWrapper(async (req, res) => {
     sort: { createdAt: -1 }
   });
 
+  const userIds = result.docs.map(u => u._id);
+  const orderStats = await Order.aggregate([
+    { $match: { customerId: { $in: userIds } } },
+    {
+      $group: {
+        _id: '$customerId',
+        ordersCount: { $sum: 1 },
+        totalSpend: { $sum: '$total' },
+      }
+    }
+  ]);
+
+  const statsMap = {};
+  orderStats.forEach(stat => {
+    statsMap[stat._id.toString()] = {
+      ordersCount: stat.ordersCount,
+      totalSpend: stat.totalSpend,
+    };
+  });
+
+  const usersWithStats = result.docs.map(user => {
+    const userObj = user.toObject ? user.toObject() : { ...user };
+    const stats = statsMap[user._id.toString()] || { ordersCount: 0, totalSpend: 0 };
+    userObj.ordersCount = stats.ordersCount;
+    userObj.totalSpend = stats.totalSpend;
+    return userObj;
+  });
+
   return successResponse(
     res,
     {
-      users: result.docs,
+      users: usersWithStats,
       pagination: result.pagination,
     },
     200,
@@ -82,7 +113,43 @@ export const verifyUserKyc = asyncWrapper(async (req, res, next) => {
 // 4. Get all sales managers (Admin only)
 export const getManagers = asyncWrapper(async (req, res) => {
   const managers = await User.find({ role: 'manager' }).sort({ createdAt: -1 });
-  return successResponse(res, managers, 200, 'Managers retrieved successfully.');
+
+  const managersWithStats = await Promise.all(
+    managers.map(async (manager) => {
+      const managerObj = manager.toObject ? manager.toObject() : { ...manager };
+      
+      // Count active executives in manager's team
+      const teamSize = await User.countDocuments({
+        managerId: manager._id,
+        role: 'executive',
+        status: 'active',
+      });
+
+      // Sum revenue from paid sale records for this manager
+      const salesVolumeResult = await SaleRecord.aggregate([
+        {
+          $match: {
+            managerId: manager._id,
+            paymentStatus: 'paid',
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+          },
+        },
+      ]);
+      
+      const revenue = salesVolumeResult[0]?.totalRevenue || 0;
+
+      managerObj.teamSize = teamSize;
+      managerObj.revenue = revenue;
+      return managerObj;
+    })
+  );
+
+  return successResponse(res, managersWithStats, 200, 'Managers retrieved successfully.');
 });
 
 // 5. Create a new manager (Admin only)
@@ -281,5 +348,96 @@ export const uploadDocument = asyncWrapper(async (req, res, next) => {
   };
 
   return successResponse(res, responseDoc, 201, 'Document uploaded successfully.');
+});
+
+// 12. Get documents for a specific user (Admin only)
+export const getAdminUserDocuments = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+  const documents = await BusinessDocument.find({ userId: id });
+  
+  // Format for frontend
+  const formattedDocs = documents.map(d => ({
+    id: d._id.toString(),
+    type: d.type,
+    name: d.name,
+    fileName: d.fileName || '',
+    fileUrl: d.fileUrl,
+    status: d.status,
+    uploadedOn: d.createdAt,
+  }));
+
+  // Ensure default list is returned with placeholders if documents are missing
+  const defaultTypes = [
+    { type: 'gst_certificate', name: 'GST Certificate' },
+    { type: 'business_license', name: 'Business License' },
+    { type: 'id_proof', name: 'ID Proof (PAN/Aadhaar)' },
+    { type: 'address_proof', name: 'Address Proof' },
+  ];
+
+  const finalDocs = defaultTypes.map(def => {
+    const existing = formattedDocs.find(fd => fd.type === def.type);
+    if (existing) return existing;
+    return {
+      id: `missing-${def.type}`,
+      type: def.type,
+      name: def.name,
+      fileName: '',
+      fileUrl: '',
+      status: 'missing',
+      uploadedOn: null,
+    };
+  });
+
+  return successResponse(res, finalDocs, 200, 'Customer documents retrieved successfully.');
+});
+
+// 13. Get Sales Settings (commission and override rate) (Admin only)
+export const getSalesSettings = asyncWrapper(async (req, res) => {
+  let commissionSetting = await SystemSetting.findOne({ key: 'sales_commission' });
+  let overrideSetting = await SystemSetting.findOne({ key: 'manager_override' });
+
+  if (!commissionSetting) {
+    commissionSetting = await SystemSetting.create({ key: 'sales_commission', value: 5 });
+  }
+  if (!overrideSetting) {
+    overrideSetting = await SystemSetting.create({ key: 'manager_override', value: 2 });
+  }
+
+  return successResponse(res, {
+    commission: commissionSetting.value,
+    override: overrideSetting.value,
+  }, 200, 'Sales settings retrieved successfully.');
+});
+
+// 14. Update Sales Settings (Admin only)
+export const updateSalesSettings = asyncWrapper(async (req, res, next) => {
+  const { commission, override } = req.body;
+
+  if (commission !== undefined) {
+    if (typeof commission !== 'number' || commission < 0 || commission > 100) {
+      return next(new AppError('Commission rate must be a number between 0 and 100.', 400));
+    }
+    await SystemSetting.findOneAndUpdate(
+      { key: 'sales_commission' },
+      { value: commission },
+      { upsert: true, new: true }
+    );
+  }
+
+  if (override !== undefined) {
+    if (typeof override !== 'number' || override < 0 || override > 100) {
+      return next(new AppError('Override rate must be a number between 0 and 100.', 400));
+    }
+    await SystemSetting.findOneAndUpdate(
+      { key: 'manager_override' },
+      { value: override },
+      { upsert: true, new: true }
+    );
+  }
+
+  return successResponse(res, {
+    commission,
+    override,
+  }, 200, 'Sales settings updated successfully.');
 });
 

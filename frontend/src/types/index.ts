@@ -41,6 +41,7 @@ export interface WeightVariant {
 
 export interface Product {
   id: string
+  sku?: string
   name: string
   category: string
   images: string[]
@@ -147,6 +148,7 @@ export interface BusinessDocument {
   uploadedOn: string | null
   status: 'verified' | 'pending' | 'missing'
   fileName?: string
+  fileUrl?: string
 }
 
 export interface Banner {
@@ -212,6 +214,8 @@ export interface ExecutiveApproval {
   region: string
   requestedOn: string
   status: 'pending' | 'approved' | 'rejected'
+  aadharUrl?: string
+  panUrl?: string
 }
 
 export type StockRequestType = 'add' | 'update' | 'new_product'
@@ -247,6 +251,8 @@ export interface SalesPoint {
   label: string
   revenue: number
   orders: number
+  purchased?: number
+  onArrival?: number
 }
 
 export interface CategorySales {

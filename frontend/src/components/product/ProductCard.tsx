@@ -5,6 +5,7 @@ import ProductThumb from '@/components/common/ProductThumb'
 import StatusChip from '@/components/common/StatusChip'
 import { ROUTES } from '@/constants'
 import type { Product } from '@/types'
+import { formatMoney } from '@/utils/format'
 
 export default function ProductCard({ product }: { product: Product }) {
   return (
@@ -68,12 +69,12 @@ export default function ProductCard({ product }: { product: Product }) {
         </Typography>
 
         <Box sx={{ mt: { xs: 0.5, md: 1.5 } }}>
-          <Box sx={{ mt: { xs: 0.5, md: 1 }, pt: { xs: 0.5, md: 1 }, borderTop: '1px dashed var(--ink-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box sx={{ mt: { xs: 0.5, md: 1 }, pt: { xs: 0.5, md: 1 }, borderTop: '1px dashed var(--ink-200)', display: 'flex', justifycontent: 'space-between', alignItems: 'center' }}>
             <Typography sx={{ fontSize: { xs: 10, md: 11 }, color: 'var(--ink-500)', fontWeight: 600 }}>
-              make enquiry
+              Price
             </Typography>
-            <Typography className="tnum" sx={{ fontWeight: 700, fontSize: { xs: 11, md: 13.5 }, color: 'var(--ink-800)' }}>
-              {product.moq} {product.unit}
+            <Typography className="tnum" sx={{ fontWeight: 700, fontSize: { xs: 11, md: 13.5 }, color: 'var(--brand-700)' }}>
+              {formatMoney(product.basePrice)} / {product.unit}
             </Typography>
           </Box>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, mt: 1, justifyContent: 'flex-end', alignItems: 'center', color: 'var(--brand-700)', gap: 0.25 }}>

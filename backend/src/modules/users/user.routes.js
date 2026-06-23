@@ -25,11 +25,14 @@ router.use(authorize('admin'));
 router.get('/admin/list', userController.getAdminUsers);
 router.patch('/admin/:id/status', userController.updateUserStatus);
 router.patch('/admin/:id/kyc', userController.verifyUserKyc);
+router.get('/admin/:id/documents', userController.getAdminUserDocuments);
 
 // Sales team onboarding routes
 router.get('/admin/sales/managers', userController.getManagers);
 router.post('/admin/sales/managers', userController.createManager);
 router.get('/admin/sales/executive-approvals', userController.getExecutiveApprovals);
 router.patch('/admin/sales/executive-approvals/:id', userController.approveExecutive);
+router.get('/admin/sales/settings', userController.getSalesSettings);
+router.post('/admin/sales/settings', userController.updateSalesSettings);
 
 export default router;

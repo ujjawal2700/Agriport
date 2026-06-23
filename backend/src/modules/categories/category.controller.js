@@ -4,15 +4,15 @@ import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
 
-// 1. Get all categories sorted by order (Public)
+// 1. Get all categories sorted alphabetically by name (Public)
 export const getCategories = asyncWrapper(async (req, res) => {
-  const categories = await Category.find().sort('order');
+  const categories = await Category.find().sort('name');
   return successResponse(res, categories, 200, 'Categories retrieved successfully.');
 });
 
 // 2. Create category (Admin only)
 export const createCategory = asyncWrapper(async (req, res, next) => {
-  const { name, image, order } = req.body;
+  const { name } = req.body;
 
   // Check duplicate
   const exists = await Category.findOne({ name });
@@ -20,14 +20,14 @@ export const createCategory = asyncWrapper(async (req, res, next) => {
     return next(new AppError('Category with this name already exists.', 409));
   }
 
-  const category = await Category.create({ name, image, order });
+  const category = await Category.create({ name });
   return successResponse(res, category, 201, 'Category created successfully.');
 });
 
 // 3. Update category (Admin only)
 export const updateCategory = asyncWrapper(async (req, res, next) => {
   const { id } = req.params;
-  const { name, image, order } = req.body;
+  const { name } = req.body;
 
   const category = await Category.findById(id);
   if (!category) {
@@ -36,12 +36,6 @@ export const updateCategory = asyncWrapper(async (req, res, next) => {
 
   if (name) {
     category.name = name;
-  }
-  if (image !== undefined) {
-    category.image = image;
-  }
-  if (order !== undefined) {
-    category.order = order;
   }
 
   await category.save();

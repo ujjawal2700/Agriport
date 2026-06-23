@@ -13,5 +13,6 @@ router.put('/hero', authenticate, authorize('admin'), storefrontController.updat
 router.post('/banners', authenticate, authorize('admin'), storefrontController.addBanner);
 router.put('/banners/:id', authenticate, authorize('admin'), storefrontController.updateBanner);
 router.delete('/banners/:id', authenticate, authorize('admin'), storefrontController.deleteBanner);
+router.put('/trust-badges', authenticate, authorize('admin'), storefrontController.updateTrustBadges);
 
 export default router;

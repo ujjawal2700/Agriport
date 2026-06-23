@@ -23,7 +23,6 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { clearCart } from '@/redux/slices/cartSlice'
 import { PAYMENT_METHODS, ROUTES } from '@/constants'
 import type { PaymentMode } from '@/types'
-import { currentUser } from '@/mocks/data'
 import { useCreateOrderMutation } from '@/redux/api'
 import toast from 'react-hot-toast'
 
@@ -39,7 +38,7 @@ export default function CheckoutPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const items = useAppSelector((s) => s.cart.items)
-  const user = useAppSelector((s) => s.auth.user) ?? currentUser
+  const user = useAppSelector((s) => s.auth.user)!
   const [method, setMethod] = useState<PaymentMode>('upi')
   const [address, setAddress] = useState(user.address ?? '')
   const [createOrder, { isLoading: placing }] = useCreateOrderMutation()
