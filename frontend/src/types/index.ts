@@ -286,6 +286,7 @@ export interface CRMCustomer {
   lastContact: string
   owner: string
   gst?: string
+  platformUserId?: string
 }
 
 export interface FollowUp {

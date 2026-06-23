@@ -22,6 +22,14 @@ router.patch(
   orderController.updateOrderStatus
 );
 
+// Executive / Admin quoting route
+router.patch(
+  '/:id/quote',
+  authorize('executive', 'admin', 'manager'),
+  validate({ params: orderIdParamSchema }),
+  orderController.quoteOrder
+);
+
 // Customer routes
 router.post('/', validate(createOrderSchema), orderController.createOrder);
 router.get('/', orderController.getOrders);

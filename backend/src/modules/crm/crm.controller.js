@@ -1,5 +1,6 @@
 import CRMCustomer from './crmCustomer.model.js';
 import FollowUp from './followUp.model.js';
+import User from '../users/user.model.js';
 import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
@@ -35,6 +36,15 @@ export const createCrmCustomer = asyncWrapper(async (req, res, next) => {
     return next(new AppError('Customer name is required.', 400));
   }
 
+  // Find if matching customer platform account exists
+  let platformUserId = null;
+  if (phone) {
+    const user = await User.findOne({ mobile: phone.trim(), role: 'customer' });
+    if (user) {
+      platformUserId = user._id;
+    }
+  }
+
   const customer = await CRMCustomer.create({
     ownerId: req.user._id,
     name,
@@ -45,6 +55,7 @@ export const createCrmCustomer = asyncWrapper(async (req, res, next) => {
     stage: 'lead',
     totalValue: 0,
     lastContactAt: null,
+    platformUserId,
   });
 
   return successResponse(res, customer, 201, 'CRM customer created successfully.');
@@ -149,4 +160,16 @@ export const updateFollowUp = asyncWrapper(async (req, res, next) => {
   await followUp.save();
 
   return successResponse(res, followUp, 200, 'Follow-up task updated successfully.');
+});
+
+// 7. Delete a follow-up task
+export const deleteFollowUp = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+
+  const followUp = await FollowUp.findOneAndDelete({ _id: id, executiveId: req.user._id });
+  if (!followUp) {
+    return next(new AppError('Follow-up task not found or unauthorized.', 404));
+  }
+
+  return successResponse(res, null, 200, 'Follow-up task deleted successfully.');
 });

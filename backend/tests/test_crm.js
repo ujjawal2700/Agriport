@@ -27,6 +27,8 @@ const runTest = async () => {
     role: 'executive',
     status: 'active',
     region: 'West',
+    aadhaarUrl: '/uploads/dummy_aadhaar.png',
+    panUrl: '/uploads/dummy_pan.png',
   });
   console.log('✅ Seeded CRM executive user successfully.');
 
@@ -144,6 +146,18 @@ const runTest = async () => {
   if (!patchFUData.data.isDone || patchFUData.data.note !== 'Call completed successfully.') {
     throw new Error('Follow-up fields not updated correctly');
   }
+
+  // 9b. Test DELETE /crm/follow-ups/:id
+  console.log('\n🗑️ Testing DELETE /crm/follow-ups/:id...');
+  const deleteFURes = await fetch(`http://localhost:5000/api/v1/crm/follow-ups/${followUpId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  });
+  const deleteFUData = await deleteFURes.json();
+  if (!deleteFURes.ok) throw new Error(`DELETE /crm/follow-ups/:id failed: ${JSON.stringify(deleteFUData)}`);
+  console.log('✅ DELETE /crm/follow-ups/:id response: SUCCESS');
 
   // 10. Test Authorization constraints (should reject without token)
   console.log('\n🚫 Testing GET /crm/customers (Unauthorized request check)...');

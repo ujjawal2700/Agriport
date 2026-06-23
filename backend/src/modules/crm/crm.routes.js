@@ -18,5 +18,6 @@ router.patch('/customers/:id', crmController.updateCrmCustomer);
 router.get('/follow-ups', crmController.getFollowUps);
 router.post('/follow-ups', crmController.createFollowUp);
 router.patch('/follow-ups/:id', crmController.updateFollowUp);
+router.delete('/follow-ups/:id', crmController.deleteFollowUp);
 
 export default router;

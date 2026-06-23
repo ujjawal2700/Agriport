@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '../users/user.model.js';
 import OTP from './otp.model.js';
 import RefreshToken from './refreshToken.model.js';
+import CRMCustomer from '../crm/crmCustomer.model.js';
 import logger from '../../config/logger.js';
 import notificationService from '../notifications/notification.service.js';
 import AppError from '../../utils/AppError.js';
@@ -155,6 +156,9 @@ export const signupCustomer = async (signupData, deviceInfo = {}) => {
     city,
     businessType,
   });
+
+  // Link platformUserId to any existing CRM Customer documents with the same mobile phone number
+  await CRMCustomer.updateMany({ phone: mobile, platformUserId: null }, { platformUserId: user._id });
 
   // 4. Clean up: Delete the used OTP record
   await OTP.deleteOne({ _id: otpRecord._id });

@@ -435,3 +435,104 @@ export const downloadInvoice = asyncWrapper(async (req, res, next) => {
   return fs.createReadStream(filePath).pipe(res);
 });
 
+// 7. Executive quote or cancel order
+export const quoteOrder = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+  const { status, quotedPrices, quotedShipping, reason } = req.body;
+
+  if (!status) {
+    return next(new AppError('Status is required.', 400));
+  }
+
+  if (!['confirmed', 'cancelled', 'completed'].includes(status)) {
+    return next(new AppError('Invalid status update for quote.', 400));
+  }
+
+  const order = await Order.findById(id);
+  if (!order) {
+    return next(new AppError('Order not found.', 404));
+  }
+
+  // Check authorization: only admin, manager, or assigned executive / crm owner
+  if (req.user.role === 'executive') {
+    const isPlacer = order.executiveId && order.executiveId.toString() === req.user._id.toString();
+    const crmCust = await CRMCustomer.findOne({ platformUserId: order.customerId, ownerId: req.user._id });
+    if (!isPlacer && !crmCust) {
+      return next(new AppError('You are not authorized to quote or modify this order.', 403));
+    }
+  }
+
+  // Prevent modifications if already finalized
+  if (['completed', 'cancelled'].includes(order.status)) {
+    return next(new AppError(`Cannot change status of a finalized "${order.status}" order.`, 400));
+  }
+
+  if (status === 'confirmed') {
+    order.status = 'confirmed';
+    
+    // Save quoted prices and shipping overrides
+    if (quotedPrices) {
+      const pricesMap = new Map(Object.entries(quotedPrices));
+      order.quotedPrices = pricesMap;
+      
+      // Update line items
+      let subtotal = 0;
+      for (const line of order.lines) {
+        const prodIdStr = line.productId.toString();
+        if (quotedPrices[prodIdStr] !== undefined) {
+          line.unitPrice = Number(quotedPrices[prodIdStr]);
+        }
+        line.lineTotal = line.unitPrice * line.quantity;
+        subtotal += line.lineTotal;
+      }
+      order.subtotal = subtotal;
+      order.tax = Math.round(subtotal * 0.05 * 100) / 100;
+    }
+
+    if (quotedShipping !== undefined) {
+      order.quotedShipping = Number(quotedShipping);
+      order.shipping = Number(quotedShipping);
+    }
+    
+    order.total = order.subtotal + order.tax + order.shipping;
+
+    // Update tracking timeline Confirmed item
+    const confirmedItem = order.trackingTimeline.find((t) => t.label === 'Confirmed');
+    if (confirmedItem) {
+      confirmedItem.at = new Date();
+      confirmedItem.done = true;
+    }
+  } else if (status === 'cancelled') {
+    order.status = 'cancelled';
+    order.cancellationReason = reason || 'Cancelled by Sales Executive';
+    order.paymentStatus = 'refunded';
+
+    // Restore stock levels for each product in the order
+    for (const line of order.lines) {
+      const product = await Product.findById(line.productId);
+      if (product) {
+        product.stock += line.quantity;
+        await product.save();
+      }
+    }
+  } else if (status === 'completed') {
+    order.status = 'completed';
+    order.paymentStatus = 'paid';
+
+    // Update tracking timeline Delivered item
+    const deliveredItem = order.trackingTimeline.find((t) => t.label === 'Delivered');
+    if (deliveredItem) {
+      deliveredItem.at = new Date();
+      deliveredItem.done = true;
+    }
+  }
+
+  await order.save();
+
+  if (status === 'confirmed') {
+    eventBus.emit('order.confirmed', order);
+  }
+
+  return successResponse(res, order, 200, `Order status updated to "${status}" successfully.`);
+});
+

@@ -28,7 +28,7 @@ const followUpSchema = new mongoose.Schema(
     type: {
       type: String,
       required: [true, 'Follow-up type is required'],
-      enum: ['call', 'visit', 'email'],
+      enum: ['call', 'meeting', 'email','whatsapp'],
     },
     note: {
       type: String,

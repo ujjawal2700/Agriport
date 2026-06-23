@@ -188,6 +188,13 @@ export const api = createApi({
           invoiceNo: o.invoiceNo,
           gatePassNo: o.gatePassNo,
           trackingTimeline: o.trackingTimeline || [],
+          customerName: o.customerName,
+          companyName: o.companyName,
+          customerPhone: o.customerPhone,
+          customerCity: o.customerCity,
+          cancellationReason: o.cancellationReason,
+          quotedPrices: o.quotedPrices,
+          quotedShipping: o.quotedShipping,
         }));
       },
       providesTags: ['Order'],
@@ -483,6 +490,7 @@ export const api = createApi({
           lastContact: c.lastContactAt || c.lastContact || '',
           owner: c.owner || '',
           gst: c.gst,
+          platformUserId: c.platformUserId || undefined,
         }))
       },
       providesTags: ['CrmCustomer'],
@@ -535,6 +543,13 @@ export const api = createApi({
         url: `/crm/follow-ups/${id}`,
         method: 'PATCH',
         data: body,
+      }),
+      invalidatesTags: ['FollowUp', 'CrmCustomer'],
+    }),
+    deleteFollowUp: build.mutation<any, string>({
+      query: (id) => ({
+        url: `/crm/follow-ups/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['FollowUp', 'CrmCustomer'],
     }),
@@ -642,6 +657,14 @@ export const api = createApi({
         body,
       }),
       invalidatesTags: ['Order', 'Product'],
+    }),
+    quoteOrder: build.mutation<any, { id: string; status: string; quotedPrices?: Record<string, number>; quotedShipping?: number; reason?: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/orders/${id}/quote`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['Order'],
     }),
     updateProfile: build.mutation<any, any>({
       query: (body) => ({
@@ -864,4 +887,6 @@ export const {
   useUpdateCrmCustomerMutation,
   useCreateFollowUpMutation,
   useUpdateFollowUpMutation,
+  useDeleteFollowUpMutation,
+  useQuoteOrderMutation,
 } = api
