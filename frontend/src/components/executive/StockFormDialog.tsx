@@ -25,11 +25,11 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 
-import { api, useGetCrmCustomersQuery } from '@/redux/api'
+import { api, useGetCrmCustomersQuery, useGetProductsQuery } from '@/redux/api'
 import { useAppDispatch } from '@/redux/hooks'
 import { products as mockProducts } from '@/mocks/data'
 import { generateSlabs } from '@/utils/pricing'
-import type { Product, PricingSlab } from '@/types'
+import type { Product, PricingSlab, PurchaseDraft, ArrivalDraft, SaleDraft } from '@/types'
 import toast from 'react-hot-toast'
 import { COUNTRIES } from '@/constants/countries'
 
@@ -75,11 +75,15 @@ interface StockFormDialogProps {
   onClose: () => void
   productToEdit: Product | null
   onSave?: (product: Product, mode: 'add' | 'update') => void
+  onSavePurchase?: (draft: PurchaseDraft) => void
+  onSaveArrival?: (draft: ArrivalDraft) => void
+  onSaveSale?: (draft: SaleDraft) => void
   formMode?: 'sale' | 'purchase' | 'arrival'
 }
 
-export default function StockFormDialog({ open, onClose, productToEdit, onSave, formMode }: StockFormDialogProps) {
+export default function StockFormDialog({ open, onClose, productToEdit, onSave, onSavePurchase, onSaveArrival, onSaveSale, formMode }: StockFormDialogProps) {
   const { data: customers } = useGetCrmCustomersQuery()
+  const { data: dbProducts } = useGetProductsQuery()
   const dispatch = useAppDispatch()
 
   const [form, setForm] = useState<Partial<Product>>(emptyForm())
@@ -100,9 +104,48 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
 
+  const [purchaseVendorId, setPurchaseVendorId] = useState('')
+  const [purchaseProductId, setPurchaseProductId] = useState('')
+  const [purchaseQty, setPurchaseQty] = useState<number | ''>('')
+  const [purchaseBuyPrice, setPurchaseBuyPrice] = useState<number | ''>('')
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0])
+  const [purchaseStatus, setPurchaseStatus] = useState<'received' | 'pending' | 'ordered'>('received')
+  const [purchaseNotes, setPurchaseNotes] = useState('')
+
+  const [arrivalProductId, setArrivalProductId] = useState('')
+  const [arrivalQty, setArrivalQty] = useState<number | ''>('')
+  const [arrivalType, setArrivalType] = useState<'add' | 'update'>('add')
+  const [arrivalNotes, setArrivalNotes] = useState('')
+
+  const [saleCustomerId, setSaleCustomerId] = useState('')
+  const [saleProductId, setSaleProductId] = useState('')
+  const [saleQty, setSaleQty] = useState<number | ''>('')
+  const [salePrice, setSalePrice] = useState<number | ''>('')
+  const [saleAddress, setSaleAddress] = useState('Pickup from Agriport Warehouse')
+  const [salePaymentMode, setSalePaymentMode] = useState('offline')
+  const [saleNotes, setSaleNotes] = useState('')
+
   useEffect(() => {
     if (open) {
       setSelectedCustomerId('')
+      setPurchaseVendorId('')
+      setPurchaseProductId('')
+      setPurchaseQty('')
+      setPurchaseBuyPrice('')
+      setPurchaseDate(new Date().toISOString().split('T')[0])
+      setPurchaseStatus('received')
+      setPurchaseNotes('')
+      setArrivalProductId('')
+      setArrivalQty('')
+      setArrivalType('add')
+      setArrivalNotes('')
+      setSaleCustomerId('')
+      setSaleProductId('')
+      setSaleQty('')
+      setSalePrice('')
+      setSaleAddress('Pickup from Agriport Warehouse')
+      setSalePaymentMode('offline')
+      setSaleNotes('')
       if (productToEdit) {
         setForm({
           ...productToEdit,
@@ -131,6 +174,16 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       setPackingTypeInput('Cartoon')
     }
   }, [open, productToEdit])
+
+  useEffect(() => {
+    if (saleProductId && dbProducts) {
+      const selectedProductObj = dbProducts.find((p) => p.id === saleProductId)
+      if (selectedProductObj) {
+        setSaleQty(selectedProductObj.moq || 1)
+        setSalePrice(selectedProductObj.basePrice || 0)
+      }
+    }
+  }, [saleProductId, dbProducts])
 
   const handleSaveSize = () => {
     const sizeVal = sizeInput.trim()
@@ -242,6 +295,126 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     setForm((f) => ({ ...f, specifications: { ...(f.specifications ?? {}), [key]: val } }))
 
   const handleSave = () => {
+    if (formMode === 'purchase') {
+      if (!purchaseVendorId) {
+        toast.error('Vendor is required.')
+        return
+      }
+      if (!purchaseProductId) {
+        toast.error('Product is required.')
+        return
+      }
+      if (purchaseQty === '' || Number(purchaseQty) <= 0) {
+        toast.error('Quantity must be a positive number.')
+        return
+      }
+      if (purchaseBuyPrice === '' || Number(purchaseBuyPrice) <= 0) {
+        toast.error('Buy price must be a positive number.')
+        return
+      }
+
+      const selectedVendor = customers?.find((c) => c.id === purchaseVendorId)
+      const selectedProductObj = dbProducts?.find((p) => p.id === purchaseProductId)
+
+      if (!selectedProductObj) {
+        toast.error('Selected product not found.')
+        return
+      }
+
+      const vendorName = selectedVendor ? (selectedVendor.company || selectedVendor.name) : 'Unknown Vendor'
+
+      onSavePurchase?.({
+        vendorName,
+        productId: purchaseProductId,
+        productName: selectedProductObj.name,
+        quantity: Number(purchaseQty),
+        unit: selectedProductObj.unit || 'kg',
+        buyPrice: Number(purchaseBuyPrice),
+        purchaseDate: purchaseDate || new Date().toISOString(),
+        status: purchaseStatus,
+        notes: purchaseNotes,
+      })
+      onClose()
+      return
+    }
+
+    if (formMode === 'arrival') {
+      if (!arrivalProductId) {
+        toast.error('Product is required.')
+        return
+      }
+      if (arrivalQty === '' || Number(arrivalQty) <= 0) {
+        toast.error('Quantity must be a positive number.')
+        return
+      }
+
+      const selectedProductObj = dbProducts?.find((p) => p.id === arrivalProductId)
+      if (!selectedProductObj) {
+        toast.error('Selected product not found.')
+        return
+      }
+
+      onSaveArrival?.({
+        productId: arrivalProductId,
+        productName: selectedProductObj.name,
+        category: selectedProductObj.category || 'General',
+        currentStock: selectedProductObj.availableStock || 0,
+        requestedChange: Number(arrivalQty),
+        type: arrivalType,
+        notes: arrivalNotes,
+      })
+      onClose()
+      return
+    }
+
+    if (formMode === 'sale') {
+      if (!saleCustomerId) {
+        toast.error('Customer is required.')
+        return
+      }
+      if (!saleProductId) {
+        toast.error('Product is required.')
+        return
+      }
+      if (saleQty === '' || Number(saleQty) <= 0) {
+        toast.error('Quantity must be a positive number.')
+        return
+      }
+      if (salePrice === '' || Number(salePrice) <= 0) {
+        toast.error('Price must be a positive number.')
+        return
+      }
+
+      const selectedCustomerObj = customers?.find((c) => c.platformUserId === saleCustomerId)
+      const selectedProductObj = dbProducts?.find((p) => p.id === saleProductId)
+
+      if (!selectedProductObj) {
+        toast.error('Selected product not found.')
+        return
+      }
+
+      if (Number(saleQty) > (selectedProductObj.availableStock || 0)) {
+        toast.error(`Quantity exceeds available stock. Available: ${selectedProductObj.availableStock}`)
+        return
+      }
+
+      onSaveSale?.({
+        customerId: saleCustomerId,
+        customerName: selectedCustomerObj ? (selectedCustomerObj.company || selectedCustomerObj.name) : 'Unknown Customer',
+        productId: saleProductId,
+        productName: selectedProductObj.name,
+        category: selectedProductObj.category || 'General',
+        quantity: Number(saleQty),
+        unit: selectedProductObj.unit || 'kg',
+        unitPrice: Number(salePrice),
+        deliveryAddress: saleAddress || 'Pickup from Agriport Warehouse',
+        paymentMode: salePaymentMode,
+        notes: saleNotes,
+      })
+      onClose()
+      return
+    }
+
     if (!form.name?.trim() || !form.unit?.trim()) {
       toast.error('Name and Unit are required.')
       return
@@ -338,13 +511,249 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth slotProps={{ paper: { sx: { borderRadius: 4 } } }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Typography sx={{ fontWeight: 700, fontSize: 18 }}>
-          {productToEdit ? 'Edit Stock' : 'Add New Stock'}
+          {formMode === 'purchase'
+            ? 'Record Vendor Purchase'
+            : formMode === 'arrival'
+            ? 'Record Stock Arrival'
+            : formMode === 'sale'
+            ? 'Record Portfolio Sale'
+            : (productToEdit ? 'Edit Stock' : 'Add New Stock')}
         </Typography>
         <IconButton size="small" onClick={onClose}><CloseRoundedIcon /></IconButton>
       </DialogTitle>
 
       <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
-        {(formMode === 'purchase' || !formMode) && (
+        {formMode === 'purchase' ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Vendor Selection */}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select Vendor (CRM Customer) *
+              </Typography>
+              <TextField
+                select
+                label="Choose Vendor"
+                size="small"
+                fullWidth
+                value={purchaseVendorId}
+                onChange={(e) => setPurchaseVendorId(e.target.value)}
+              >
+                {(customers ?? []).map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.company ? `${c.company} (${c.name})` : c.name} — {c.phone}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            {/* Product Selection */}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select Product *
+              </Typography>
+              <TextField
+                select
+                label="Choose Product"
+                size="small"
+                fullWidth
+                value={purchaseProductId}
+                onChange={(e) => setPurchaseProductId(e.target.value)}
+              >
+                {(dbProducts ?? []).map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name} ({p.unit})
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            {/* Quantity and Price */}
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
+                label="Quantity *"
+                placeholder="e.g. 100"
+                size="small"
+                type="number"
+                fullWidth
+                value={purchaseQty}
+                onChange={(e) => setPurchaseQty(e.target.value === '' ? '' : Number(e.target.value))}
+              />
+              <TextField
+                label="Buy Price (per unit) *"
+                placeholder="e.g. 80"
+                size="small"
+                type="number"
+                fullWidth
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  },
+                }}
+                value={purchaseBuyPrice}
+                onChange={(e) => setPurchaseBuyPrice(e.target.value === '' ? '' : Number(e.target.value))}
+              />
+            </Box>
+
+            {/* Date and Status */}
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
+                label="Purchase Date *"
+                type="date"
+                size="small"
+                fullWidth
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                select
+                label="Status *"
+                size="small"
+                fullWidth
+                value={purchaseStatus}
+                onChange={(e) => setPurchaseStatus(e.target.value as any)}
+              >
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="ordered">Ordered</MenuItem>
+                <MenuItem value="received">Received</MenuItem>
+              </TextField>
+            </Box>
+
+            {/* Notes */}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Additional Notes
+              </Typography>
+              <TextField
+                label="Notes"
+                placeholder="Enter any additional details about this purchase..."
+                size="small"
+                multiline
+                rows={3}
+                fullWidth
+                value={purchaseNotes}
+                onChange={(e) => setPurchaseNotes(e.target.value)}
+              />
+            </Box>
+          </Box>
+        ) : formMode === 'sale' ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            {/* Customer Selection */}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select Customer *
+              </Typography>
+              <TextField
+                select
+                label="Choose Portfolio Customer"
+                size="small"
+                fullWidth
+                value={saleCustomerId}
+                onChange={(e) => setSaleCustomerId(e.target.value)}
+              >
+                {(customers ?? [])
+                  .filter((c) => !!c.platformUserId)
+                  .map((c) => (
+                    <MenuItem key={c.id} value={c.platformUserId}>
+                      {c.company ? `${c.company} (${c.name})` : c.name} — {c.phone}
+                    </MenuItem>
+                  ))}
+              </TextField>
+            </Box>
+
+            {/* Product Selection */}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Select Product *
+              </Typography>
+              <TextField
+                select
+                label="Choose Product"
+                size="small"
+                fullWidth
+                value={saleProductId}
+                onChange={(e) => setSaleProductId(e.target.value)}
+              >
+                {(dbProducts ?? []).map((p) => (
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name} ({p.unit}) — Stock: {p.availableStock || 0}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
+            {/* Quantity and Price */}
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
+                label="Quantity *"
+                placeholder="e.g. 50"
+                size="small"
+                type="number"
+                fullWidth
+                value={saleQty}
+                onChange={(e) => setSaleQty(e.target.value === '' ? '' : Number(e.target.value))}
+              />
+              <TextField
+                label="Quoted Price (per unit) *"
+                placeholder="e.g. 150"
+                size="small"
+                type="number"
+                fullWidth
+                slotProps={{
+                  input: {
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  },
+                }}
+                value={salePrice}
+                onChange={(e) => setSalePrice(e.target.value === '' ? '' : Number(e.target.value))}
+              />
+            </Box>
+
+            {/* Address and Payment Mode */}
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TextField
+                label="Delivery Address *"
+                placeholder="Enter shipping address..."
+                size="small"
+                fullWidth
+                value={saleAddress}
+                onChange={(e) => setSaleAddress(e.target.value)}
+              />
+              <TextField
+                select
+                label="Payment Mode *"
+                size="small"
+                fullWidth
+                value={salePaymentMode}
+                onChange={(e) => setSalePaymentMode(e.target.value)}
+              >
+                <MenuItem value="offline">Offline / Credit</MenuItem>
+                <MenuItem value="cash">Cash</MenuItem>
+                <MenuItem value="upi">UPI</MenuItem>
+                <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+              </TextField>
+            </Box>
+
+            {/* Notes */}
+            <Box>
+              <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 1, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Additional Notes
+              </Typography>
+              <TextField
+                label="Notes"
+                placeholder="Enter details like vehicle number, special instructions..."
+                size="small"
+                multiline
+                rows={3}
+                fullWidth
+                value={saleNotes}
+                onChange={(e) => setSaleNotes(e.target.value)}
+              />
+            </Box>
+          </Box>
+        ) : (
+          <>
+            {!formMode && (
           <>
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -371,7 +780,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           </>
         )}
 
-        {(!formMode || formMode === 'arrival') && (
+        {!formMode && (
           <>
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -519,7 +928,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     onChange={(e) => setStockInput(e.target.value === '' ? '' : Number(e.target.value))}
                   />
                   <TextField
-                    label={formMode === 'purchase' ? 'Purchased Price *' : (formMode === 'arrival' ? 'Price *' : 'Selling Price *')}
+                    label="Selling Price *"
                     placeholder="e.g. 499"
                     size="small"
                     type="number"
@@ -591,7 +1000,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                       <TableCell>Net Weight</TableCell>
                       <TableCell>Gross Weight</TableCell>
                       <TableCell>Stock</TableCell>
-                      <TableCell>{formMode === 'purchase' ? 'Purchased Price' : (formMode === 'arrival' ? 'Price' : 'Selling Price')}</TableCell>
+                      <TableCell>Selling Price</TableCell>
                       <TableCell align="right" sx={{ width: 80 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -880,16 +1289,20 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
             })}
           </Box>
         </Box>
-
-
-      </DialogContent>
+      </>
+    )}
+  </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2, gap: 1.5 }}>
         <Button variant="outlined" onClick={onClose} sx={{ borderRadius: 2.5 }}>
           Cancel
         </Button>
         <Button variant="contained" onClick={handleSave} sx={{ borderRadius: 2.5, fontWeight: 700, px: 4 }}>
-          Add Stock
+          {formMode === 'purchase'
+            ? 'Save Purchase'
+            : formMode === 'arrival'
+            ? 'Save Arrival'
+            : 'Add Stock'}
         </Button>
       </DialogActions>
     </Dialog>
