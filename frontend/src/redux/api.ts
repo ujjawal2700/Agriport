@@ -428,6 +428,23 @@ export const api = createApi({
       },
       providesTags: ['Executive'],
     }),
+    getAdminExecutives: build.query<any[], void>({
+      query: () => ({
+        url: '/users/admin/sales/executives',
+        method: 'GET',
+      }),
+      transformResponse: (response: any) => response.data || [],
+      providesTags: ['Executive'],
+    }),
+    updateUserTarget: build.mutation<any, { userId: string; target: number }>({
+      query: ({ userId, target }) => ({
+        url: `/users/admin/sales/users/${userId}/target`,
+        method: 'PATCH',
+        data: { target },
+      }),
+      invalidatesTags: ['Executive', 'Manager'],
+    }),
+
     getStockRequests: build.query<StockRequest[], void>({
       query: () => ({
         url: '/inventory/stock-requests',
@@ -846,6 +863,8 @@ export const {
   useGetSalesSettingsQuery,
   useUpdateSalesSettingsMutation,
   useGetExecutiveApprovalsQuery,
+  useGetAdminExecutivesQuery,
+  useUpdateUserTargetMutation,
   useGetStockRequestsQuery,
   useGetManagerStatsQuery,
   useGetExecutiveStatsQuery,

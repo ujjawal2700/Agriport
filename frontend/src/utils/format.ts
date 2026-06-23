@@ -29,7 +29,8 @@ export function fromNow(iso: string | null): string {
   return formatDate(iso)
 }
 
-export function initials(name: string): string {
+export function initials(name?: string | null): string {
+  if (!name || typeof name !== 'string') return ''
   return name
     .split(' ')
     .filter(Boolean)

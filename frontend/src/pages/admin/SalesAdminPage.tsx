@@ -13,10 +13,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
 } from '@mui/material'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import EmptyState from '@/components/common/EmptyState'
 import {
   useGetManagersQuery,
@@ -24,6 +26,8 @@ import {
   useGetSalesSettingsQuery,
   useUpdateSalesSettingsMutation,
   useGetExecutiveApprovalsQuery,
+  useGetAdminExecutivesQuery,
+  useUpdateUserTargetMutation,
 } from '@/redux/api'
 import { formatMoneyCompact, formatDate, initials } from '@/utils/format'
 import type { ExecutiveApproval } from '@/types'
@@ -49,6 +53,15 @@ export default function SalesAdminPage() {
   const { data: serverApprovals } = useGetExecutiveApprovalsQuery()
   const { data: settings } = useGetSalesSettingsQuery()
   const [updateSalesSettings, { isLoading: isUpdatingSettings }] = useUpdateSalesSettingsMutation()
+
+  const { data: executives } = useGetAdminExecutivesQuery()
+  const [editTargetOpen, setEditTargetOpen] = useState(false)
+  const [editTargetUser, setEditTargetUser] = useState<{ id: string; name: string; target: number; role: 'manager' | 'executive' } | null>(null)
+
+  const handleOpenEditTarget = (id: string, name: string, target: number, role: 'manager' | 'executive') => {
+    setEditTargetUser({ id, name, target, role })
+    setEditTargetOpen(true)
+  }
 
   const [approvals, setApprovals] = useState<ExecutiveApproval[]>([])
   const [commission, setCommission] = useState(5)
@@ -103,9 +116,14 @@ export default function SalesAdminPage() {
                   <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 18, fontFamily: '"Bricolage Grotesque", serif' }}>
                     {formatMoneyCompact(m.revenue)}
                   </Typography>
-                  <Typography className="tnum" sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
-                    of {formatMoneyCompact(m.target)} · {pct}%
-                  </Typography>
+                  <Box className="flex items-center gap-1">
+                    <Typography className="tnum" sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
+                      of {formatMoneyCompact(m.target)} · {pct}%
+                    </Typography>
+                    <IconButton size="small" onClick={() => handleOpenEditTarget(m.id, m.name, m.target, 'manager')} sx={{ p: 0.5 }}>
+                      <EditRoundedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
                 </Box>
                 <LinearProgress
                   variant="determinate"
@@ -205,8 +223,139 @@ export default function SalesAdminPage() {
           </Box>
         </SectionCard>
       </Box>
+
+      {/* Executives */}
+      <SectionCard title="Sales executives" subtitle="Executive performance vs. monthly target">
+        <Box className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {executives?.map((e: any) => {
+            const pct = Math.min(100, Math.round(((e.revenue || 0) / (e.target || 150000)) * 100))
+            return (
+              <Box key={e.id} sx={{ p: 2.5, borderRadius: 3, border: '1px solid var(--ink-200)' }}>
+                <Box className="flex items-center gap-2 mb-2.5">
+                  <Avatar sx={{ width: 42, height: 42, bgcolor: 'var(--brand-600)', fontSize: 14 }}>{initials(e.name)}</Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Box className="flex items-center gap-1.5">
+                      <Typography sx={{ fontWeight: 700, fontSize: 14.5 }}>{e.name}</Typography>
+                      <Chip size="small" label={e.status} color={e.status === 'active' ? 'success' : e.status === 'pending' ? 'warning' : 'default'} variant="outlined" sx={{ height: 18, fontSize: 10 }} />
+                    </Box>
+                    <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
+                      Manager: {e.managerName} · {e.region} region
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box className="flex justify-between items-baseline mb-1">
+                  <Typography className="tnum" sx={{ fontWeight: 800, fontSize: 18, fontFamily: '"Bricolage Grotesque", serif' }}>
+                    {formatMoneyCompact(e.revenue || 0)}
+                  </Typography>
+                  <Box className="flex items-center gap-1">
+                    <Typography className="tnum" sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
+                      of {formatMoneyCompact(e.target || 0)} · {pct}%
+                    </Typography>
+                    <IconButton size="small" onClick={() => handleOpenEditTarget(e.id, e.name, e.target || 0, 'executive')} sx={{ p: 0.5 }}>
+                      <EditRoundedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={pct}
+                  sx={{ height: 7, borderRadius: 99, bgcolor: 'var(--ink-100)', '& .MuiLinearProgress-bar': { borderRadius: 99, bgcolor: pct >= 90 ? 'var(--brand-500)' : '#C9842F' } }}
+                />
+              </Box>
+            )
+          })}
+          {(!executives || executives.length === 0) && (
+            <Box className="col-span-full">
+              <EmptyState icon={<PersonRoundedIcon fontSize="inherit" />} title="No executives found" description="Active executives will appear here." />
+            </Box>
+          )}
+        </Box>
+      </SectionCard>
+
       <AddManagerDialog open={addManagerOpen} onClose={() => setAddManagerOpen(false)} />
+      {editTargetUser && (
+        <EditTargetDialog
+          open={editTargetOpen}
+          onClose={() => setEditTargetOpen(false)}
+          userId={editTargetUser.id}
+          userName={editTargetUser.name}
+          currentTarget={editTargetUser.target}
+          userRole={editTargetUser.role}
+        />
+      )}
     </Box>
+  )
+}
+
+interface EditTargetDialogProps {
+  open: boolean
+  onClose: () => void
+  userId: string
+  userName: string
+  currentTarget: number
+  userRole: 'manager' | 'executive'
+}
+
+function EditTargetDialog({
+  open,
+  onClose,
+  userId,
+  userName,
+  currentTarget,
+  userRole,
+}: EditTargetDialogProps) {
+  const [updateUserTarget, { isLoading }] = useUpdateUserTargetMutation()
+  const [target, setTarget] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setTarget(currentTarget.toString())
+    }
+  }, [open, currentTarget])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!target || isNaN(Number(target)) || Number(target) < 0) {
+      toast.error('Please enter a valid target amount')
+      return
+    }
+    try {
+      await updateUserTarget({ userId, target: Number(target) }).unwrap()
+      toast.success(`${userRole === 'manager' ? 'Manager' : 'Executive'} target updated successfully`)
+      onClose()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to update target')
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 3 } } }}>
+      <form onSubmit={handleSubmit}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>Set Monthly Target</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography sx={{ fontSize: 14, color: 'var(--ink-600)', mb: 2 }}>
+            Set monthly sales target for <strong>{userName}</strong> ({userRole}).
+          </Typography>
+          <TextField
+            label="Monthly Target"
+            type="number"
+            size="small"
+            required
+            fullWidth
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start">₹</InputAdornment> } }}
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={onClose} size="small">Cancel</Button>
+          <Button type="submit" variant="contained" size="small" disabled={isLoading}>
+            {isLoading ? 'Updating...' : 'Save Target'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   )
 }
 

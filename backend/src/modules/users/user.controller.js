@@ -441,3 +441,72 @@ export const updateSalesSettings = asyncWrapper(async (req, res, next) => {
   }, 200, 'Sales settings updated successfully.');
 });
 
+// 15. Get all executives with sales performance (Admin only)
+export const getAdminExecutives = asyncWrapper(async (req, res) => {
+  const executives = await User.find({ role: 'executive' }).sort({ createdAt: -1 });
+
+  const execsWithStats = await Promise.all(
+    executives.map(async (exec) => {
+      // Sum revenue from paid sale records for this executive
+      const salesVolumeResult = await SaleRecord.aggregate([
+        {
+          $match: {
+            executiveId: exec._id,
+            paymentStatus: 'paid',
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+          },
+        },
+      ]);
+
+      const revenue = salesVolumeResult[0]?.totalRevenue || 0;
+
+      // Get manager's name
+      let managerName = 'None';
+      if (exec.managerId) {
+        const manager = await User.findById(exec.managerId);
+        if (manager) {
+          managerName = manager.name;
+        }
+      }
+
+      const execObj = serializeUser(exec);
+      execObj.revenue = revenue;
+      execObj.managerName = managerName;
+
+      return execObj;
+    })
+  );
+
+  return successResponse(res, execsWithStats, 200, 'Executives retrieved successfully.');
+});
+
+// 16. Update user (manager or executive) sales target (Admin only)
+export const updateUserTarget = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+  const { target } = req.body;
+
+  if (target === undefined || isNaN(Number(target)) || Number(target) < 0) {
+    return next(new AppError('Invalid target value. Must be a non-negative number.', 400));
+  }
+
+  const user = await User.findById(id);
+  if (!user) {
+    return next(new AppError('User not found.', 404));
+  }
+
+  if (user.role !== 'executive' && user.role !== 'manager') {
+    return next(new AppError('Targets can only be set for sales team members (executives or managers).', 400));
+  }
+
+  user.target = Number(target);
+  await user.save();
+
+  return successResponse(res, serializeUser(user), 200, 'Sales target updated successfully.');
+});
+
+

@@ -67,7 +67,7 @@ export default function CartPage() {
                   to={ROUTES.productDetail(item.productId)}
                   sx={{ width: { xs: '100%', sm: 96 }, height: 96, flexShrink: 0 }}
                 >
-                  <ProductThumb id={item.productId} name={item.name} />
+                  <ProductThumb id={item.productId} name={item.name} imageUrl={item.image} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography

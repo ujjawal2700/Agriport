@@ -2,6 +2,7 @@ import * as authService from './auth.service.js';
 import asyncWrapper from '../../utils/asyncWrapper.js';
 import { successResponse } from '../../utils/apiResponse.js';
 import env from '../../config/env.js';
+import { serializeUser } from '../users/user.controller.js';
 
 /**
  * Utility to set JWT Refresh Token in an HTTP-only secure cookie
@@ -56,7 +57,7 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
     const loginResult = await authService.loginWithOtp(mobile, deviceInfo);
     setRefreshTokenCookie(res, loginResult.refreshToken);
     return successResponse(res, {
-      user: loginResult.user,
+      user: serializeUser(loginResult.user),
       accessToken: loginResult.accessToken,
     }, 200, 'Logged in successfully via OTP.');
   }
@@ -77,7 +78,7 @@ export const signupCustomer = asyncWrapper(async (req, res) => {
 
   // Return user details + access token
   const responseData = {
-    user: result.user,
+    user: serializeUser(result.user),
     accessToken: result.accessToken,
   };
   return successResponse(res, responseData, 201, 'Customer registered successfully.');
@@ -104,7 +105,7 @@ export const login = asyncWrapper(async (req, res) => {
 
   // Return user details + access token
   const responseData = {
-    user: result.user,
+    user: serializeUser(result.user),
     accessToken: result.accessToken,
   };
   return successResponse(res, responseData, 200, 'Logged in successfully.');

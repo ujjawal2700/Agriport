@@ -105,7 +105,7 @@ export default function OrderDetailPage() {
               {order.lines.map((l) => (
                 <Box key={l.productId} className="flex items-center gap-3">
                   <Box sx={{ width: 60, height: 60, flexShrink: 0 }}>
-                    <ProductThumb id={l.productId} name={l.name} />
+                    <ProductThumb id={l.productId} name={l.name} imageUrl={l.image || undefined} />
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography

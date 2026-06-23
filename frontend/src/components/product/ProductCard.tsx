@@ -33,7 +33,7 @@ export default function ProductCard({ product }: { product: Product }) {
             border: '1px solid var(--ink-200)',
           }}
         >
-          <ProductThumb id={product.id} name={product.name} category={product.category} rounded={5} />
+          <ProductThumb id={product.id} name={product.name} category={product.category} rounded={5} imageUrl={product.images?.[0] || undefined} />
           <Box sx={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 0.75 }}>
             {product.isNew && (
               <Chip
