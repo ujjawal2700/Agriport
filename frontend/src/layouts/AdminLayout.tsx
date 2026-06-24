@@ -10,6 +10,7 @@ import WarehouseRoundedIcon from '@mui/icons-material/WarehouseRounded'
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import PaletteRoundedIcon from '@mui/icons-material/PaletteRounded'
+import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import WorkspaceLayout from './WorkspaceLayout'
 import type { WorkspaceConfig } from './WorkspaceLayout'
 import { ROUTES } from '@/constants'
@@ -25,6 +26,16 @@ export default function AdminLayout() {
     { label: 'Orders & Payments', to: '/admin/orders', icon: <ReceiptLongRoundedIcon /> },
     ...(!isManager ? [{ label: 'Users', to: '/admin/users', icon: <GroupRoundedIcon /> }] : []),
     { label: 'Sales Team', to: '/admin/sales', icon: <HubRoundedIcon /> },
+    {
+      label: 'Add Stock',
+      to: '/admin/add-stock',
+      icon: <Inventory2RoundedIcon />,
+      children: [
+        { label: 'New Purchase', to: '/admin/add-stock/new-purchase' },
+        { label: 'On Arrival', to: '/admin/add-stock/on-arrival' },
+      ],
+    },
+    { label: 'New Sale', to: '/admin/new-sale', icon: <PointOfSaleRoundedIcon /> },
     { label: 'Inventory', to: '/admin/inventory', icon: <WarehouseRoundedIcon /> },
     { label: 'Reports', to: '/admin/reports', icon: <InsightsRoundedIcon /> },
     ...(!isManager ? [{ label: 'Storefront', to: '/admin/storefront', icon: <PaletteRoundedIcon /> }] : []),
@@ -40,6 +51,9 @@ export default function AdminLayout() {
     '/admin/inventory': 'Inventory & Stock Approvals',
     '/admin/reports': 'Reports & Analytics',
     '/admin/storefront': 'Storefront Content',
+    '/admin/new-sale': 'Sales Operations',
+    '/admin/add-stock/new-purchase': 'New Purchase',
+    '/admin/add-stock/on-arrival': 'On Arrival',
   }
 
   const config: WorkspaceConfig = {

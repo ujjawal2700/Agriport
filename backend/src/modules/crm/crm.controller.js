@@ -9,7 +9,10 @@ import { successResponse } from '../../utils/apiResponse.js';
 export const getCrmCustomers = asyncWrapper(async (req, res) => {
   const { stage, search } = req.query;
 
-  const queryObj = { ownerId: req.user._id };
+  const queryObj = {};
+  if (req.user.role === 'executive') {
+    queryObj.ownerId = req.user._id;
+  }
 
   if (stage) {
     queryObj.stage = stage;

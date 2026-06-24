@@ -49,17 +49,19 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
   }
 
   try {
-    // If the order is placed by an Executive on behalf of a customer
-    if (req.user.role === 'executive') {
+    // If the order is placed by staff on behalf of a customer
+    if (['executive', 'admin', 'manager'].includes(req.user.role)) {
       if (!customerId) {
-        throw new AppError('Customer ID is required when placing an order as an Executive.', 400);
+        throw new AppError('Customer ID is required when placing an order as staff.', 400);
       }
-      // Validate CRM Customer ownership
-      const crmCust = session
-        ? await CRMCustomer.findOne({ platformUserId: customerId, ownerId: req.user._id }).session(session)
-        : await CRMCustomer.findOne({ platformUserId: customerId, ownerId: req.user._id });
-      if (!crmCust) {
-        throw new AppError('You are not authorized to place orders for this customer (not in your CRM portfolio).', 403);
+      // Validate CRM Customer ownership (enforced ONLY for executives)
+      if (req.user.role === 'executive') {
+        const crmCust = session
+          ? await CRMCustomer.findOne({ platformUserId: customerId, ownerId: req.user._id }).session(session)
+          : await CRMCustomer.findOne({ platformUserId: customerId, ownerId: req.user._id });
+        if (!crmCust) {
+          throw new AppError('You are not authorized to place orders for this customer (not in your CRM portfolio).', 403);
+        }
       }
       const cust = session 
         ? await User.findById(customerId).session(session)
@@ -68,7 +70,7 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
         throw new AppError('Customer not found.', 404);
       }
       finalCustomerId = customerId;
-      finalExecutiveId = req.user._id;
+      finalExecutiveId = req.user.role === 'executive' ? req.user._id : null;
       customerUser = cust;
     }
 
@@ -78,8 +80,8 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
     // Process and validate each line item
     for (const item of lines) {
       const product = session
-        ? await Product.findOne({ _id: item.productId, isArchived: false }).session(session)
-        : await Product.findOne({ _id: item.productId, isArchived: false });
+        ? await Product.findById(item.productId).session(session)
+        : await Product.findById(item.productId);
       if (!product) {
         throw new AppError(`Product with ID "${item.productId}" not found.`, 404);
       }
@@ -90,7 +92,7 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
       }
 
       // Perform atomic check-and-decrement to prevent overselling
-      const updateQuery = { _id: item.productId, stock: { $gte: quantity }, isArchived: false };
+      const updateQuery = { _id: item.productId, stock: { $gte: quantity } };
       const updateDoc = { $inc: { stock: -quantity } };
       const updateOptions = session ? { session } : {};
 
@@ -98,26 +100,31 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
 
       if (updateResult.modifiedCount === 0) {
         throw new AppError(
-          `Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${quantity}`,
+          `Insufficient stock for "${product.name}". Available: ${product.stock || 0}, Requested: ${quantity}`,
           400
         );
       }
 
-      // Resolve pricing: check for executive quoted price first, then fall back to lot priceSlabs
-      let unitPrice;
-      if (req.user.role === 'executive' && quotedPrices && quotedPrices[product._id.toString()] !== undefined) {
+      // Resolve pricing: check for staff quoted price first, then fall back to lot priceSlabs if present
+      let unitPrice = 0;
+      if (['executive', 'admin', 'manager'].includes(req.user.role) && quotedPrices && quotedPrices[product._id.toString()] !== undefined) {
         unitPrice = Number(quotedPrices[product._id.toString()]);
-      } else {
-        unitPrice = resolveUnitPrice(product.priceSlabs, quantity);
+      } else if (product.priceSlabs && product.priceSlabs.length > 0) {
+        const resolveUnitPriceHelper = (priceSlabs, qty) => {
+          const sorted = [...priceSlabs].sort((a, b) => b.minQty - a.minQty);
+          const match = sorted.find((s) => qty >= s.minQty);
+          return match ? match.unitPrice : priceSlabs[0].unitPrice;
+        };
+        unitPrice = resolveUnitPriceHelper(product.priceSlabs, quantity);
       }
       const lineTotal = unitPrice * quantity;
 
       resolvedLines.push({
         productId: product._id,
         name: product.name,
-        image: product.images && product.images.length > 0 ? product.images[0] : '',
+        image: '',
         quantity,
-        unit: product.unit,
+        unit: product.unit || 'kg',
         unitPrice,
         lineTotal,
         specifications: item.specifications || {},

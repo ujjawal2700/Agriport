@@ -130,10 +130,14 @@ export default function App() {
             <Route path="orders" element={<OrdersAdminPage />} />
             <Route path="users" element={<UsersAdminPage />} />
             <Route path="sales" element={<SalesAdminPage />} />
+            <Route path="new-sale" element={<ExecutiveSalesPage />} />
             <Route path="inventory" element={<InventoryAdminPage />} />
+            <Route path="add-stock/new-purchase" element={<NewPurchasePage />} />
+            <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
             <Route path="reports" element={<ReportsAdminPage />} />
             <Route path="storefront" element={<AdminStorefrontPage />} />
           </Route>
+
 
 
 

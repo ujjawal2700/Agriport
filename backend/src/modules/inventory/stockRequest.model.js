@@ -64,6 +64,11 @@ const stockRequestSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    specifications: {
+      type: Map,
+      of: String,
+      default: {},
+    },
   },
   {
     timestamps: true,

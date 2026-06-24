@@ -1,20 +1,24 @@
 import { useState, useMemo } from 'react'
-import { Box, Typography, Button, TextField, IconButton, Tooltip } from '@mui/material'
+import { Box, Typography, Button, TextField, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import type { GridColDef } from '@mui/x-data-grid'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import TableCard from '@/components/admin/TableCard'
 import { gridSx } from '@/components/admin/gridStyles'
-import { useGetCategoriesQuery, useCreateCategoryMutation, useDeleteCategoryMutation } from '@/redux/api'
+import { useGetCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMutation, useDeleteCategoryMutation } from '@/redux/api'
 import type { Category } from '@/types'
 import toast from 'react-hot-toast'
 
 export default function CategoriesAdminPage() {
   const { data: categories, isLoading } = useGetCategoriesQuery()
   const [createCategory] = useCreateCategoryMutation()
+  const [updateCategory] = useUpdateCategoryMutation()
   const [deleteCategory] = useDeleteCategoryMutation()
   const [search, setSearch] = useState('')
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [editCategory, setEditCategory] = useState<Category | null>(null)
+  const [editName, setEditName] = useState('')
 
   const filtered = useMemo(() => {
     if (!categories) return []
@@ -42,6 +46,32 @@ export default function CategoriesAdminPage() {
     }
   }
 
+  const handleEditClick = (category: Category) => {
+    setEditCategory(category)
+    setEditName(category.name)
+  }
+
+  const handleUpdateCategory = async () => {
+    const trimmed = editName.trim()
+    if (!trimmed) {
+      toast.error('Please enter a category name')
+      return
+    }
+    if (categories?.some((c) => c.id !== editCategory?.id && c.name.toLowerCase() === trimmed.toLowerCase())) {
+      toast.error('Category already exists')
+      return
+    }
+
+    try {
+      await updateCategory({ id: editCategory!.id, name: trimmed }).unwrap()
+      setEditCategory(null)
+      setEditName('')
+      toast.success('Category updated successfully')
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to update category')
+    }
+  }
+
   const handleDeleteCategory = async (id: string) => {
     try {
       await deleteCategory(id).unwrap()
@@ -50,7 +80,6 @@ export default function CategoriesAdminPage() {
       toast.error(err.data?.message || 'Failed to delete category')
     }
   }
-
 
   const columns: GridColDef<Category>[] = [
     {
@@ -79,13 +108,18 @@ export default function CategoriesAdminPage() {
     {
       field: 'actions',
       headerName: '',
-      width: 100,
+      width: 120,
       sortable: false,
       filterable: false,
       align: 'right',
       headerAlign: 'right',
       renderCell: (p) => (
-        <Box>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+          <Tooltip title="Edit">
+            <IconButton size="small" onClick={() => handleEditClick(p.row)} sx={{ color: 'var(--ink-500)' }}>
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Delete">
             <IconButton size="small" onClick={() => handleDeleteCategory(p.row.id)} sx={{ color: 'var(--ink-500)' }}>
               <DeleteOutlineRoundedIcon fontSize="small" />
@@ -143,6 +177,32 @@ export default function CategoriesAdminPage() {
           sx={gridSx}
         />
       </TableCard>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={Boolean(editCategory)} onClose={() => setEditCategory(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 18, pb: 1 }}>Edit Category</DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Category Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={() => setEditCategory(null)} variant="outlined" sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button onClick={handleUpdateCategory} variant="contained" sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 600 }}>
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

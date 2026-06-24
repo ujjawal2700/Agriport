@@ -135,12 +135,6 @@ export default function ProductDetailPage() {
             </Box>
           </Box>
 
-          <Typography sx={{ fontSize: 24, fontWeight: 800, color: 'var(--brand-700)', mb: 2 }}>
-            {formatMoney(product.basePrice)}
-            <Box component="span" sx={{ fontSize: 14, color: 'var(--ink-500)', fontWeight: 500, ml: 0.5 }}>
-              / {product.unit}
-            </Box>
-          </Typography>
 
           <Typography color="text.secondary" sx={{ mb: 3 }}>
             {product.shortDescription}

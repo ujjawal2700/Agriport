@@ -17,7 +17,7 @@ import QrCodeRoundedIcon from '@mui/icons-material/QrCode2Rounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import PageHeader from '@/components/common/PageHeader'
-import OrderSummary, { computeTotals } from '@/components/order/OrderSummary'
+import OrderSummary from '@/components/order/OrderSummary'
 import EmptyState from '@/components/common/EmptyState'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { clearCart } from '@/redux/slices/cartSlice'
@@ -49,7 +49,7 @@ export default function CheckoutPage() {
     )
   }
 
-  const { total } = computeTotals(items)
+
   const online = PAYMENT_METHODS.filter((m) => m.group === 'online')
   const offline = PAYMENT_METHODS.filter((m) => m.group === 'offline')
 
@@ -68,10 +68,10 @@ export default function CheckoutPage() {
       await createOrder(orderPayload).unwrap()
       dispatch(clearCart())
       window.dispatchEvent(new Event('cart-updated'))
-      toast.success('Order placed successfully!')
+      toast.success('Enquiry submitted successfully!')
       navigate(`${ROUTES.orders}?placed=1`, { replace: true })
     } catch (err: any) {
-      toast.error(err.data?.message || 'Failed to place order')
+      toast.error(err.data?.message || 'Failed to submit enquiry')
     }
   }
 
@@ -105,8 +105,8 @@ export default function CheckoutPage() {
   return (
     <Box className="animate-fade-up">
       <PageHeader
-        title="Checkout"
-        crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Cart', to: ROUTES.cart }, { label: 'Checkout' }]}
+        title="Submit Enquiry"
+        crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Cart', to: ROUTES.cart }, { label: 'Submit Enquiry' }]}
       />
 
       <Box className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -169,7 +169,7 @@ export default function CheckoutPage() {
             startIcon={placing ? <CircularProgress size={18} color="inherit" /> : <CheckCircleRoundedIcon />}
             onClick={placeOrder}
           >
-            {placing ? 'Placing order…' : 'Place order'}
+            {placing ? 'Submitting enquiry…' : 'Submit Enquiry'}
           </Button>
           <Divider sx={{ my: 2 }} />
           <Box className="flex items-start gap-2">

@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import mongoose from 'mongoose';
 import User from '../src/modules/users/user.model.js';
 import Category from '../src/modules/categories/category.model.js';
@@ -17,7 +15,7 @@ const runTest = async () => {
   // Clean up any stale data from previous test runs
   await User.deleteOne({ email: testAdminEmail });
   await User.deleteOne({ mobile: testAdminMobile });
-  await Product.deleteMany({ sku: 'WHEAT-PUNJAB-001' });
+  await Product.deleteMany({ name: 'Organic Punjab Wheat' });
   await Category.deleteOne({ name: 'Test Wheat Category' });
 
   console.log('✅ Cleaned up old test records.');
@@ -64,8 +62,6 @@ const runTest = async () => {
     },
     body: JSON.stringify({
       name: 'Test Wheat Category',
-      image: 'http://example.com/cat.jpg',
-      order: 5,
     }),
   });
   const categoryData = await categoryRes.json();
@@ -74,40 +70,22 @@ const runTest = async () => {
   }
   const category = categoryData.data;
   console.log('✅ Category created:', category);
-  if (category.slug !== 'test-wheat-category') {
-    throw new Error(`Slug generation incorrect: ${category.slug}`);
-  }
   const categoryId = category._id;
 
-  // 4. Create a Product via FormData (simulates file upload)
-  console.log('\n4️⃣ Creating Product with lot pricing slabs and uploaded images...');
-  const formData = new FormData();
-  formData.append('name', 'Organic Punjab Wheat');
-  formData.append('description', 'High grade organic wheat directly from the farms of Punjab.');
-  formData.append('sku', 'WHEAT-PUNJAB-001');
-  formData.append('category', categoryId);
-  formData.append('unit', 'kg');
-  formData.append('moq', '100');
-  formData.append('stock', '50');
-  formData.append('priceSlabs', JSON.stringify([
-    { minQty: 100, unitPrice: 32.5 },
-    { minQty: 500, unitPrice: 30.0 }
-  ]));
-  formData.append('specs', JSON.stringify({ Grade: 'A+', Origin: 'Punjab', Moisture: '12%' }));
-  formData.append('variants', JSON.stringify(['50kg bag', '100kg bag']));
-
-  // Add mock images
-  const imageBlob1 = new Blob(['mock image data 1'], { type: 'image/png' });
-  const imageBlob2 = new Blob(['mock image data 2'], { type: 'image/jpeg' });
-  formData.append('images', imageBlob1, 'wheat1.png');
-  formData.append('images', imageBlob2, 'wheat2.jpg');
-
+  // 4. Create a Product via JSON (Name, Category, Origin, Grade)
+  console.log('\n4️⃣ Creating Product with simplified fields...');
   const productRes = await fetch('http://localhost:5000/api/v1/products', {
     method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
     },
-    body: formData, // boundary is auto-set by fetch
+    body: JSON.stringify({
+      name: 'Organic Punjab Wheat',
+      category: categoryId,
+      origin: 'India',
+      grade: 'A+',
+    }),
   });
   const productData = await productRes.json();
   if (!productRes.ok) {
@@ -116,79 +94,56 @@ const runTest = async () => {
   const product = productData.data;
   console.log('✅ Product created successfully:');
   console.log('- Name:', product.name);
-  console.log('- SKU:', product.sku);
-  console.log('- Initial Status:', product.status);
-  console.log('- Saved images path fallback:', product.images);
+  console.log('- Origin:', product.origin);
+  console.log('- Grade:', product.grade);
+  console.log('- IsExecutiveOnly:', product.isExecutiveOnly);
 
-  if (product.status !== 'in_stock') {
-    throw new Error(`Expected status "in_stock", got "${product.status}"`);
-  }
-  if (product.images.length !== 2) {
-    throw new Error(`Expected 2 images, got ${product.images.length}`);
+  if (product.isExecutiveOnly !== true) {
+    throw new Error('Expected product to be executive-only by default');
   }
   const productId = product._id;
 
   // 5. Query Products Endpoint with different filters
   console.log('\n5️⃣ Testing product retrieval & query filtering...');
 
-  // Search filter
-  const searchRes = await fetch('http://localhost:5000/api/v1/products?search=Organic');
-  const searchData = await searchRes.json();
-  console.log('🔍 Search query "?search=Organic" returned count:', searchData.data.products.length);
-  if (searchData.data.products.length === 0) {
-    throw new Error('Search query did not return the created product.');
+  // Public Query (User side) - Should NOT return the product
+  const publicRes = await fetch('http://localhost:5000/api/v1/products');
+  const publicData = await publicRes.json();
+  console.log('🔍 Public Query (User side) returned count:', publicData.data.products.length);
+  const existsInPublic = publicData.data.products.some((p) => p.id === productId || p._id === productId);
+  if (existsInPublic) {
+    throw new Error('Executive-only product was leaked to the public user catalog!');
   }
+  console.log('✅ Confirmed: Product is hidden from the user section.');
 
-  // Category filter
-  const catFilterRes = await fetch(`http://localhost:5000/api/v1/products?category=${categoryId}`);
-  const catFilterData = await catFilterRes.json();
-  console.log('🔍 Category filter query returned count:', catFilterData.data.products.length);
-  if (catFilterData.data.products.length === 0) {
-    throw new Error('Category filter did not return the created product.');
+  // Executive Query - Should return the product
+  const execRes = await fetch(`http://localhost:5000/api/v1/products?isExecutive=true&category=${categoryId}`);
+  const execData = await execRes.json();
+  console.log('🔍 Executive Query returned count:', execData.data.products.length);
+  const existsInExec = execData.data.products.some((p) => p.id === productId || p._id === productId);
+  if (!existsInExec) {
+    throw new Error('Executive query did not return the created product.');
   }
+  console.log('✅ Confirmed: Product is visible in the executive panels.');
 
-  // Price range filter
-  const priceFilterRes = await fetch('http://localhost:5000/api/v1/products?minPrice=31&maxPrice=34');
-  const priceFilterData = await priceFilterRes.json();
-  console.log('🔍 Price range "?minPrice=31&maxPrice=34" returned count:', priceFilterData.data.products.length);
-  if (priceFilterData.data.products.length === 0) {
-    throw new Error('Price range filter did not return the created product.');
-  }
-
-  // 6. Update product stock to verify low_stock status trigger
-  console.log('\n6️⃣ Testing status calculation (updating stock to 5 for "low_stock")...');
-  const updateLowStockRes = await fetch(`http://localhost:5000/api/v1/products/${productId}`, {
+  // 6. Update product
+  console.log('\n6️⃣ Updating product grade to "Super Premium"...');
+  const updateRes = await fetch(`http://localhost:5000/api/v1/products/${productId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ stock: 5 }),
+    body: JSON.stringify({ grade: 'Super Premium' }),
   });
-  const updateLowStockData = await updateLowStockRes.json();
-  console.log('Response status:', updateLowStockData.data.status);
-  if (updateLowStockData.data.status !== 'low_stock') {
-    throw new Error(`Expected status "low_stock", got "${updateLowStockData.data.status}"`);
+  const updateData = await updateRes.json();
+  console.log('Response Grade:', updateData.data.grade);
+  if (updateData.data.grade !== 'Super Premium') {
+    throw new Error(`Expected grade "Super Premium", got "${updateData.data.grade}"`);
   }
 
-  // 7. Update product stock to verify out_of_stock status trigger
-  console.log('\n7️⃣ Testing status calculation (updating stock to 0 for "out_of_stock")...');
-  const updateOutStockRes = await fetch(`http://localhost:5000/api/v1/products/${productId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ stock: 0 }),
-  });
-  const updateOutStockData = await updateOutStockRes.json();
-  console.log('Response status:', updateOutStockData.data.status);
-  if (updateOutStockData.data.status !== 'out_of_stock') {
-    throw new Error(`Expected status "out_of_stock", got "${updateOutStockData.data.status}"`);
-  }
-
-  // 8. Verify category deletion is blocked when there is an active product
-  console.log('\n8️⃣ Verifying Category deletion blocks when product is active...');
+  // 7. Verify category deletion is blocked when there is an active product
+  console.log('\n7️⃣ Verifying Category deletion blocks when product exists...');
   const deleteCategoryBlockedRes = await fetch(`http://localhost:5000/api/v1/categories/${categoryId}`, {
     method: 'DELETE',
     headers: {
@@ -196,13 +151,13 @@ const runTest = async () => {
     },
   });
   const deleteCategoryBlockedData = await deleteCategoryBlockedRes.json();
-  console.log('Response:', deleteCategoryBlockedData);
+  console.log('Response:', deleteCategoryBlockedData.message);
   if (deleteCategoryBlockedRes.ok) {
     throw new Error('Expected category deletion to fail but it succeeded.');
   }
 
-  // 9. Soft-delete the product
-  console.log('\n9️⃣ Soft-deleting the product...');
+  // 8. Delete the product
+  console.log('\n8️⃣ Deleting the product (hard delete)...');
   const deleteProductRes = await fetch(`http://localhost:5000/api/v1/products/${productId}`, {
     method: 'DELETE',
     headers: {
@@ -211,20 +166,12 @@ const runTest = async () => {
   });
   const deleteProductData = await deleteProductRes.json();
   if (!deleteProductRes.ok) {
-    throw new Error(`Product soft-delete failed: ${deleteProductData.message}`);
+    throw new Error(`Product delete failed: ${deleteProductData.message}`);
   }
-  console.log('Response:', deleteProductData);
+  console.log('Response:', deleteProductData.message);
 
-  // Verify that the archived product is excluded from listings
-  const queryArchivedRes = await fetch(`http://localhost:5000/api/v1/products?category=${categoryId}`);
-  const queryArchivedData = await queryArchivedRes.json();
-  console.log('🔍 Listing products after archive returned count:', queryArchivedData.data.products.length);
-  if (queryArchivedData.data.products.length !== 0) {
-    throw new Error('Archived product was returned in product listing!');
-  }
-
-  // 10. Delete the category now that the product is archived
-  console.log('\n🔟 Deleting category after product is archived...');
+  // 9. Delete the category now that the product is deleted
+  console.log('\n9️⃣ Deleting category after product is deleted...');
   const deleteCategoryRes = await fetch(`http://localhost:5000/api/v1/categories/${categoryId}`, {
     method: 'DELETE',
     headers: {
@@ -235,29 +182,18 @@ const runTest = async () => {
   if (!deleteCategoryRes.ok) {
     throw new Error(`Category deletion failed: ${deleteCategoryData.message}`);
   }
-  console.log('Response:', deleteCategoryData);
+  console.log('Response:', deleteCategoryData.message);
 
-  // 11. Cleanup test database records and local images from disk
-  console.log('\n🧹 Cleaning up test database records and disk uploads...');
+  // 10. Cleanup test database records
+  console.log('\n🧹 Cleaning up test database records...');
   await mongoose.connect(env.MONGO_URI);
   await User.deleteOne({ email: testAdminEmail });
   await User.deleteOne({ mobile: testAdminMobile });
   await Product.deleteOne({ _id: productId });
   await Category.deleteOne({ _id: categoryId });
-
-  // Delete local uploaded test files if they exist
-  product.images.forEach((imgUrl) => {
-    if (imgUrl.startsWith('/uploads/')) {
-      const filePath = path.join(process.cwd(), imgUrl);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`Unlinked local upload: ${filePath}`);
-      }
-    }
-  });
-
   await mongoose.disconnect();
-  console.log('\n🎉 ALL PRODUCTS & CATEGORIES MODULE TESTS PASSED SUCCESSFULLY!');
+
+  console.log('\n🎉 ALL SIMPLIFIED PRODUCTS MODULE TESTS PASSED SUCCESSFULLY!');
 };
 
 runTest().catch(async (err) => {

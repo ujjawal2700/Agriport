@@ -39,8 +39,8 @@ export default function CartPage() {
   return (
     <Box className="animate-fade-up">
       <PageHeader
-        title="Your cart"
-        subtitle={`${items.length} ${items.length === 1 ? 'product' : 'products'} ready for checkout`}
+        title="Your Enquiry List"
+        subtitle={`${items.length} ${items.length === 1 ? 'product' : 'products'} added to your enquiry list`}
         crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Cart' }]}
       />
 
@@ -113,7 +113,7 @@ export default function CartPage() {
             sx={{ mt: 2 }}
             onClick={() => navigate(ROUTES.checkout)}
           >
-            Proceed to checkout
+            Proceed to submit enquiry
           </Button>
         </Box>
       </Box>

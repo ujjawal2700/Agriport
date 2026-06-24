@@ -31,6 +31,7 @@ export interface ProductQuery {
   category?: string
   sort?: 'relevance' | 'price_asc' | 'price_desc' | 'rating'
   inStockOnly?: boolean
+  isExecutive?: boolean
 }
 
 const axiosBaseQuery = () => async ({ url, method, data, body, params, headers }: any) => {
@@ -49,52 +50,31 @@ const axiosBaseQuery = () => async ({ url, method, data, body, params, headers }
 
 
 const mapProductResponse = (p: any): Product => {
-  const pricingSlabs = (p.priceSlabs || []).map((slab: any, idx: number, arr: any[]) => {
-    const nextSlab = arr[idx + 1];
-    return {
-      minQty: slab.minQty,
-      maxQty: nextSlab ? nextSlab.minQty - 1 : null,
-      price: slab.unitPrice,
-      label: nextSlab ? `${slab.minQty}-${nextSlab.minQty - 1} ${p.unit}` : `${slab.minQty}+ ${p.unit}`,
-    };
-  });
-
-  const basePrice = pricingSlabs[0]?.price || 0;
-
-  const backendBase = (import.meta.env.VITE_API_URL as string)?.replace('/api/v1', '') || 'http://localhost:5000';
-  const images = (p.images || []).map((img: string) => {
-    if (img.startsWith('/uploads/')) {
-      return `${backendBase}${img}`;
-    }
-    return img;
-  });
-
-  const specifications: Record<string, string> = {};
-  if (p.specs) {
-    Object.keys(p.specs).forEach((key) => {
-      specifications[key] = p.specs[key];
-    });
-  }
+  const specifications: Record<string, string> = {
+    Origin: p.origin || 'India',
+    Grade: p.grade || 'Premium',
+    ...(p.specifications || {}),
+  };
 
   return {
     id: p._id,
     sku: p.sku || '',
     name: p.name,
     category: p.category?.name || p.category?.toString() || 'General',
-    images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop'],
-    shortDescription: p.description?.substring(0, 100) + '...',
-    description: p.description,
+    images: ['https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop'],
+    shortDescription: '',
+    description: '',
     specifications,
     unit: p.unit || 'kg',
-    moq: p.moq || 1,
+    moq: 1,
     availableStock: p.stock || 0,
-    stockStatus: p.status || 'out_of_stock',
-    basePrice,
+    stockStatus: (p.stock || 0) > 0 ? 'in_stock' : 'out_of_stock',
+    basePrice: 0,
     currency: 'INR',
-    pricingSlabs,
-    rating: 4.5,
-    origin: specifications['Origin'] || 'India',
-    leadTimeDays: Number(specifications['Lead Time (Days)']) || 3,
+    pricingSlabs: [],
+    rating: 5,
+    origin: p.origin || 'India',
+    leadTimeDays: 0,
   };
 };
 
@@ -114,6 +94,7 @@ export const api = createApi({
             category: q.category === 'all' ? undefined : q.category,
             inStockOnly: q.inStockOnly ? 'true' : undefined,
             sort: q.sort === 'rating' ? 'relevance' : q.sort,
+            isExecutive: q.isExecutive ? 'true' : undefined,
           },
         };
       },
@@ -142,7 +123,7 @@ export const api = createApi({
           id: cat._id,
           name: cat.name,
           slug: cat.slug,
-          productCount: 0,
+          productCount: cat.productCount || 0,
           icon: 'category',
         }));
       },
@@ -753,6 +734,14 @@ export const api = createApi({
       }),
       invalidatesTags: ['Category'],
     }),
+    updateCategory: build.mutation<any, { id: string; name: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/categories/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Category'],
+    }),
     createProduct: build.mutation<any, any>({
       query: (body) => ({
         url: '/products',
@@ -890,6 +879,7 @@ export const {
   useVerifyUserKycMutation,
   useUpdateStockRequestMutation,
   useCreateCategoryMutation,
+  useUpdateCategoryMutation,
   useDeleteCategoryMutation,
   useCreateProductMutation,
   useUpdateProductMutation,

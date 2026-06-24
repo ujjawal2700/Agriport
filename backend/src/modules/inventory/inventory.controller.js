@@ -94,17 +94,25 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
       throw new AppError('Invalid stock request type.', 400);
     }
 
+    // Set dynamic specifications in the product
+    if (stockRequest.specifications && stockRequest.specifications.size > 0) {
+      updateQuery.$set = updateQuery.$set || {};
+      for (const [key, val] of stockRequest.specifications.entries()) {
+        updateQuery.$set[`specifications.${key}`] = val;
+      }
+    }
+
     const updateOptions = { new: true };
     if (session) updateOptions.session = session;
 
-    const product = await Product.findOneAndUpdate(
-      { _id: stockRequest.productId, isArchived: false },
+    const product = await Product.findByIdAndUpdate(
+      stockRequest.productId,
       updateQuery,
       updateOptions
     );
 
     if (!product) {
-      throw new AppError('Product associated with this stock request not found or is archived.', 404);
+      throw new AppError('Product associated with this stock request not found.', 404);
     }
 
     if (product.stock < 0) {
@@ -142,7 +150,7 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
 
 // 3. Create a stock request (Executive/Manager only)
 export const createStockRequest = asyncWrapper(async (req, res, next) => {
-  const { productId, type, requestedChange, notes } = req.body;
+  const { productId, type, requestedChange, notes, specifications } = req.body;
 
   if (!productId || !type || requestedChange === undefined) {
     return next(new AppError('Product ID, request type, and requested change quantity are required.', 400));
@@ -164,6 +172,7 @@ export const createStockRequest = asyncWrapper(async (req, res, next) => {
     requestedChange: Number(requestedChange),
     notes: notes || '',
     status: 'pending',
+    specifications: specifications || {},
   });
 
   return successResponse(res, stockRequest, 201, 'Stock request raised successfully.');
@@ -195,7 +204,7 @@ export const getVendorPurchases = asyncWrapper(async (req, res) => {
 
 // 5. Create a new vendor purchase (Executive/Manager only)
 export const createVendorPurchase = asyncWrapper(async (req, res, next) => {
-  const { vendorName, productId, quantity, unit, buyPrice, purchaseDate, notes, status } = req.body;
+  const { vendorName, productId, quantity, unit, buyPrice, purchaseDate, notes, status, specifications } = req.body;
 
   if (!vendorName || !productId || !quantity || !buyPrice || !purchaseDate) {
     return next(new AppError('Vendor name, Product ID, quantity, buy price, and purchase date are required.', 400));
@@ -211,10 +220,10 @@ export const createVendorPurchase = asyncWrapper(async (req, res, next) => {
 
   try {
     const product = session
-      ? await Product.findOne({ _id: productId, isArchived: false }).session(session)
-      : await Product.findOne({ _id: productId, isArchived: false });
+      ? await Product.findById(productId).session(session)
+      : await Product.findById(productId);
     if (!product) {
-      throw new AppError('Product not found or is archived.', 404);
+      throw new AppError('Product not found.', 404);
     }
 
     const qty = Number(quantity);
@@ -244,12 +253,19 @@ export const createVendorPurchase = asyncWrapper(async (req, res, next) => {
       purchaseDoc = await VendorPurchase.create(purchaseData);
     }
 
-    // If already received, immediately add to stock atomically
+    // If already received, immediately add to stock and update specifications atomically
     if (purchaseStatus === 'received') {
       const updateOptions = session ? { session } : {};
-      const updatedProduct = await Product.findOneAndUpdate(
-        { _id: productId, isArchived: false },
-        { $inc: { stock: qty } },
+      const updateQuery = { $inc: { stock: qty } };
+      if (specifications && Object.keys(specifications).length > 0) {
+        updateQuery.$set = {};
+        for (const [key, val] of Object.entries(specifications)) {
+          updateQuery.$set[`specifications.${key}`] = val;
+        }
+      }
+      const updatedProduct = await Product.findByIdAndUpdate(
+        productId,
+        updateQuery,
         { new: true, ...updateOptions }
       );
       if (!updatedProduct) {

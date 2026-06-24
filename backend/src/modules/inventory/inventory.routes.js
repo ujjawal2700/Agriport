@@ -14,11 +14,11 @@ router.get('/stock-requests', authorize('admin', 'manager'), inventoryController
 // Approve or reject a stock request (Admin only)
 router.patch('/stock-requests/:id', authorize('admin'), inventoryController.updateStockRequestStatus);
 
-// Raise a stock request (Executive/Manager only)
-router.post('/stock-requests', authorize('executive', 'manager'), inventoryController.createStockRequest);
+// Raise a stock request (Executive/Manager/Admin)
+router.post('/stock-requests', authorize('executive', 'manager', 'admin'), inventoryController.createStockRequest);
 
-// Vendor procurement routes (Executive/Manager only)
-router.get('/vendor-purchases', authorize('executive', 'manager'), inventoryController.getVendorPurchases);
-router.post('/vendor-purchases', authorize('executive', 'manager'), inventoryController.createVendorPurchase);
+// Vendor procurement routes (Executive/Manager/Admin)
+router.get('/vendor-purchases', authorize('executive', 'manager', 'admin'), inventoryController.getVendorPurchases);
+router.post('/vendor-purchases', authorize('executive', 'manager', 'admin'), inventoryController.createVendorPurchase);
 
 export default router;

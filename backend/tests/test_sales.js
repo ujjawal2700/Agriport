@@ -140,7 +140,7 @@ const runTest = async () => {
     body: JSON.stringify({
       name: 'CRM Lead Customer',
       company: 'Lead Co',
-      phone: '1616161616',
+      phone: '1515151515',
       city: 'Pune',
       gst: '27BBBBB2222B2Z2',
     }),

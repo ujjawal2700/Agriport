@@ -334,6 +334,7 @@ export interface PurchaseDraft {
   purchaseDate: string
   status: 'received' | 'pending' | 'ordered'
   notes: string
+  specifications?: Record<string, string>
 }
 
 export interface ArrivalDraft {
@@ -344,6 +345,7 @@ export interface ArrivalDraft {
   requestedChange: number
   type: 'add' | 'update'
   notes: string
+  specifications?: Record<string, string>
 }
 
 export interface SaleDraft {

@@ -14,7 +14,7 @@ export default function SellProductForm({
   formMode?: 'sale' | 'purchase' | 'arrival'
 }) {
   const isPurchaseOrArrival = formMode === 'purchase' || formMode === 'arrival'
-  const { data: products } = useGetProductsQuery()
+  const { data: products } = useGetProductsQuery({ isExecutive: true })
 
   const [productId, setProductId] = useState('')
   const [qty, setQty] = useState(1)
@@ -434,6 +434,7 @@ export default function SellProductForm({
                     purchaseDate: purchaseDraft.purchaseDate,
                     status: purchaseDraft.status,
                     notes: purchaseDraft.notes,
+                    specifications: purchaseDraft.specifications,
                   }).unwrap()
 
                   toast.success(`Purchase logged successfully! Ref: ${res.data?._id?.slice(-6) || ''}`)
@@ -506,6 +507,7 @@ export default function SellProductForm({
                     type: arrivalDraft.type,
                     requestedChange: arrivalDraft.requestedChange,
                     notes: arrivalDraft.notes,
+                    specifications: arrivalDraft.specifications,
                   }).unwrap()
 
                   toast.success('Stock arrival request raised successfully!')

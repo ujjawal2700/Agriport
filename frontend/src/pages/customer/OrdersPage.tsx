@@ -58,9 +58,6 @@ function OrderRow({ order }: { order: Order }) {
         </Typography>
       </Box>
       <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
-        <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: 18 }}>
-          {formatMoney(order.total)}
-        </Typography>
         <Box sx={{ display: 'inline-block' }}>
           <StatusChip kind="payment" value={order.paymentStatus} />
         </Box>
