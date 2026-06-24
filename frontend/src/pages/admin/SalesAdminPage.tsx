@@ -14,11 +14,13 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  MenuItem,
 } from '@mui/material'
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import EmptyState from '@/components/common/EmptyState'
 import {
   useGetManagersQuery,
@@ -28,6 +30,8 @@ import {
   useGetExecutiveApprovalsQuery,
   useGetAdminExecutivesQuery,
   useUpdateUserTargetMutation,
+  useApproveExecutiveMutation,
+  useAssignManagerMutation,
 } from '@/redux/api'
 import { formatMoneyCompact, formatDate, initials } from '@/utils/format'
 import type { ExecutiveApproval } from '@/types'
@@ -55,6 +59,17 @@ export default function SalesAdminPage() {
   const [updateSalesSettings, { isLoading: isUpdatingSettings }] = useUpdateSalesSettingsMutation()
 
   const { data: executives } = useGetAdminExecutivesQuery()
+  const [approveExecutive] = useApproveExecutiveMutation()
+  const [assignManager] = useAssignManagerMutation()
+  
+  const [assignManagerOpen, setAssignManagerOpen] = useState(false)
+  const [assignManagerUser, setAssignManagerUser] = useState<{ id: string; name: string; managerId: string } | null>(null)
+
+  const handleOpenAssignManager = (id: string, name: string, currentManagerId?: string) => {
+    setAssignManagerUser({ id, name, managerId: currentManagerId || '' })
+    setAssignManagerOpen(true)
+  }
+
   const [editTargetOpen, setEditTargetOpen] = useState(false)
   const [editTargetUser, setEditTargetUser] = useState<{ id: string; name: string; target: number; role: 'manager' | 'executive' } | null>(null)
 
@@ -66,6 +81,9 @@ export default function SalesAdminPage() {
   const [approvals, setApprovals] = useState<ExecutiveApproval[]>([])
   const [commission, setCommission] = useState(5)
   const [override, setOverride] = useState(2)
+  const [gstRate, setGstRate] = useState(5)
+  const [shippingThreshold, setShippingThreshold] = useState(50000)
+  const [baseShipping, setBaseShipping] = useState(1500)
   const [addManagerOpen, setAddManagerOpen] = useState(false)
 
   useEffect(() => {
@@ -76,21 +94,29 @@ export default function SalesAdminPage() {
     if (settings) {
       setCommission(settings.commission)
       setOverride(settings.override)
+      setGstRate(settings.gstRate ?? 5)
+      setShippingThreshold(settings.shippingThreshold ?? 50000)
+      setBaseShipping(settings.baseShipping ?? 1500)
     }
   }, [settings])
 
   const handleSaveSettings = async () => {
     try {
-      await updateSalesSettings({ commission, override }).unwrap()
-      toast.success('Incentive structure saved')
+      await updateSalesSettings({ commission, override, gstRate, shippingThreshold, baseShipping }).unwrap()
+      toast.success('System settings saved')
     } catch (err: any) {
       toast.error(err?.data?.message || 'Failed to save settings')
     }
   }
 
-  const decide = (e: ExecutiveApproval, status: 'approved' | 'rejected') => {
-    setApprovals((prev) => prev.map((a) => (a.id === e.id ? { ...a, status } : a)))
-    toast.success(`${e.name} ${status}`)
+  const decide = async (e: ExecutiveApproval, status: 'approved' | 'rejected') => {
+    try {
+      const backendStatus = status === 'approved' ? 'active' : 'blocked'
+      await approveExecutive({ id: e.id, status: backendStatus }).unwrap()
+      toast.success(`${e.name} ${status}`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to update approval status')
+    }
   }
 
   const pending = approvals.filter((a) => a.status === 'pending')
@@ -192,8 +218,8 @@ export default function SalesAdminPage() {
           </SectionCard>
         </Box>
 
-        {/* Incentive config */}
-        <SectionCard title="Incentive configuration" subtitle="Dynamic commission structure">
+        {/* System Settings config */}
+        <SectionCard title="System Settings" subtitle="Dynamic tax, shipping & commissions">
           <Box className="flex flex-col gap-3">
             <TextField
               label="Sales commission"
@@ -211,14 +237,40 @@ export default function SalesAdminPage() {
               size="small"
               slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
             />
+            <TextField
+              label="Sales GST Rate"
+              type="number"
+              value={gstRate}
+              onChange={(e) => setGstRate(Number(e.target.value))}
+              size="small"
+              slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
+            />
+            <TextField
+              label="Shipping Threshold"
+              type="number"
+              value={shippingThreshold}
+              onChange={(e) => setShippingThreshold(Number(e.target.value))}
+              size="small"
+              slotProps={{ input: { endAdornment: <InputAdornment position="end">₹</InputAdornment> } }}
+            />
+            <TextField
+              label="Default Shipping Charge"
+              type="number"
+              value={baseShipping}
+              onChange={(e) => setBaseShipping(Number(e.target.value))}
+              size="small"
+              slotProps={{ input: { endAdornment: <InputAdornment position="end">₹</InputAdornment> } }}
+            />
             <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: 'var(--brand-50)', border: '1px solid #9DD4BC' }}>
+              <Typography sx={{ fontSize: 12.5, color: 'var(--brand-800)', mb: 0.5 }}>
+                • Executives earn <strong>{commission}%</strong> on personal sales. Managers receive <strong>{override}%</strong> override.
+              </Typography>
               <Typography sx={{ fontSize: 12.5, color: 'var(--brand-800)' }}>
-                Executives earn <strong>{commission}%</strong> on personal sales. Managers receive a
-                <strong> {override}%</strong> override on their team's revenue.
+                • GST is applied at <strong>{gstRate}%</strong>. Shipping of <strong>₹{baseShipping}</strong> is free on orders above <strong>₹{shippingThreshold.toLocaleString('en-IN')}</strong>.
               </Typography>
             </Box>
             <Button variant="contained" onClick={handleSaveSettings} disabled={isUpdatingSettings}>
-              {isUpdatingSettings ? 'Saving...' : 'Save structure'}
+              {isUpdatingSettings ? 'Saving...' : 'Save Settings'}
             </Button>
           </Box>
         </SectionCard>
@@ -251,7 +303,20 @@ export default function SalesAdminPage() {
                     <Typography className="tnum" sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
                       of {formatMoneyCompact(e.target || 0)} · {pct}%
                     </Typography>
-                    <IconButton size="small" onClick={() => handleOpenEditTarget(e.id, e.name, e.target || 0, 'executive')} sx={{ p: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenAssignManager(e.id, e.name, e.managerId)}
+                      sx={{ p: 0.5, color: 'var(--brand-700)' }}
+                      title="Assign Manager"
+                    >
+                      <HubRoundedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenEditTarget(e.id, e.name, e.target || 0, 'executive')}
+                      sx={{ p: 0.5 }}
+                      title="Set Target"
+                    >
                       <EditRoundedIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Box>
@@ -281,6 +346,16 @@ export default function SalesAdminPage() {
           userName={editTargetUser.name}
           currentTarget={editTargetUser.target}
           userRole={editTargetUser.role}
+        />
+      )}
+      {assignManagerUser && (
+        <AssignManagerDialog
+          open={assignManagerOpen}
+          onClose={() => setAssignManagerOpen(false)}
+          executiveId={assignManagerUser.id}
+          executiveName={assignManagerUser.name}
+          currentManagerId={assignManagerUser.managerId}
+          managers={managers || []}
         />
       )}
     </Box>
@@ -459,6 +534,78 @@ function AddManagerDialog({ open, onClose }: AddManagerDialogProps) {
           <Button onClick={onClose} size="small">Cancel</Button>
           <Button type="submit" variant="contained" size="small" disabled={isLoading}>
             {isLoading ? 'Creating...' : 'Create'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  )
+}
+
+interface AssignManagerDialogProps {
+  open: boolean
+  onClose: () => void
+  executiveId: string
+  executiveName: string
+  currentManagerId: string
+  managers: any[]
+}
+
+function AssignManagerDialog({
+  open,
+  onClose,
+  executiveId,
+  executiveName,
+  currentManagerId,
+  managers,
+}: AssignManagerDialogProps) {
+  const [assignManager, { isLoading }] = useAssignManagerMutation()
+  const [selectedManagerId, setSelectedManagerId] = useState('')
+
+  useEffect(() => {
+    if (open) {
+      setSelectedManagerId(currentManagerId || '')
+    }
+  }, [open, currentManagerId])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await assignManager({ executiveId, managerId: selectedManagerId }).unwrap()
+      toast.success('Manager assigned successfully')
+      onClose()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to assign manager')
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 3 } } }}>
+      <form onSubmit={handleSubmit}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>Assign Sales Manager</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography sx={{ fontSize: 14, color: 'var(--ink-600)', mb: 2 }}>
+            Select a Sales Manager for executive <strong>{executiveName}</strong>.
+          </Typography>
+          <TextField
+            select
+            label="Sales Manager"
+            size="small"
+            fullWidth
+            value={selectedManagerId}
+            onChange={(e) => setSelectedManagerId(e.target.value)}
+          >
+            <MenuItem value="">Unassigned (None)</MenuItem>
+            {managers.map((m) => (
+              <MenuItem key={m.id} value={m.id}>
+                {m.name} ({m.region})
+              </MenuItem>
+            ))}
+          </TextField>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={onClose} size="small">Cancel</Button>
+          <Button type="submit" variant="contained" size="small" disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save Assignment'}
           </Button>
         </DialogActions>
       </form>

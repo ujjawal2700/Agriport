@@ -5,7 +5,7 @@ const crmCustomerSchema = new mongoose.Schema(
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Owner ID is required'],
+      required: false,
     },
     name: {
       type: String,

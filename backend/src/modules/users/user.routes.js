@@ -35,6 +35,7 @@ router.patch('/admin/sales/executive-approvals/:id', userController.approveExecu
 router.get('/admin/sales/settings', userController.getSalesSettings);
 router.post('/admin/sales/settings', userController.updateSalesSettings);
 router.get('/admin/sales/executives', userController.getAdminExecutives);
+router.patch('/admin/sales/executives/:id/assign-manager', userController.assignManager);
 router.patch('/admin/sales/users/:id/target', userController.updateUserTarget);
 
 export default router;

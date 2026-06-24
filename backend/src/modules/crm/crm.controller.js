@@ -9,10 +9,38 @@ import { successResponse } from '../../utils/apiResponse.js';
 export const getCrmCustomers = asyncWrapper(async (req, res) => {
   const { stage, search } = req.query;
 
-  const queryObj = {};
-  if (req.user.role === 'executive') {
-    queryObj.ownerId = req.user._id;
+  // Sync: Ensure all registered platform customers have a corresponding CRMCustomer record
+  try {
+    const allCrmUsers = await CRMCustomer.find({ platformUserId: { $ne: null } }).distinct('platformUserId');
+    const missingUsers = await User.find({ role: 'customer', _id: { $nin: allCrmUsers } });
+    
+    for (const user of missingUsers) {
+      const linked = await CRMCustomer.findOneAndUpdate(
+        { phone: user.mobile, platformUserId: null },
+        { platformUserId: user._id },
+        { new: true }
+      );
+      if (!linked) {
+        await CRMCustomer.create({
+          name: user.name,
+          company: user.companyName || '',
+          phone: user.mobile || '',
+          city: user.city || '',
+          gst: user.gstNumber || '',
+          stage: 'lead',
+          totalValue: 0,
+          lastContactAt: null,
+          platformUserId: user._id,
+        });
+      }
+    }
+  } catch (syncErr) {
+    // Suppress synchronization error to not break page rendering in case of DB glitch
+    console.error('Error syncing platform customers to CRM:', syncErr);
   }
+
+  const queryObj = {};
+  // Removed strict ownerId filter to support shared customer list (Option 1)
 
   if (stage) {
     queryObj.stage = stage;
@@ -69,9 +97,9 @@ export const updateCrmCustomer = asyncWrapper(async (req, res, next) => {
   const { id } = req.params;
   const { stage, company, phone, city, gst, totalValue, lastContactAt } = req.body;
 
-  const customer = await CRMCustomer.findOne({ _id: id, ownerId: req.user._id });
+  const customer = await CRMCustomer.findById(id);
   if (!customer) {
-    return next(new AppError('CRM customer not found or unauthorized.', 404));
+    return next(new AppError('CRM customer not found.', 404));
   }
 
   if (stage) customer.stage = stage;
@@ -110,9 +138,9 @@ export const createFollowUp = asyncWrapper(async (req, res, next) => {
     return next(new AppError('CRM Customer ID, due date, and follow-up type are required.', 400));
   }
 
-  const customer = await CRMCustomer.findOne({ _id: crmCustomerId, ownerId: req.user._id });
+  const customer = await CRMCustomer.findById(crmCustomerId);
   if (!customer) {
-    return next(new AppError('CRM customer not found or unauthorized.', 404));
+    return next(new AppError('CRM customer not found.', 404));
   }
 
   const followUp = await FollowUp.create({

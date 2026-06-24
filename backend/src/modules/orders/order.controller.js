@@ -5,6 +5,7 @@ import Transaction from '../payments/transaction.model.js';
 import User from '../users/user.model.js';
 import CRMCustomer from '../crm/crmCustomer.model.js';
 import eventBus from '../../events/index.js';
+import SystemSetting from '../sales/systemSetting.model.js';
 import { paginate } from '../../utils/paginate.js';
 import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
@@ -53,15 +54,6 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
     if (['executive', 'admin', 'manager'].includes(req.user.role)) {
       if (!customerId) {
         throw new AppError('Customer ID is required when placing an order as staff.', 400);
-      }
-      // Validate CRM Customer ownership (enforced ONLY for executives)
-      if (req.user.role === 'executive') {
-        const crmCust = session
-          ? await CRMCustomer.findOne({ platformUserId: customerId, ownerId: req.user._id }).session(session)
-          : await CRMCustomer.findOne({ platformUserId: customerId, ownerId: req.user._id });
-        if (!crmCust) {
-          throw new AppError('You are not authorized to place orders for this customer (not in your CRM portfolio).', 403);
-        }
       }
       const cust = session 
         ? await User.findById(customerId).session(session)
@@ -134,8 +126,16 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
     }
 
     // Financial calculations
-    const tax = Math.round(subtotal * 0.05 * 100) / 100; // Flat 5% GST
-    let shipping = subtotal < 50000 ? 1500 : 0;       // Free shipping above ₹50,000
+    const gstRateSetting = await SystemSetting.findOne({ key: 'gst_rate' });
+    const shippingThresholdSetting = await SystemSetting.findOne({ key: 'shipping_threshold' });
+    const baseShippingSetting = await SystemSetting.findOne({ key: 'base_shipping_charge' });
+
+    const gstRate = gstRateSetting ? gstRateSetting.value : 5;
+    const shippingThreshold = shippingThresholdSetting ? shippingThresholdSetting.value : 50000;
+    const baseShipping = baseShippingSetting ? baseShippingSetting.value : 1500;
+
+    const tax = Math.round(subtotal * (gstRate / 100) * 100) / 100;
+    let shipping = subtotal < shippingThreshold ? baseShipping : 0;
     if (req.user.role === 'executive' && quotedShipping !== undefined) {
       shipping = Number(quotedShipping);
     }
@@ -214,14 +214,8 @@ export const getOrders = asyncWrapper(async (req, res) => {
   if (req.user.role === 'customer') {
     queryObj.customerId = req.user._id;
   } else if (req.user.role === 'executive') {
-    const myCrmCusts = await CRMCustomer.find({ ownerId: req.user._id }).select('platformUserId');
-    const customerIds = myCrmCusts.map(c => c.platformUserId).filter(Boolean);
-    queryObj = {
-      $or: [
-        { executiveId: req.user._id },
-        { customerId: { $in: customerIds } }
-      ]
-    };
+    // Executives see all orders (shared pick-up queue)
+    queryObj = {};
   } else if (req.user.role === 'admin' || req.user.role === 'manager') {
     queryObj = {};
   } else {
@@ -264,13 +258,7 @@ export const getOrderById = asyncWrapper(async (req, res, next) => {
   } else if (req.user.role === 'customer') {
     isAuthorized = order.customerId.toString() === req.user._id.toString();
   } else if (req.user.role === 'executive') {
-    const isPlacer = order.executiveId && order.executiveId.toString() === req.user._id.toString();
-    let isCrmOwner = false;
-    if (!isPlacer) {
-      const crmCust = await CRMCustomer.findOne({ platformUserId: order.customerId, ownerId: req.user._id });
-      if (crmCust) isCrmOwner = true;
-    }
-    isAuthorized = isPlacer || isCrmOwner;
+    isAuthorized = true; // Executives can view all orders/enquiries in the shared pool
   }
 
   if (!isAuthorized) {
@@ -405,13 +393,7 @@ export const downloadInvoice = asyncWrapper(async (req, res, next) => {
           } else if (authUser.role === 'customer') {
             isAuthorized = order.customerId.toString() === authUser._id.toString();
           } else if (authUser.role === 'executive') {
-            const isPlacer = order.executiveId && order.executiveId.toString() === authUser._id.toString();
-            let isCrmOwner = false;
-            if (!isPlacer) {
-              const crmCust = await CRMCustomer.findOne({ platformUserId: order.customerId, ownerId: authUser._id });
-              if (crmCust) isCrmOwner = true;
-            }
-            isAuthorized = isPlacer || isCrmOwner;
+            isAuthorized = true; // Executives can view invoices for any order/enquiry in the shared pool
           }
         }
       } catch (err) {
@@ -462,10 +444,9 @@ export const quoteOrder = asyncWrapper(async (req, res, next) => {
 
   // Check authorization: only admin, manager, or assigned executive / crm owner
   if (req.user.role === 'executive') {
-    const isPlacer = order.executiveId && order.executiveId.toString() === req.user._id.toString();
-    const crmCust = await CRMCustomer.findOne({ platformUserId: order.customerId, ownerId: req.user._id });
-    if (!isPlacer && !crmCust) {
-      return next(new AppError('You are not authorized to quote or modify this order.', 403));
+    // Any executive can quote. If the order doesn't have an assigned handler, assign them
+    if (!order.executiveId) {
+      order.executiveId = req.user._id;
     }
   }
 
@@ -493,7 +474,9 @@ export const quoteOrder = asyncWrapper(async (req, res, next) => {
         subtotal += line.lineTotal;
       }
       order.subtotal = subtotal;
-      order.tax = Math.round(subtotal * 0.05 * 100) / 100;
+      const gstRateSetting = await SystemSetting.findOne({ key: 'gst_rate' });
+      const gstRate = gstRateSetting ? gstRateSetting.value : 5;
+      order.tax = Math.round(subtotal * (gstRate / 100) * 100) / 100;
     }
 
     if (quotedShipping !== undefined) {

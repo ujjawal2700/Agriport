@@ -19,6 +19,8 @@ import {
   ListItem,
   ListItemText,
   CircularProgress,
+  Tab,
+  Tabs,
 } from '@mui/material'
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
@@ -50,6 +52,7 @@ export default function UsersAdminPage() {
   const [updateUserStatus] = useUpdateUserStatusMutation()
   const [verifyUserKyc] = useVerifyUserKycMutation()
 
+  const [currentTab, setCurrentTab] = useState<'customer' | 'staff'>('customer')
   const [search, setSearch] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [active, setActive] = useState<AdminUser | null>(null)
@@ -58,8 +61,17 @@ export default function UsersAdminPage() {
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
     const list = serverUsers || []
-    return list.filter((u) => u.name.toLowerCase().includes(s) || u.company.toLowerCase().includes(s) || u.email.toLowerCase().includes(s))
-  }, [serverUsers, search])
+    
+    const tabFiltered = list.filter((u) => {
+      if (currentTab === 'customer') {
+        return u.role === 'customer' || !u.role
+      } else {
+        return u.role === 'executive' || u.role === 'manager'
+      }
+    })
+
+    return tabFiltered.filter((u) => u.name.toLowerCase().includes(s) || u.company.toLowerCase().includes(s) || u.email.toLowerCase().includes(s))
+  }, [serverUsers, search, currentTab])
 
   const setStatus = async (u: AdminUser, status: AccountStatus) => {
     try {
@@ -142,12 +154,73 @@ export default function UsersAdminPage() {
     },
   ]
 
+  const staffColumns: GridColDef<AdminUser>[] = [
+    {
+      field: 'name',
+      headerName: 'Staff Member',
+      flex: 1,
+      minWidth: 200,
+      renderCell: (p) => (
+        <Box className="flex items-center gap-2" sx={{ height: '100%' }}>
+          <Avatar sx={{ width: 38, height: 38, bgcolor: 'var(--brand-700)', fontSize: 13 }}>{initials(p.row.name)}</Avatar>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.2 }}>{p.row.name}</Typography>
+            <Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>
+              {p.row.role ? p.row.role.toUpperCase() : 'STAFF'} · {p.row.city || 'Agriport'}
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    { field: 'email', headerName: 'Contact', width: 220, renderCell: (p) => (
+      <Box>
+        <Typography sx={{ fontSize: 13 }}>{p.row.email}</Typography>
+        <Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }} className="tnum">{p.row.mobile}</Typography>
+      </Box>
+    ) },
+    {
+      field: 'role',
+      headerName: 'Role',
+      width: 140,
+      renderCell: (p) => (
+        <Chip
+          size="small"
+          label={p.row.role ? p.row.role.toUpperCase() : 'STAFF'}
+          color={p.row.role === 'manager' ? 'primary' : 'secondary'}
+          variant="outlined"
+        />
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (p) => {
+        const m = STATUS_META[p.row.status] || { label: p.row.status, color: 'default' }
+        return <Chip size="small" label={m.label} color={m.color} variant="outlined" />
+      },
+    },
+  ]
+
   return (
-    <Box>
-      <TableCard title="Customers" count={filtered.length} search={search} onSearch={setSearch} searchPlaceholder="Search by name, company, email…">
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: '#fff', px: 2, pt: 0.5, borderRadius: 3 }}>
+        <Tabs value={currentTab} onChange={(_, val) => setCurrentTab(val)} textColor="inherit" indicatorColor="primary">
+          <Tab value="customer" label="Customers" sx={{ fontWeight: 700, fontSize: 13.5, textTransform: 'none' }} />
+          <Tab value="staff" label="Staff Profiles" sx={{ fontWeight: 700, fontSize: 13.5, textTransform: 'none' }} />
+        </Tabs>
+      </Box>
+
+      <TableCard
+        title={currentTab === 'customer' ? 'Customers' : 'Staff Directory'}
+        count={filtered.length}
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder={currentTab === 'customer' ? 'Search by name, company, email…' : 'Search by name, email…'}
+      >
         <DataGrid
           rows={filtered}
-          columns={columns}
+          columns={currentTab === 'customer' ? columns : staffColumns}
           loading={isLoading}
           rowHeight={62}
           disableRowSelectionOnClick

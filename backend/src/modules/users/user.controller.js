@@ -83,8 +83,17 @@ export const updateUserStatus = asyncWrapper(async (req, res, next) => {
     return next(new AppError('User not found.', 404));
   }
 
+  const wasActive = user.status === 'active';
   user.status = status;
   await user.save();
+
+  if (!wasActive && user.status === 'active') {
+    if (user.role === 'executive') {
+      eventBus.emit('executive.approved', user);
+    } else if (user.role === 'customer') {
+      eventBus.emit('customer.approved', user);
+    }
+  }
 
   return successResponse(res, user, 200, `User status updated to "${status}" successfully.`);
 });
@@ -99,14 +108,26 @@ export const verifyUserKyc = asyncWrapper(async (req, res, next) => {
     return next(new AppError('User not found.', 404));
   }
 
+  const wasActive = user.status === 'active';
   user.kycVerified = kycVerified === true || kycVerified === 'true';
   
-  // Auto-activate executive account once KYC document is verified
-  if (user.kycVerified && user.status === 'pending' && user.role === 'executive') {
-    user.status = 'active';
+  // Auto-activate customer/executive account once KYC document is verified
+  if (user.kycVerified && user.status === 'pending') {
+    if (user.role === 'executive' || user.role === 'customer') {
+      user.status = 'active';
+    }
   }
 
   await user.save();
+
+  if (!wasActive && user.status === 'active') {
+    if (user.role === 'executive') {
+      eventBus.emit('executive.approved', user);
+    } else if (user.role === 'customer') {
+      eventBus.emit('customer.approved', user);
+    }
+  }
+
   return successResponse(res, user, 200, 'User KYC verification status updated successfully.');
 });
 
@@ -391,10 +412,13 @@ export const getAdminUserDocuments = asyncWrapper(async (req, res, next) => {
   return successResponse(res, finalDocs, 200, 'Customer documents retrieved successfully.');
 });
 
-// 13. Get Sales Settings (commission and override rate) (Admin only)
+// 13. Get Sales Settings (commission, override, gst, and shipping) (Admin only)
 export const getSalesSettings = asyncWrapper(async (req, res) => {
   let commissionSetting = await SystemSetting.findOne({ key: 'sales_commission' });
   let overrideSetting = await SystemSetting.findOne({ key: 'manager_override' });
+  let gstRateSetting = await SystemSetting.findOne({ key: 'gst_rate' });
+  let shippingThresholdSetting = await SystemSetting.findOne({ key: 'shipping_threshold' });
+  let baseShippingSetting = await SystemSetting.findOne({ key: 'base_shipping_charge' });
 
   if (!commissionSetting) {
     commissionSetting = await SystemSetting.create({ key: 'sales_commission', value: 5 });
@@ -402,16 +426,28 @@ export const getSalesSettings = asyncWrapper(async (req, res) => {
   if (!overrideSetting) {
     overrideSetting = await SystemSetting.create({ key: 'manager_override', value: 2 });
   }
+  if (!gstRateSetting) {
+    gstRateSetting = await SystemSetting.create({ key: 'gst_rate', value: 5 });
+  }
+  if (!shippingThresholdSetting) {
+    shippingThresholdSetting = await SystemSetting.create({ key: 'shipping_threshold', value: 50000 });
+  }
+  if (!baseShippingSetting) {
+    baseShippingSetting = await SystemSetting.create({ key: 'base_shipping_charge', value: 1500 });
+  }
 
   return successResponse(res, {
     commission: commissionSetting.value,
     override: overrideSetting.value,
+    gstRate: gstRateSetting.value,
+    shippingThreshold: shippingThresholdSetting.value,
+    baseShipping: baseShippingSetting.value,
   }, 200, 'Sales settings retrieved successfully.');
 });
 
 // 14. Update Sales Settings (Admin only)
 export const updateSalesSettings = asyncWrapper(async (req, res, next) => {
-  const { commission, override } = req.body;
+  const { commission, override, gstRate, shippingThreshold, baseShipping } = req.body;
 
   if (commission !== undefined) {
     if (typeof commission !== 'number' || commission < 0 || commission > 100) {
@@ -435,9 +471,45 @@ export const updateSalesSettings = asyncWrapper(async (req, res, next) => {
     );
   }
 
+  if (gstRate !== undefined) {
+    if (typeof gstRate !== 'number' || gstRate < 0 || gstRate > 100) {
+      return next(new AppError('GST rate must be a number between 0 and 100.', 400));
+    }
+    await SystemSetting.findOneAndUpdate(
+      { key: 'gst_rate' },
+      { value: gstRate },
+      { upsert: true, new: true }
+    );
+  }
+
+  if (shippingThreshold !== undefined) {
+    if (typeof shippingThreshold !== 'number' || shippingThreshold < 0) {
+      return next(new AppError('Shipping threshold must be a non-negative number.', 400));
+    }
+    await SystemSetting.findOneAndUpdate(
+      { key: 'shipping_threshold' },
+      { value: shippingThreshold },
+      { upsert: true, new: true }
+    );
+  }
+
+  if (baseShipping !== undefined) {
+    if (typeof baseShipping !== 'number' || baseShipping < 0) {
+      return next(new AppError('Base shipping charge must be a non-negative number.', 400));
+    }
+    await SystemSetting.findOneAndUpdate(
+      { key: 'base_shipping_charge' },
+      { value: baseShipping },
+      { upsert: true, new: true }
+    );
+  }
+
   return successResponse(res, {
     commission,
     override,
+    gstRate,
+    shippingThreshold,
+    baseShipping,
   }, 200, 'Sales settings updated successfully.');
 });
 
@@ -507,6 +579,31 @@ export const updateUserTarget = asyncWrapper(async (req, res, next) => {
   await user.save();
 
   return successResponse(res, serializeUser(user), 200, 'Sales target updated successfully.');
+});
+
+// 17. Assign a manager to an executive (Admin only)
+export const assignManager = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+  const { managerId } = req.body;
+
+  const executive = await User.findOne({ _id: id, role: 'executive' });
+  if (!executive) {
+    return next(new AppError('Executive not found.', 404));
+  }
+
+  if (managerId) {
+    const manager = await User.findOne({ _id: managerId, role: 'manager' });
+    if (!manager) {
+      return next(new AppError('Target Manager not found or invalid role.', 404));
+    }
+    executive.managerId = manager._id;
+  } else {
+    executive.managerId = undefined; // Unassign manager
+  }
+
+  await executive.save();
+
+  return successResponse(res, serializeUser(executive), 200, 'Sales Executive assigned to Manager successfully.');
 });
 
 

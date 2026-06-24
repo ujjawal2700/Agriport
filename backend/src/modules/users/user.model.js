@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       enum: ['pending', 'active', 'suspended', 'blocked'],
       default: function() {
-        return this.role === 'executive' ? 'pending' : 'active';
+        return ['executive', 'customer'].includes(this.role) ? 'pending' : 'active';
       },
     },
     

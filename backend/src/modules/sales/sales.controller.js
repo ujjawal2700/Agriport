@@ -77,6 +77,9 @@ export const getExecutiveStats = asyncWrapper(async (req, res) => {
   // Executive target
   const target = req.user.target || 150000;
 
+  const commissionSetting = await SystemSetting.findOne({ key: 'sales_commission' });
+  const commissionPct = commissionSetting ? commissionSetting.value : 5;
+
   return successResponse(
     res,
     {
@@ -88,6 +91,7 @@ export const getExecutiveStats = asyncWrapper(async (req, res) => {
       pending,
       teamSize: 0,
       incentiveEarned,
+      commissionPct,
     },
     200,
     'Executive statistics retrieved successfully.'

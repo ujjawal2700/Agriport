@@ -183,6 +183,7 @@ export interface TrustBadge {
 export type AccountStatus = 'active' | 'suspended' | 'blocked'
 
 export interface AdminUser {
+  role?: UserRole
   id: string
   name: string
   company: string
@@ -379,4 +380,5 @@ export interface SalesStats {
   pending: number
   teamSize: number
   incentiveEarned: number
+  commissionPct?: number
 }

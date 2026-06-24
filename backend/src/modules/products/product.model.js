@@ -47,6 +47,25 @@ const productSchema = new mongoose.Schema(
       required: true,
       default: true,
     },
+    description: {
+      type: String,
+      default: '',
+    },
+    moq: {
+      type: Number,
+      default: 1,
+    },
+    status: {
+      type: String,
+      enum: ['in_stock', 'out_of_stock'],
+      default: 'in_stock',
+    },
+    priceSlabs: [
+      {
+        minQty: { type: Number, required: true },
+        unitPrice: { type: Number, required: true },
+      },
+    ],
     specifications: {
       type: Map,
       of: String,

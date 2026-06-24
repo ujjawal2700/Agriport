@@ -319,6 +319,7 @@ export const api = createApi({
       transformResponse: (response: any) => {
         const users = response.data?.users || [];
         return users.map((u: any) => ({
+          role: u.role || 'customer',
           id: u._id,
           name: u.name || '',
           company: u.companyName || u.name || '',
@@ -370,15 +371,15 @@ export const api = createApi({
       }),
       invalidatesTags: ['Manager'],
     }),
-    getSalesSettings: build.query<{ commission: number; override: number }, void>({
+    getSalesSettings: build.query<{ commission: number; override: number; gstRate: number; shippingThreshold: number; baseShipping: number }, void>({
       query: () => ({
         url: '/users/admin/sales/settings',
         method: 'GET',
       }),
-      transformResponse: (response: any) => response.data || { commission: 5, override: 2 },
+      transformResponse: (response: any) => response.data || { commission: 5, override: 2, gstRate: 5, shippingThreshold: 50000, baseShipping: 1500 },
       providesTags: ['SalesSetting'],
     }),
-    updateSalesSettings: build.mutation<any, { commission?: number; override?: number }>({
+    updateSalesSettings: build.mutation<any, { commission?: number; override?: number; gstRate?: number; shippingThreshold?: number; baseShipping?: number }>({
       query: (body) => ({
         url: '/users/admin/sales/settings',
         method: 'POST',
@@ -422,6 +423,22 @@ export const api = createApi({
         url: `/users/admin/sales/users/${userId}/target`,
         method: 'PATCH',
         data: { target },
+      }),
+      invalidatesTags: ['Executive', 'Manager'],
+    }),
+    approveExecutive: build.mutation<any, { id: string; status: 'active' | 'blocked' }>({
+      query: ({ id, status }) => ({
+        url: `/users/admin/sales/executive-approvals/${id}`,
+        method: 'PATCH',
+        body: { status },
+      }),
+      invalidatesTags: ['Executive', 'Manager'],
+    }),
+    assignManager: build.mutation<any, { executiveId: string; managerId: string }>({
+      query: ({ executiveId, managerId }) => ({
+        url: `/users/admin/sales/executives/${executiveId}/assign-manager`,
+        method: 'PATCH',
+        body: { managerId },
       }),
       invalidatesTags: ['Executive', 'Manager'],
     }),
@@ -854,6 +871,8 @@ export const {
   useGetExecutiveApprovalsQuery,
   useGetAdminExecutivesQuery,
   useUpdateUserTargetMutation,
+  useApproveExecutiveMutation,
+  useAssignManagerMutation,
   useGetStockRequestsQuery,
   useGetManagerStatsQuery,
   useGetExecutiveStatsQuery,
