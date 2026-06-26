@@ -76,6 +76,7 @@ export interface Category {
   slug: string
   productCount: number
   icon: string
+  isActive?: boolean
 }
 
 export interface CartItem {

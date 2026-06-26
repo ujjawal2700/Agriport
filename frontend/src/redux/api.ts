@@ -125,6 +125,7 @@ export const api = createApi({
           slug: cat.slug,
           productCount: cat.productCount || 0,
           icon: 'category',
+          isActive: cat.isActive !== false,
         }));
       },
       providesTags: ['Category'],
@@ -753,7 +754,7 @@ export const api = createApi({
       }),
       invalidatesTags: ['Category'],
     }),
-    updateCategory: build.mutation<any, { id: string; name: string }>({
+    updateCategory: build.mutation<any, { id: string; name?: string; isActive?: boolean }>({
       query: ({ id, ...body }) => ({
         url: `/categories/${id}`,
         method: 'PUT',

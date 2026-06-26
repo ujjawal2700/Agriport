@@ -6,7 +6,13 @@ import { successResponse } from '../../utils/apiResponse.js';
 
 // 1. Get all categories sorted alphabetically by name (Public)
 export const getCategories = asyncWrapper(async (req, res) => {
+  const isAdmin = req.user && req.user.role === 'admin';
+  const matchStage = isAdmin ? {} : { isActive: { $ne: false } };
+
   const categories = await Category.aggregate([
+    {
+      $match: matchStage
+    },
     {
       $lookup: {
         from: 'products',
@@ -31,6 +37,7 @@ export const getCategories = asyncWrapper(async (req, res) => {
         _id: 1,
         name: 1,
         slug: 1,
+        isActive: 1,
         createdAt: 1,
         updatedAt: 1,
         productCount: { $size: '$activeProducts' }
@@ -71,32 +78,40 @@ export const createCategory = asyncWrapper(async (req, res, next) => {
 // 3. Update category (Admin only)
 export const updateCategory = asyncWrapper(async (req, res, next) => {
   const { id } = req.params;
-  const { name } = req.body;
-
-  if (!name || !name.trim()) {
-    return next(new AppError('Category name is required.', 400));
-  }
+  const { name, isActive } = req.body;
 
   const category = await Category.findById(id);
   if (!category) {
     return next(new AppError('Category not found.', 404));
   }
 
-  // Generate slug to verify uniqueness case-insensitively excluding current category
-  const slug = name
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-');
+  if (name !== undefined) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return next(new AppError('Category name is required.', 400));
+    }
 
-  const exists = await Category.findOne({ slug, _id: { $ne: id } });
-  if (exists) {
-    return next(new AppError('Category with this name already exists.', 409));
+    // Generate slug to verify uniqueness case-insensitively excluding current category
+    const slug = trimmed
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]+/g, '')
+      .replace(/\-\-+/g, '-');
+
+    const exists = await Category.findOne({ slug, _id: { $ne: id } });
+    if (exists) {
+      return next(new AppError('Category with this name already exists.', 409));
+    }
+
+    category.name = trimmed;
   }
 
-  category.name = name.trim();
+  if (isActive !== undefined) {
+    category.isActive = isActive;
+  }
+
   await category.save();
   return successResponse(res, category, 200, 'Category updated successfully.');
 });

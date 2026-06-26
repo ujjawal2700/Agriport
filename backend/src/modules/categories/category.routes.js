@@ -1,12 +1,12 @@
 import express from 'express';
 import * as categoryController from './category.controller.js';
-import authenticate from '../../middlewares/authenticate.js';
+import authenticate, { optionalAuthenticate } from '../../middlewares/authenticate.js';
 import authorize from '../../middlewares/authorize.js';
 
 const router = express.Router();
 
 // Public routes
-router.get('/', categoryController.getCategories);
+router.get('/', optionalAuthenticate, categoryController.getCategories);
 
 // Admin-only protected routes
 router.post('/', authenticate, authorize('admin'), categoryController.createCategory);

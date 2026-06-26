@@ -55,4 +55,29 @@ export const authenticate = asyncWrapper(async (req, res, next) => {
   next();
 });
 
+export const optionalAuthenticate = asyncWrapper(async (req, res, next) => {
+  let token;
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith('Bearer')) {
+    token = authHeader.split(' ')[1];
+  }
+
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET);
+    const currentUser = await User.findById(decoded.id);
+    if (currentUser && currentUser.status === 'active') {
+      req.user = currentUser;
+    }
+  } catch (err) {
+    // Ignore invalid/expired tokens for optional authentication
+  }
+
+  next();
+});
+
 export default authenticate;

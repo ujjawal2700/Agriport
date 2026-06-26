@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Box, Typography, Button, TextField, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
+import { Box, Typography, Button, TextField, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Switch } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import type { GridColDef } from '@mui/x-data-grid'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
@@ -10,6 +10,38 @@ import { useGetCategoriesQuery, useCreateCategoryMutation, useUpdateCategoryMuta
 import type { Category } from '@/types'
 import toast from 'react-hot-toast'
 
+function StatusSwitch({ row, updateCategory }: { row: Category; updateCategory: any }) {
+  const [updating, setUpdating] = useState(false)
+  const val = row.isActive !== false
+
+  const handleToggle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUpdating(true)
+    const nextVal = e.target.checked
+    try {
+      await updateCategory({ id: row.id, isActive: nextVal }).unwrap()
+      toast.success(`Category "${row.name}" ${nextVal ? 'activated' : 'deactivated'} successfully`)
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to update category status')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0.5 }}>
+      <Switch
+        size="small"
+        checked={val}
+        disabled={updating}
+        onChange={handleToggle}
+      />
+      <Typography sx={{ fontSize: 13, color: val ? 'var(--brand-700)' : 'var(--ink-400)', fontWeight: 600 }}>
+        {val ? 'Active' : 'Inactive'}
+      </Typography>
+    </Box>
+  )
+}
+
 export default function CategoriesAdminPage() {
   const { data: categories, isLoading } = useGetCategoriesQuery()
   const [createCategory] = useCreateCategoryMutation()
@@ -19,6 +51,8 @@ export default function CategoriesAdminPage() {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editCategory, setEditCategory] = useState<Category | null>(null)
   const [editName, setEditName] = useState('')
+  const [deleteCandidate, setDeleteCandidate] = useState<Category | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const filtered = useMemo(() => {
     if (!categories) return []
@@ -72,12 +106,17 @@ export default function CategoriesAdminPage() {
     }
   }
 
-  const handleDeleteCategory = async (id: string) => {
+  const handleConfirmDelete = async () => {
+    if (!deleteCandidate) return
+    setDeleting(true)
     try {
-      await deleteCategory(id).unwrap()
-      toast.success('Category deleted successfully')
+      await deleteCategory(deleteCandidate.id).unwrap()
+      toast.success(`Category "${deleteCandidate.name}" deleted successfully`)
+      setDeleteCandidate(null)
     } catch (err: any) {
       toast.error(err.data?.message || 'Failed to delete category')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -106,6 +145,14 @@ export default function CategoriesAdminPage() {
       renderCell: (params) => <span className="tnum">{params.row.productCount} products</span>,
     },
     {
+      field: 'isActive',
+      headerName: 'Status',
+      width: 130,
+      renderCell: (params) => (
+        <StatusSwitch row={params.row} updateCategory={updateCategory} />
+      ),
+    },
+    {
       field: 'actions',
       headerName: '',
       width: 120,
@@ -121,7 +168,7 @@ export default function CategoriesAdminPage() {
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete">
-            <IconButton size="small" onClick={() => handleDeleteCategory(p.row.id)} sx={{ color: 'var(--ink-500)' }}>
+            <IconButton size="small" onClick={() => setDeleteCandidate(p.row)} sx={{ color: 'var(--ink-500)' }}>
               <DeleteOutlineRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -200,6 +247,46 @@ export default function CategoriesAdminPage() {
           </Button>
           <Button onClick={handleUpdateCategory} variant="contained" sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 600 }}>
             Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={Boolean(deleteCandidate)} onClose={() => !deleting && setDeleteCandidate(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 18, pb: 1 }}>Delete Category</DialogTitle>
+        <DialogContent sx={{ pb: 2 }}>
+          {deleteCandidate && deleteCandidate.productCount > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Typography sx={{ fontSize: 14 }}>
+                Are you sure you want to delete the category <strong>{deleteCandidate.name}</strong>?
+              </Typography>
+              <Box sx={{ p: 2, bgcolor: '#fff5f5', border: '1px solid #ffccd5', borderRadius: 2.5 }}>
+                <Typography sx={{ fontSize: 13, color: '#c53030', fontWeight: 600 }}>
+                  ⚠️ Cannot delete category because it contains active products.
+                </Typography>
+                <Typography sx={{ fontSize: 12.5, color: '#c53030', mt: 0.5 }}>
+                  This category currently has <strong>{deleteCandidate.productCount}</strong> products. Please reassign or delete them first.
+                </Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Typography sx={{ fontSize: 14 }}>
+              Are you sure you want to delete the category <strong>{deleteCandidate?.name}</strong>? This action cannot be undone.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={() => setDeleteCandidate(null)} disabled={deleting} variant="outlined" sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 600 }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            disabled={deleting || (deleteCandidate ? deleteCandidate.productCount > 0 : false)}
+            variant="contained"
+            color="error"
+            sx={{ borderRadius: 2.5, textTransform: 'none', fontWeight: 600 }}
+          >
+            {deleting ? 'Deleting…' : 'Confirm Delete'}
           </Button>
         </DialogActions>
       </Dialog>
