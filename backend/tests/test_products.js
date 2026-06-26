@@ -98,23 +98,23 @@ const runTest = async () => {
   console.log('- Grade:', product.grade);
   console.log('- IsExecutiveOnly:', product.isExecutiveOnly);
 
-  if (product.isExecutiveOnly !== true) {
-    throw new Error('Expected product to be executive-only by default');
+  if (product.isExecutiveOnly !== false) {
+    throw new Error('Expected product to be public by default');
   }
   const productId = product._id;
 
   // 5. Query Products Endpoint with different filters
   console.log('\n5️⃣ Testing product retrieval & query filtering...');
 
-  // Public Query (User side) - Should NOT return the product
+  // Public Query (User side) - Should return the product
   const publicRes = await fetch('http://localhost:5000/api/v1/products');
   const publicData = await publicRes.json();
   console.log('🔍 Public Query (User side) returned count:', publicData.data.products.length);
   const existsInPublic = publicData.data.products.some((p) => p.id === productId || p._id === productId);
-  if (existsInPublic) {
-    throw new Error('Executive-only product was leaked to the public user catalog!');
+  if (!existsInPublic) {
+    throw new Error('Created product was not found in the public user catalog!');
   }
-  console.log('✅ Confirmed: Product is hidden from the user section.');
+  console.log('✅ Confirmed: Product is visible in the user section.');
 
   // Executive Query - Should return the product
   const execRes = await fetch(`http://localhost:5000/api/v1/products?isExecutive=true&category=${categoryId}`);

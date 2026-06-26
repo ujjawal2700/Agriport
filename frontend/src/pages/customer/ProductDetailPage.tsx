@@ -68,7 +68,8 @@ export default function ProductDetailPage() {
       },
     }
     dispatch(addToCart({ product: updatedProduct, quantity: effectiveQty }))
-    toast.success(`Enquiry sent successfully for ${effectiveQty} ${product.unit}`)
+    toast.success(`Added to enquiry list! Redirecting to submit...`)
+    navigate(ROUTES.cart)
   }
 
   return (
@@ -139,6 +140,47 @@ export default function ProductDetailPage() {
           <Typography color="text.secondary" sx={{ mb: 3 }}>
             {product.shortDescription}
           </Typography>
+
+          {/* Specifications */}
+          <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700 }}>
+            Specifications
+          </Typography>
+          <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', bgcolor: '#fff', mb: 3.5 }}>
+            <Table size="small">
+              <TableBody>
+                {Object.entries(product.specifications).map(([k, v]) => (
+                  <TableRow key={k} sx={{ '& td': { borderColor: 'var(--ink-100)' } }}>
+                    <TableCell sx={{ color: 'var(--ink-500)', fontWeight: 500 }}>{k}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      {k === 'Packing Type' ? (
+                        <select
+                          value={packingType}
+                          onChange={(e) => setPackingType(e.target.value)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--ink-200)',
+                            fontFamily: 'inherit',
+                            fontSize: '13.5px',
+                            fontWeight: 600,
+                            color: 'var(--ink-800)',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="Cartoon">Cartoon</option>
+                          <option value="Basket">Basket</option>
+                        </select>
+                      ) : (
+                        v
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
 
           {/* Buy box */}
           <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', p: { xs: 2, md: 3 }, bgcolor: '#fff', boxShadow: '0 1px 3px rgba(22,27,36,0.05)' }}>
@@ -258,83 +300,40 @@ export default function ProductDetailPage() {
         </Box>
       </Box>
 
-      {/* Description & specs */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: { xs: 4, md: 8 }, mt: { xs: 6, md: 12 } }}>
-        <Box>
-          <Typography variant="h5" sx={{ mb: 2 }}>
-            Product description
-          </Typography>
-          <Typography color="text.secondary" sx={{ lineHeight: 1.7, mb: 4 }}>
-            {product.description}
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {[
-              // Executive-editable global trust badges
-              ...trustBadges.map((b) => ({ icon: trustIcon(b.icon), label: b.label })),
-              // Auto-derived from product data
-              { icon: <PublicRoundedIcon />, label: `Origin · ${product.origin}` },
-            ].map((f, i) => (
-              <Box
-                key={i}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  px: 2,
-                  py: 1.25,
-                  borderRadius: 2.5,
-                  border: '1px solid var(--ink-200)',
-                  bgcolor: '#fff',
-                  color: 'var(--brand-700)',
-                  flex: { xs: '1 1 100%', sm: '0 1 auto' },
-                }}
-              >
-                {f.icon}
-                <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-800)' }}>{f.label}</Typography>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-        <Box>
-          <Typography variant="h5" sx={{ mb: 2 }}>
-            Specifications
-          </Typography>
-          <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', bgcolor: '#fff' }}>
-            <Table size="small">
-              <TableBody>
-                {Object.entries(product.specifications).map(([k, v]) => (
-                  <TableRow key={k} sx={{ '& td': { borderColor: 'var(--ink-100)' } }}>
-                    <TableCell sx={{ color: 'var(--ink-500)', fontWeight: 500 }}>{k}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      {k === 'Packing Type' ? (
-                        <select
-                          value={packingType}
-                          onChange={(e) => setPackingType(e.target.value)}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            border: '1px solid var(--ink-200)',
-                            fontFamily: 'inherit',
-                            fontSize: '13.5px',
-                            fontWeight: 600,
-                            color: 'var(--ink-800)',
-                            backgroundColor: '#fff',
-                            cursor: 'pointer',
-                            outline: 'none',
-                          }}
-                        >
-                          <option value="Cartoon">Cartoon</option>
-                          <option value="Basket">Basket</option>
-                        </select>
-                      ) : (
-                        v
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
+      {/* Description */}
+      <Box sx={{ mt: { xs: 6, md: 8 }, maxWidth: '800px' }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Product description
+        </Typography>
+        <Typography color="text.secondary" sx={{ lineHeight: 1.7, mb: 4 }}>
+          {product.description}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+          {[
+            // Executive-editable global trust badges
+            ...trustBadges.map((b) => ({ icon: trustIcon(b.icon), label: b.label })),
+            // Auto-derived from product data
+            { icon: <PublicRoundedIcon />, label: `Origin · ${product.origin}` },
+          ].map((f, i) => (
+            <Box
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                px: 2,
+                py: 1.25,
+                borderRadius: 2.5,
+                border: '1px solid var(--ink-200)',
+                bgcolor: '#fff',
+                color: 'var(--brand-700)',
+                flex: { xs: '1 1 100%', sm: '0 1 auto' },
+              }}
+            >
+              {f.icon}
+              <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-800)' }}>{f.label}</Typography>
+            </Box>
+          ))}
         </Box>
       </Box>
     </Box>

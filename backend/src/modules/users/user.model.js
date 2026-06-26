@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function() { return this.role !== 'customer'; },
       minlength: [6, 'Password must be at least 6 characters long'],
       select: false, // Don't return password in query responses by default
     },
@@ -127,8 +127,8 @@ userSchema.index({ createdAt: -1 });
 
 // Pre-save middleware to hash password
 userSchema.pre('save', async function() {
-  // Hash password if modified
-  if (this.isModified('password')) {
+  // Hash password if modified and present
+  if (this.isModified('password') && this.password) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }

@@ -41,10 +41,11 @@ import { formatMoney, initials } from '@/utils/format'
 import type { AdminUser, AccountStatus } from '@/types'
 import toast from 'react-hot-toast'
 
-const STATUS_META: Record<AccountStatus, { label: string; color: 'success' | 'warning' | 'error' }> = {
+const STATUS_META: Record<AccountStatus, { label: string; color: 'success' | 'warning' | 'error' | 'info' }> = {
   active: { label: 'Active', color: 'success' },
   suspended: { label: 'Suspended', color: 'warning' },
   blocked: { label: 'Blocked', color: 'error' },
+  pending: { label: 'Pending', color: 'info' },
 }
 
 export default function UsersAdminPage() {
@@ -134,7 +135,7 @@ export default function UsersAdminPage() {
       headerName: 'Status',
       width: 120,
       renderCell: (p) => {
-        const m = STATUS_META[p.row.status]
+        const m = STATUS_META[p.row.status] || { label: p.row.status || 'Pending', color: 'info' }
         return <Chip size="small" label={m.label} color={m.color} variant="outlined" />
       },
     },
@@ -196,9 +197,23 @@ export default function UsersAdminPage() {
       headerName: 'Status',
       width: 120,
       renderCell: (p) => {
-        const m = STATUS_META[p.row.status] || { label: p.row.status, color: 'default' }
+        const m = STATUS_META[p.row.status] || { label: p.row.status || 'Pending', color: 'info' }
         return <Chip size="small" label={m.label} color={m.color} variant="outlined" />
       },
+    },
+    {
+      field: 'actions',
+      headerName: '',
+      width: 56,
+      sortable: false,
+      filterable: false,
+      align: 'right',
+      headerAlign: 'right',
+      renderCell: (p) => (
+        <Button size="small" sx={{ minWidth: 0, p: 1 }} onClick={(e) => { setActive(p.row); setMenuAnchor(e.currentTarget) }}>
+          <MoreVertRoundedIcon fontSize="small" />
+        </Button>
+      ),
     },
   ]
 
@@ -232,11 +247,13 @@ export default function UsersAdminPage() {
       </TableCard>
 
       <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-        <MenuItem onClick={() => { setDocViewerOpen(true); setMenuAnchor(null) }}>
-          <ListItemIcon><VerifiedRoundedIcon fontSize="small" /></ListItemIcon>
-          View documents
-        </MenuItem>
-        {active?.docStatus === 'pending' && (
+        {active?.role !== 'manager' && (
+          <MenuItem onClick={() => { setDocViewerOpen(true); setMenuAnchor(null) }}>
+            <ListItemIcon><VerifiedRoundedIcon fontSize="small" /></ListItemIcon>
+            View documents
+          </MenuItem>
+        )}
+        {active?.role !== 'manager' && active?.docStatus === 'pending' && (
           <MenuItem onClick={() => { if (active) verifyDocs(active); setMenuAnchor(null) }}>
             <ListItemIcon><VerifiedRoundedIcon fontSize="small" /></ListItemIcon>
             Verify documents

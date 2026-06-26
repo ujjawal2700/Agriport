@@ -374,6 +374,39 @@ export const uploadDocument = asyncWrapper(async (req, res, next) => {
 // 12. Get documents for a specific user (Admin only)
 export const getAdminUserDocuments = asyncWrapper(async (req, res, next) => {
   const { id } = req.params;
+  const user = await User.findById(id);
+  if (!user) {
+    return next(new AppError('User not found.', 404));
+  }
+
+  // If the user is an executive, return their KYC documents stored directly on their profile
+  if (user.role === 'executive') {
+    const executiveDocs = [];
+    if (user.aadhaarUrl) {
+      executiveDocs.push({
+        id: 'executive-aadhaar',
+        type: 'aadhaar_card',
+        name: 'Aadhaar Card ID Proof',
+        fileName: 'aadhaar.pdf',
+        fileUrl: user.aadhaarUrl,
+        status: user.kycVerified ? 'verified' : 'pending',
+        uploadedOn: user.createdAt,
+      });
+    }
+    if (user.panUrl) {
+      executiveDocs.push({
+        id: 'executive-pan',
+        type: 'pan_card',
+        name: 'PAN Card ID Proof',
+        fileName: 'pan.pdf',
+        fileUrl: user.panUrl,
+        status: user.kycVerified ? 'verified' : 'pending',
+        uploadedOn: user.createdAt,
+      });
+    }
+    return successResponse(res, executiveDocs, 200, 'Executive documents retrieved successfully.');
+  }
+
   const documents = await BusinessDocument.find({ userId: id });
   
   // Format for frontend
@@ -515,7 +548,7 @@ export const updateSalesSettings = asyncWrapper(async (req, res, next) => {
 
 // 15. Get all executives with sales performance (Admin only)
 export const getAdminExecutives = asyncWrapper(async (req, res) => {
-  const executives = await User.find({ role: 'executive' }).sort({ createdAt: -1 });
+  const executives = await User.find({ role: 'executive', status: 'active' }).sort({ createdAt: -1 });
 
   const execsWithStats = await Promise.all(
     executives.map(async (exec) => {

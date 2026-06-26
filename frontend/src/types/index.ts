@@ -180,7 +180,7 @@ export interface TrustBadge {
 
 // ── Admin domain ─────────────────────────────────────────────────────────────
 
-export type AccountStatus = 'active' | 'suspended' | 'blocked'
+export type AccountStatus = 'active' | 'suspended' | 'blocked' | 'pending'
 
 export interface AdminUser {
   role?: UserRole
@@ -336,6 +336,7 @@ export interface PurchaseDraft {
   status: 'received' | 'pending' | 'ordered'
   notes: string
   specifications?: Record<string, string>
+  images?: string[]
 }
 
 export interface ArrivalDraft {
@@ -347,6 +348,7 @@ export interface ArrivalDraft {
   type: 'add' | 'update'
   notes: string
   specifications?: Record<string, string>
+  images?: string[]
 }
 
 export interface SaleDraft {

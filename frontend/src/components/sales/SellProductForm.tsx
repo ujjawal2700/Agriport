@@ -435,6 +435,7 @@ export default function SellProductForm({
                     status: purchaseDraft.status,
                     notes: purchaseDraft.notes,
                     specifications: purchaseDraft.specifications,
+                    images: purchaseDraft.images,
                   }).unwrap()
 
                   toast.success(`Purchase logged successfully! Ref: ${res.data?._id?.slice(-6) || ''}`)
@@ -508,6 +509,7 @@ export default function SellProductForm({
                     requestedChange: arrivalDraft.requestedChange,
                     notes: arrivalDraft.notes,
                     specifications: arrivalDraft.specifications,
+                    images: arrivalDraft.images,
                   }).unwrap()
 
                   toast.success('Stock arrival request raised successfully!')

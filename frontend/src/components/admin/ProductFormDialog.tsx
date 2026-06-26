@@ -64,7 +64,7 @@ export default function ProductFormDialog({ open, initial, categories, onClose, 
       sku: '',
       name: form.name.trim(),
       category: form.category,
-      images: ['https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop'],
+      images: initial?.images ?? [],
       shortDescription: '',
       description: '',
       specifications: {

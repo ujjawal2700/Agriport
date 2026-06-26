@@ -280,6 +280,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         form.shortDescription ? `Notes: ${form.shortDescription}` : '',
       ].filter(Boolean).join(', ')
 
+      const finalImages = uploadedImages.filter(Boolean)
+
       onSavePurchase?.({
         vendorName,
         productId: matchedProduct.id,
@@ -295,6 +297,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           ...(form.specifications?.['Packing Type'] ? { 'Packing Type': form.specifications['Packing Type'] } : {}),
           ...(form.sizeVariants?.length ? { 'Size or Count': form.sizeVariants.map(v => v.size).join(', ') } : {}),
         },
+        images: finalImages,
       })
       onClose()
       return
@@ -323,6 +326,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         form.shortDescription ? `Notes: ${form.shortDescription}` : '',
       ].filter(Boolean).join(', ')
 
+      const finalImages = uploadedImages.filter(Boolean)
+
       onSaveArrival?.({
         productId: matchedProduct.id,
         productName: matchedProduct.name,
@@ -336,6 +341,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           ...(form.specifications?.['Packing Type'] ? { 'Packing Type': form.specifications['Packing Type'] } : {}),
           ...(form.sizeVariants?.length ? { 'Size or Count': form.sizeVariants.map(v => v.size).join(', ') } : {}),
         },
+        images: finalImages,
       })
       onClose()
       return

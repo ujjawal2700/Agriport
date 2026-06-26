@@ -83,18 +83,22 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
         throw new AppError(`Invalid quantity for product: ${product.name}`, 400);
       }
 
-      // Perform atomic check-and-decrement to prevent overselling
-      const updateQuery = { _id: item.productId, stock: { $gte: quantity } };
-      const updateDoc = { $inc: { stock: -quantity } };
-      const updateOptions = session ? { session } : {};
+      // Only decrement stock during order creation if placed by staff/executive (direct sales)
+      const isDirectSale = ['executive', 'admin', 'manager'].includes(req.user.role);
+      if (isDirectSale) {
+        // Perform atomic check-and-decrement to prevent overselling
+        const updateQuery = { _id: item.productId, stock: { $gte: quantity } };
+        const updateDoc = { $inc: { stock: -quantity } };
+        const updateOptions = session ? { session } : {};
 
-      const updateResult = await Product.updateOne(updateQuery, updateDoc, updateOptions);
+        const updateResult = await Product.updateOne(updateQuery, updateDoc, updateOptions);
 
-      if (updateResult.modifiedCount === 0) {
-        throw new AppError(
-          `Insufficient stock for "${product.name}". Available: ${product.stock || 0}, Requested: ${quantity}`,
-          400
-        );
+        if (updateResult.modifiedCount === 0) {
+          throw new AppError(
+            `Insufficient stock for "${product.name}". Available: ${product.stock || 0}, Requested: ${quantity}`,
+            400
+          );
+        }
       }
 
       // Resolve pricing: check for staff quoted price first, then fall back to lot priceSlabs if present
@@ -456,6 +460,21 @@ export const quoteOrder = asyncWrapper(async (req, res, next) => {
   }
 
   if (status === 'confirmed') {
+    // If the order is not already confirmed, check and decrement stock
+    if (order.status !== 'confirmed') {
+      for (const line of order.lines) {
+        const product = await Product.findById(line.productId);
+        if (!product) {
+          return next(new AppError(`Product "${line.name}" not found.`, 404));
+        }
+        if (product.stock < line.quantity) {
+          return next(new AppError(`Insufficient stock for "${product.name}". Available: ${product.stock || 0}, Requested: ${line.quantity}`, 400));
+        }
+        product.stock -= line.quantity;
+        await product.save();
+      }
+    }
+
     order.status = 'confirmed';
     
     // Save quoted prices and shipping overrides
@@ -493,18 +512,19 @@ export const quoteOrder = asyncWrapper(async (req, res, next) => {
       confirmedItem.done = true;
     }
   } else if (status === 'cancelled') {
+    // Only restore stock levels if the order was previously confirmed (stock was decremented)
+    if (order.status === 'confirmed') {
+      for (const line of order.lines) {
+        const product = await Product.findById(line.productId);
+        if (product) {
+          product.stock += line.quantity;
+          await product.save();
+        }
+      }
+    }
     order.status = 'cancelled';
     order.cancellationReason = reason || 'Cancelled by Sales Executive';
     order.paymentStatus = 'refunded';
-
-    // Restore stock levels for each product in the order
-    for (const line of order.lines) {
-      const product = await Product.findById(line.productId);
-      if (product) {
-        product.stock += line.quantity;
-        await product.save();
-      }
-    }
   } else if (status === 'completed') {
     order.status = 'completed';
     order.paymentStatus = 'paid';

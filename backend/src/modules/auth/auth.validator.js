@@ -19,7 +19,6 @@ export const customerSignupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters long').trim(),
   email: z.string().email('Please provide a valid email address').trim(),
   mobile: z.string().regex(mobileRegex, 'Please provide a valid 10-digit mobile number'),
-  password: z.string().min(6, 'Password must be at least 6 characters long'),
   companyName: z.string().min(2, 'Company name is required').trim(),
   gstNumber: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST Number format').optional().or(z.literal('')),
   city: z.string().min(2, 'City is required').trim(),

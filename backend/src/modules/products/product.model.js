@@ -45,7 +45,11 @@ const productSchema = new mongoose.Schema(
     isExecutiveOnly: {
       type: Boolean,
       required: true,
-      default: true,
+      default: false,
+    },
+    images: {
+      type: [String],
+      default: [],
     },
     description: {
       type: String,

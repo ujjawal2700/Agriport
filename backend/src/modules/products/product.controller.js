@@ -10,11 +10,6 @@ export const getProducts = asyncWrapper(async (req, res) => {
 
   const queryObj = {};
 
-  // If isExecutive query parameter is not 'true', exclude executive-only products
-  if (isExecutive !== 'true') {
-    queryObj.isExecutiveOnly = { $ne: true };
-  }
-
   // Text search on indexed fields
   if (search) {
     queryObj.$text = { $search: search };
@@ -72,7 +67,7 @@ export const createProduct = asyncWrapper(async (req, res, next) => {
     category,
     origin,
     grade,
-    isExecutiveOnly: true, // Force executive-only for admin added products
+    isExecutiveOnly: false, // Set to false so it is public by default
   });
 
   const populatedProduct = await Product.findById(product._id).populate('category', 'name slug');

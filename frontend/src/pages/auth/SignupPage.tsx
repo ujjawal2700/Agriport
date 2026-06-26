@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 
 const schema = z.object({
   fullName: z.string().min(2, 'Enter your full name'),
+  email: z.string().email('Enter a valid email address'),
   mobile: z.string().regex(/^[0-9+\s-]{10,15}$/, 'Enter a valid mobile number'),
   companyName: z.string().min(2, 'Company / shop name is required'),
   gstNumber: z.string().min(10, 'Enter a valid GST number'),
@@ -25,7 +26,7 @@ export default function SignupPage() {
   const { control, handleSubmit } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: {
-      fullName: '', mobile: '', companyName: '',
+      fullName: '', email: '', mobile: '', companyName: '',
       gstNumber: '', country: 'India', address: '',
     },
   })
@@ -48,9 +49,10 @@ export default function SignupPage() {
       <Typography color="text.secondary" sx={{ mb: 3 }}>
         Set up your business profile to start trading wholesale.
       </Typography>
-
+ 
       <Box component="form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <RHFTextField control={control} name="fullName" label="Full name" />
+        <RHFTextField control={control} name="email" label="Email address" type="email" />
         <RHFTextField control={control} name="mobile" label="Mobile number" placeholder="+91 …" />
         <RHFTextField control={control} name="gstNumber" label="GST number" />
         <RHFTextField control={control} name="companyName" label="Company / Shop name" />

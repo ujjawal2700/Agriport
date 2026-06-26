@@ -102,6 +102,12 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
       }
     }
 
+    // Propagate images if present
+    if (stockRequest.images && stockRequest.images.length > 0) {
+      updateQuery.$set = updateQuery.$set || {};
+      updateQuery.$set.images = stockRequest.images;
+    }
+
     const updateOptions = { new: true };
     if (session) updateOptions.session = session;
 
@@ -150,7 +156,7 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
 
 // 3. Create a stock request (Executive/Manager only)
 export const createStockRequest = asyncWrapper(async (req, res, next) => {
-  const { productId, type, requestedChange, notes, specifications } = req.body;
+  const { productId, type, requestedChange, notes, specifications, images } = req.body;
 
   if (!productId || !type || requestedChange === undefined) {
     return next(new AppError('Product ID, request type, and requested change quantity are required.', 400));
@@ -173,6 +179,7 @@ export const createStockRequest = asyncWrapper(async (req, res, next) => {
     notes: notes || '',
     status: 'pending',
     specifications: specifications || {},
+    images: images || [],
   });
 
   return successResponse(res, stockRequest, 201, 'Stock request raised successfully.');
@@ -251,6 +258,16 @@ export const createVendorPurchase = asyncWrapper(async (req, res, next) => {
       purchaseDoc = purchases[0];
     } else {
       purchaseDoc = await VendorPurchase.create(purchaseData);
+    }
+
+    // Update product images if provided
+    if (req.body.images && req.body.images.length > 0) {
+      const imgUpdateOpts = session ? { session } : {};
+      await Product.findByIdAndUpdate(
+        productId,
+        { $set: { images: req.body.images } },
+        imgUpdateOpts
+      );
     }
 
     // If already received, immediately add to stock and update specifications atomically

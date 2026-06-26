@@ -163,12 +163,19 @@ export const signupCustomer = async (signupData, deviceInfo = {}) => {
   // 4. Clean up: Delete the used OTP record
   await OTP.deleteOne({ _id: otpRecord._id });
 
-  // 5. Generate auth tokens
-  const { accessToken, refreshToken } = await generateAndPersistTokens(user._id, deviceInfo);
-
   // Exclude password from return payload
   user.password = undefined;
 
+  // If customer status is pending by default, do not return access tokens
+  if (user.status !== 'active') {
+    return {
+      user,
+      message: 'Customer registration submitted successfully. Your account is pending KYC verification and Admin approval.',
+    };
+  }
+
+  // 5. Generate auth tokens if active (fallback)
+  const { accessToken, refreshToken } = await generateAndPersistTokens(user._id, deviceInfo);
   return { user, accessToken, refreshToken };
 };
 

@@ -6,7 +6,7 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { useAppDispatch } from '@/redux/hooks'
 import { signIn } from '@/redux/slices/authSlice'
 import { ROUTES } from '@/constants'
-import { useVerifyOtpMutation, useSignupCustomerMutation } from '@/redux/api'
+import { useVerifyOtpMutation, useSignupCustomerMutation, useSendOtpMutation } from '@/redux/api'
 import toast from 'react-hot-toast'
 
 const LEN = 6
@@ -20,6 +20,7 @@ export default function OtpPage() {
 
   const [verifyOtp, { isLoading: verifying }] = useVerifyOtpMutation()
   const [signupCustomer, { isLoading: signingUp }] = useSignupCustomerMutation()
+  const [sendOtp, { isLoading: sending }] = useSendOtpMutation()
   const [digits, setDigits] = useState<string[]>(Array(LEN).fill(''))
   const [seconds, setSeconds] = useState(30)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
@@ -75,7 +76,6 @@ export default function OtpPage() {
           name: state.signupData?.fullName || '',
           email: state.signupData?.email || '',
           mobile: state.mobile ?? '',
-          password: 'CustomerSecurePassword123', // Dummy password for OTP scheme
           companyName: state.signupData?.companyName || '',
           gstNumber: state.signupData?.gstNumber || '',
           city,
@@ -83,15 +83,21 @@ export default function OtpPage() {
           businessType: 'Wholesaler', // fallback
         }
         const signupResult = await signupCustomer(signupData).unwrap()
-        dispatch(signIn({ token: signupResult.data.accessToken, user: signupResult.data.user }))
-        toast.success('Account verified — welcome to Agriport!')
+        if (signupResult.data?.accessToken) {
+          dispatch(signIn({ token: signupResult.data.accessToken, user: signupResult.data.user }))
+          toast.success('Account verified — welcome to Agriport!')
+          navigate(state.from ?? ROUTES.home, { replace: true })
+        } else {
+          toast.success(signupResult.message || 'Registration submitted successfully. Pending Admin approval.')
+          navigate(ROUTES.login, { replace: true })
+        }
       } else {
         // Retrieve returned user profile details on OTP login success
         const loginData = verifyResult.data || verifyResult;
         dispatch(signIn({ token: loginData.accessToken, user: loginData.user }))
         toast.success('Verified successfully.')
+        navigate(state.from ?? ROUTES.home, { replace: true })
       }
-      navigate(state.from ?? ROUTES.home, { replace: true })
     } catch (err: any) {
       toast.error(err.data?.message || 'Verification failed. Please check the code.')
     }
@@ -164,14 +170,21 @@ export default function OtpPage() {
           <MuiLink
             component="button"
             type="button"
+            disabled={sending}
             underline="hover"
-            sx={{ fontWeight: 600 }}
-            onClick={() => {
-              setSeconds(30)
-              toast.success('OTP resent')
+            sx={{ fontWeight: 600, opacity: sending ? 0.5 : 1, cursor: sending ? 'not-allowed' : 'pointer' }}
+            onClick={async () => {
+              try {
+                const purpose = state.signup ? 'signup' : 'login'
+                await sendOtp({ mobile: state.mobile ?? '', purpose }).unwrap()
+                setSeconds(30)
+                toast.success('OTP resent')
+              } catch (err: any) {
+                toast.error(err.data?.message || 'Failed to resend OTP. Please try again.')
+              }
             }}
           >
-            Resend OTP
+            {sending ? 'Resending...' : 'Resend OTP'}
           </MuiLink>
         )}
       </Typography>

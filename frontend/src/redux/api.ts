@@ -61,7 +61,7 @@ const mapProductResponse = (p: any): Product => {
     sku: p.sku || '',
     name: p.name,
     category: p.category?.name || p.category?.toString() || 'General',
-    images: ['https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&auto=format&fit=crop'],
+    images: p.images && p.images.length > 0 ? p.images : [],
     shortDescription: '',
     description: '',
     specifications,
@@ -405,6 +405,8 @@ export const api = createApi({
             region: u.region || '',
             requestedOn: u.createdAt || new Date().toISOString(),
             status,
+            aadharUrl: u.aadhaarUrl || '',
+            panUrl: u.panUrl || '',
           };
         });
       },

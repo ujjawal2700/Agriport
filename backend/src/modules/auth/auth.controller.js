@@ -73,15 +73,17 @@ export const signupCustomer = asyncWrapper(async (req, res) => {
   };
   const result = await authService.signupCustomer(req.body, deviceInfo);
   
-  // Set refresh token cookie
-  setRefreshTokenCookie(res, result.refreshToken);
+  if (result.refreshToken) {
+    // Set refresh token cookie
+    setRefreshTokenCookie(res, result.refreshToken);
+  }
 
-  // Return user details + access token
+  // Return user details + access token (if active)
   const responseData = {
     user: serializeUser(result.user),
     accessToken: result.accessToken,
   };
-  return successResponse(res, responseData, 201, 'Customer registered successfully.');
+  return successResponse(res, responseData, 201, result.message || 'Customer registered successfully.');
 });
 
 // 4. Executive Signup Controller (uses Multer files from handleUploads middleware)

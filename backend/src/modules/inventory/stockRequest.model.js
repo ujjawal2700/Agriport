@@ -69,6 +69,10 @@ const stockRequestSchema = new mongoose.Schema(
       of: String,
       default: {},
     },
+    images: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
