@@ -489,10 +489,16 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth slotProps={{ paper: { sx: { borderRadius: 4 } } }}>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 18 }}>
-          {productToEdit ? 'Edit Stock' : 'Add New Stock'}
-        </Typography>
+      <DialogTitle sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {formMode === 'sale'
+          ? 'Add Product to Sale'
+          : formMode === 'purchase'
+          ? 'Add Product to Purchase'
+          : formMode === 'arrival'
+          ? 'Configure Stock Arrival'
+          : productToEdit
+          ? 'Edit Stock'
+          : 'Add New Stock'}
         <IconButton size="small" onClick={onClose}><CloseRoundedIcon /></IconButton>
       </DialogTitle>
 
@@ -571,42 +577,46 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
               label="Category *"
               size="small"
               fullWidth
-              value="Agro Commodities"
+              value={form.category || 'Agro Commodities'}
               slotProps={{ input: { readOnly: true } }}
               onFocus={() => { if (!form.category?.trim()) setField('category', 'Agro Commodities') }}
             />
-            <TextField
-              label="Origin (Country)"
-              size="small"
-              select
-              fullWidth
-              value={form.origin ?? ''}
-              onChange={(e) => setField('origin', e.target.value)}
-            >
-              {COUNTRIES.map((country) => (
-                <MenuItem key={country} value={country}>
-                  {country}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Lead Time (days)"
-              size="small"
-              type="number"
-              fullWidth
-              value={form.leadTimeDays ?? ''}
-              onChange={(e) => setField('leadTimeDays', Number(e.target.value))}
-            />
-            <Box className="flex gap-4">
-              <FormControlLabel
-                control={<Switch checked={form.isNew ?? false} onChange={(e) => setField('isNew', e.target.checked)} />}
-                label={<Typography sx={{ fontSize: 13.5 }}>Upcoming Arrivals</Typography>}
-              />
-              <FormControlLabel
-                control={<Switch checked={form.isFeatured ?? false} onChange={(e) => setField('isFeatured', e.target.checked)} />}
-                label={<Typography sx={{ fontSize: 13.5 }}>stock</Typography>}
-              />
-            </Box>
+            {formMode !== 'sale' && (
+              <>
+                <TextField
+                  label="Origin (Country)"
+                  size="small"
+                  select
+                  fullWidth
+                  value={form.origin ?? ''}
+                  onChange={(e) => setField('origin', e.target.value)}
+                >
+                  {COUNTRIES.map((country) => (
+                    <MenuItem key={country} value={country}>
+                      {country}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Lead Time (days)"
+                  size="small"
+                  type="number"
+                  fullWidth
+                  value={form.leadTimeDays ?? ''}
+                  onChange={(e) => setField('leadTimeDays', Number(e.target.value))}
+                />
+                <Box className="flex gap-4">
+                  <FormControlLabel
+                    control={<Switch checked={form.isNew ?? false} onChange={(e) => setField('isNew', e.target.checked)} />}
+                    label={<Typography sx={{ fontSize: 13.5 }}>Upcoming Arrivals</Typography>}
+                  />
+                  <FormControlLabel
+                    control={<Switch checked={form.isFeatured ?? false} onChange={(e) => setField('isFeatured', e.target.checked)} />}
+                    label={<Typography sx={{ fontSize: 13.5 }}>stock</Typography>}
+                  />
+                </Box>
+              </>
+            )}
           </Box>
         </Box>
 
@@ -655,7 +665,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                 </Typography>
                 <Box className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <TextField
-                    label="Available Size *"
+                    label={formMode === 'sale' ? 'Size *' : 'Available Size *'}
                     placeholder="e.g. XL"
                     size="small"
                     fullWidth
@@ -663,7 +673,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     onChange={(e) => setSizeInput(e.target.value)}
                   />
                   <TextField
-                    label="Available Stock *"
+                    label={formMode === 'sale' ? 'Quantity to Sell *' : formMode === 'purchase' ? 'Quantity to Purchase *' : formMode === 'arrival' ? 'Quantity Arriving *' : 'Available Stock *'}
                     placeholder="e.g. 25"
                     size="small"
                     type="number"
@@ -672,7 +682,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     onChange={(e) => setStockInput(e.target.value === '' ? '' : Number(e.target.value))}
                   />
                   <TextField
-                    label="Selling Price *"
+                    label={formMode === 'purchase' ? 'Buy Price *' : 'Selling Price *'}
                     placeholder="e.g. 499"
                     size="small"
                     type="number"
@@ -741,10 +751,14 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     <TableRow sx={{ bgcolor: 'var(--ink-50)', '& th': { fontWeight: 700, fontSize: 11, color: 'var(--ink-600)', borderColor: 'var(--ink-200)' } }}>
                       <TableCell>Size</TableCell>
                       <TableCell>Packing</TableCell>
-                      <TableCell>Net Weight</TableCell>
-                      <TableCell>Gross Weight</TableCell>
-                      <TableCell>Stock</TableCell>
-                      <TableCell>Selling Price</TableCell>
+                      {formMode !== 'sale' && (
+                        <>
+                          <TableCell>Net Weight</TableCell>
+                          <TableCell>Gross Weight</TableCell>
+                        </>
+                      )}
+                      <TableCell>{formMode === 'sale' || formMode === 'purchase' || formMode === 'arrival' ? 'Qty' : 'Stock'}</TableCell>
+                      <TableCell>{formMode === 'purchase' ? 'Buy Price' : 'Selling Price'}</TableCell>
                       <TableCell align="right" sx={{ width: 80 }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
@@ -757,16 +771,18 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                           <TableCell sx={{ fontSize: 13 }}>{v.packingType ?? 'Cartoon'}</TableCell>
                           
                           {/* If weightVariant exists and this is the first size row, show netWeight & grossWeight */}
-                          {idx === 0 && form.weightVariant ? (
-                            <>
-                              <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.netWeight} kg</TableCell>
-                              <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.grossWeight} kg</TableCell>
-                            </>
-                          ) : (
-                            <>
-                              <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                              <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                            </>
+                          {formMode !== 'sale' && (
+                            idx === 0 && form.weightVariant ? (
+                              <>
+                                <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.netWeight} kg</TableCell>
+                                <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.grossWeight} kg</TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
+                              </>
+                            )
                           )}
 
                           <TableCell sx={{ fontSize: 13 }}>{v.stock}</TableCell>
@@ -794,245 +810,253 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           )}
 
           {/* Weight Variant Option */}
-          <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Weight Variant
-              </Typography>
-            </Box>
-            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <TextField
-                label="Net Weight *"
-                placeholder="e.g. 5"
-                size="small"
-                type="number"
-                fullWidth
-                slotProps={{
-                  input: {
-                    endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
-                  },
-                }}
-                value={form.weightVariant?.netWeight ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? '' : Number(e.target.value)
-                  setForm((f) => {
-                    const gross = f.weightVariant?.grossWeight ?? 0
-                    if (val === '' && gross === 0) {
-                      return { ...f, weightVariant: undefined }
-                    }
-                    return {
-                      ...f,
-                      weightVariant: {
-                        netWeight: val === '' ? 0 : Number(val),
-                        grossWeight: gross,
-                      }
-                    }
-                  })
-                }}
-              />
-              <TextField
-                label="Gross Weight *"
-                placeholder="e.g. 5.5"
-                size="small"
-                type="number"
-                fullWidth
-                slotProps={{
-                  input: {
-                    endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
-                  },
-                }}
-                value={form.weightVariant?.grossWeight ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? '' : Number(e.target.value)
-                  setForm((f) => {
-                    const net = f.weightVariant?.netWeight ?? 0
-                    if (val === '' && net === 0) {
-                      return { ...f, weightVariant: undefined }
-                    }
-                    return {
-                      ...f,
-                      weightVariant: {
-                        netWeight: net,
-                        grossWeight: val === '' ? 0 : Number(val),
-                      }
-                    }
-                  })
-                }}
-              />
-            </Box>
-          </Box>
-
-          {/* Container Options */}
-          <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Container Option Buttons
-              </Typography>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={form.showContainerOptions ?? true}
-                    onChange={(e) => setField('showContainerOptions', e.target.checked)}
-                    size="small"
-                  />
-                }
-                label={<Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>{(form.showContainerOptions ?? true) ? 'Visible' : 'Hidden'}</Typography>}
-              />
-            </Box>
-            {(form.showContainerOptions ?? true) && (
+          {formMode !== 'sale' && (
+            <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Weight Variant
+                </Typography>
+              </Box>
               <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <TextField
-                  label="full container at port"
+                  label="Net Weight *"
+                  placeholder="e.g. 5"
                   size="small"
+                  type="number"
                   fullWidth
-                  placeholder="full container at port"
-                  value={form.containerOptionFull ?? ''}
-                  onChange={(e) => setField('containerOptionFull', e.target.value)}
-                  helperText="Leave blank to use default"
+                  slotProps={{
+                    input: {
+                      endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
+                    },
+                  }}
+                  value={form.weightVariant?.netWeight ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value)
+                    setForm((f) => {
+                      const gross = f.weightVariant?.grossWeight ?? 0
+                      if (val === '' && gross === 0) {
+                        return { ...f, weightVariant: undefined }
+                      }
+                      return {
+                        ...f,
+                        weightVariant: {
+                          netWeight: val === '' ? 0 : Number(val),
+                          grossWeight: gross,
+                        }
+                      }
+                    })
+                  }}
                 />
                 <TextField
-                  label="available at cold storage"
+                  label="Gross Weight *"
+                  placeholder="e.g. 5.5"
                   size="small"
+                  type="number"
                   fullWidth
-                  placeholder="available at cold storage"
-                  value={form.containerOptionHalf ?? ''}
-                  onChange={(e) => setField('containerOptionHalf', e.target.value)}
-                  helperText="Leave blank to use default"
+                  slotProps={{
+                    input: {
+                      endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
+                    },
+                  }}
+                  value={form.weightVariant?.grossWeight ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value)
+                    setForm((f) => {
+                      const net = f.weightVariant?.netWeight ?? 0
+                      if (val === '' && net === 0) {
+                        return { ...f, weightVariant: undefined }
+                      }
+                      return {
+                        ...f,
+                        weightVariant: {
+                          netWeight: net,
+                          grossWeight: val === '' ? 0 : Number(val),
+                        }
+                      }
+                    })
+                  }}
                 />
               </Box>
-            )}
-          </Box>
+            </Box>
+          )}
+
+          {/* Container Options */}
+          {formMode !== 'sale' && (
+            <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Container Option Buttons
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.showContainerOptions ?? true}
+                      onChange={(e) => setField('showContainerOptions', e.target.checked)}
+                      size="small"
+                    />
+                  }
+                  label={<Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>{(form.showContainerOptions ?? true) ? 'Visible' : 'Hidden'}</Typography>}
+                />
+              </Box>
+              {(form.showContainerOptions ?? true) && (
+                <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <TextField
+                    label="full container at port"
+                    size="small"
+                    fullWidth
+                    placeholder="full container at port"
+                    value={form.containerOptionFull ?? ''}
+                    onChange={(e) => setField('containerOptionFull', e.target.value)}
+                    helperText="Leave blank to use default"
+                  />
+                  <TextField
+                    label="available at cold storage"
+                    size="small"
+                    fullWidth
+                    placeholder="available at cold storage"
+                    value={form.containerOptionHalf ?? ''}
+                    onChange={(e) => setField('containerOptionHalf', e.target.value)}
+                    helperText="Leave blank to use default"
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
 
         {/* Specifications */}
-        <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Specifications
-          </Typography>
-          <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <TextField
-              label="Grade"
-              size="small"
-              fullWidth
-              slotProps={{
-                input: {
-                  readOnly: true,
-                },
-              }}
-              value="Imported"
-            />
-            <TextField
-              label="Brand Name"
-              size="small"
-              fullWidth
-              value={specs['Brand Name'] ?? ''}
-              onChange={(e) => setSpec('Brand Name', e.target.value)}
-            />
+        {formMode !== 'sale' && (
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Specifications
+            </Typography>
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <TextField
+                label="Grade"
+                size="small"
+                fullWidth
+                slotProps={{
+                  input: {
+                    readOnly: true,
+                  },
+                }}
+                value="Imported"
+              />
+              <TextField
+                label="Brand Name"
+                size="small"
+                fullWidth
+                value={specs['Brand Name'] ?? ''}
+                onChange={(e) => setSpec('Brand Name', e.target.value)}
+              />
+            </Box>
           </Box>
-        </Box>
+        )}
 
-        <Divider />
+        {formMode !== 'sale' && <Divider />}
 
         {/* Image Upload — 7 fixed variant slots */}
-        <Box>
-          <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.25, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Product Images (7 Views)
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'var(--ink-400)', mb: 1.5 }}>
-            Upload one image per slot — Main View + 6 angles.
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-            {['Main', 'Angle 2', 'Angle 3', 'Angle 4', 'Angle 5', 'Angle 6', 'Angle 7'].map((label, slotIdx) => {
-              const src = uploadedImages[slotIdx] ?? ''
-              return (
-                <Box key={slotIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: 72 }}>
-                  <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {label}
-                  </Typography>
-                  <Box
-                    sx={{
-                      position: 'relative',
-                      width: 72,
-                      height: 72,
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      border: src ? '2px solid var(--brand-400)' : '2px dashed var(--ink-300)',
-                      bgcolor: src ? 'transparent' : 'var(--ink-50)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'border-color 0.15s',
-                    }}
-                    component={src ? 'div' : 'label'}
-                  >
-                    {src ? (
-                      <>
-                        <img
-                          src={src}
-                          alt={label}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={() => removeImage(slotIdx)}
-                          sx={{
-                            position: 'absolute',
-                            top: 2,
-                            right: 2,
-                            bgcolor: 'rgba(0,0,0,0.55)',
-                            color: '#fff',
-                            p: '2px',
-                            '&:hover': { bgcolor: 'rgba(200,30,30,0.85)' },
-                          }}
-                        >
-                          <CloseRoundedIcon sx={{ fontSize: 12 }} />
-                        </IconButton>
-                        <Box
-                          component="label"
-                          sx={{
-                            position: 'absolute',
-                            bottom: 2,
-                            right: 2,
-                            bgcolor: 'rgba(0,0,0,0.55)',
-                            color: '#fff',
-                            borderRadius: 0.75,
-                            px: 0.5,
-                            py: '1px',
-                            fontSize: 9,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' },
-                          }}
-                        >
-                          Replace
+        {formMode !== 'sale' && (
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: 13, mb: 0.25, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Product Images (7 Views)
+            </Typography>
+            <Typography sx={{ fontSize: 11.5, color: 'var(--ink-400)', mb: 1.5 }}>
+              Upload one image per slot — Main View + 6 angles.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              {['Main', 'Angle 2', 'Angle 3', 'Angle 4', 'Angle 5', 'Angle 6', 'Angle 7'].map((label, slotIdx) => {
+                const src = uploadedImages[slotIdx] ?? ''
+                return (
+                  <Box key={slotIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: 72 }}>
+                    <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {label}
+                    </Typography>
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        width: 72,
+                        height: 72,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        border: src ? '2px solid var(--brand-400)' : '2px dashed var(--ink-300)',
+                        bgcolor: src ? 'transparent' : 'var(--ink-50)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.15s',
+                      }}
+                      component={src ? 'div' : 'label'}
+                    >
+                      {src ? (
+                        <>
+                          <img
+                            src={src}
+                            alt={label}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                          <IconButton
+                            size="small"
+                            onClick={() => removeImage(slotIdx)}
+                            sx={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 2,
+                              bgcolor: 'rgba(0,0,0,0.55)',
+                              color: '#fff',
+                              p: '2px',
+                              '&:hover': { bgcolor: 'rgba(200,30,30,0.85)' },
+                            }}
+                          >
+                            <CloseRoundedIcon sx={{ fontSize: 12 }} />
+                          </IconButton>
+                          <Box
+                            component="label"
+                            sx={{
+                              position: 'absolute',
+                              bottom: 2,
+                              right: 2,
+                              bgcolor: 'rgba(0,0,0,0.55)',
+                              color: '#fff',
+                              borderRadius: 0.75,
+                              px: 0.5,
+                              py: '1px',
+                              fontSize: 9,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' },
+                            }}
+                          >
+                            Replace
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) => handleImageUpload(slotIdx, e)}
+                            />
+                          </Box>
+                        </>
+                      ) : (
+                        <>
+                          <AddRoundedIcon sx={{ fontSize: 18, color: 'var(--ink-400)' }} />
+                          <Typography sx={{ fontSize: 9, fontWeight: 600, color: 'var(--ink-400)', mt: 0.25 }}>Upload</Typography>
                           <input
                             type="file"
                             accept="image/*"
                             hidden
                             onChange={(e) => handleImageUpload(slotIdx, e)}
                           />
-                        </Box>
-                      </>
-                    ) : (
-                      <>
-                        <AddRoundedIcon sx={{ fontSize: 18, color: 'var(--ink-400)' }} />
-                        <Typography sx={{ fontSize: 9, fontWeight: 600, color: 'var(--ink-400)', mt: 0.25 }}>Upload</Typography>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) => handleImageUpload(slotIdx, e)}
-                        />
-                      </>
-                    )}
+                        </>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
-              )
-            })}
+                )
+              })}
+            </Box>
           </Box>
-        </Box>
+        )}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2, gap: 1.5 }}>
@@ -1044,6 +1068,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
             ? 'Save Purchase'
             : formMode === 'arrival'
             ? 'Save Arrival'
+            : formMode === 'sale'
+            ? 'Add to Sale'
             : 'Add Stock'}
         </Button>
       </DialogActions>

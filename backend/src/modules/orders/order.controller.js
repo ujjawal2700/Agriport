@@ -55,13 +55,58 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
       if (!customerId) {
         throw new AppError('Customer ID is required when placing an order as staff.', 400);
       }
-      const cust = session 
+      let cust = session 
         ? await User.findById(customerId).session(session)
         : await User.findById(customerId);
+      
+      if (!cust) {
+        const crmCust = session
+          ? await CRMCustomer.findById(customerId).session(session)
+          : await CRMCustomer.findById(customerId);
+        
+        if (crmCust) {
+          if (crmCust.platformUserId) {
+            cust = session
+              ? await User.findById(crmCust.platformUserId).session(session)
+              : await User.findById(crmCust.platformUserId);
+          }
+          
+          if (!cust) {
+            const normalizedPhone = crmCust.phone ? crmCust.phone.trim() : '';
+            if (normalizedPhone) {
+              cust = session
+                ? await User.findOne({ mobile: normalizedPhone, role: 'customer' }).session(session)
+                : await User.findOne({ mobile: normalizedPhone, role: 'customer' });
+            }
+            
+            if (!cust) {
+              const uniqueMobile = normalizedPhone || `9${Math.random().toString().slice(2, 11)}`;
+              const dummyEmail = `crm_${crmCust._id}@agriport.in`;
+              
+              const createdUsers = await User.create([{
+                name: crmCust.name,
+                email: dummyEmail,
+                mobile: uniqueMobile,
+                role: 'customer',
+                status: 'active',
+                companyName: crmCust.company || crmCust.name,
+                city: crmCust.city || 'Mumbai',
+                businessType: 'Wholesaler'
+              }], session ? { session } : {});
+              
+              cust = createdUsers[0];
+            }
+            
+            crmCust.platformUserId = cust._id;
+            await crmCust.save(session ? { session } : {});
+          }
+        }
+      }
+
       if (!cust) {
         throw new AppError('Customer not found.', 404);
       }
-      finalCustomerId = customerId;
+      finalCustomerId = cust._id;
       finalExecutiveId = req.user.role === 'executive' ? req.user._id : null;
       customerUser = cust;
     }

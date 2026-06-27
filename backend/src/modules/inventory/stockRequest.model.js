@@ -24,7 +24,7 @@ const stockRequestSchema = new mongoose.Schema(
     requesterRole: {
       type: String,
       required: true,
-      enum: ['manager', 'executive'],
+      enum: ['manager', 'executive', 'admin'],
     },
     type: {
       type: String,

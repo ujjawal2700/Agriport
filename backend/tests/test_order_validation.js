@@ -49,6 +49,7 @@ const runTest = async () => {
     gstNumber: '27ABCDE1234F1Z0',
     city: 'Pune',
     address: 'Deccan Gymkhana, Pune 411004',
+    businessType: 'Wholesaler',
   });
 
   const adminUser = await User.create({
