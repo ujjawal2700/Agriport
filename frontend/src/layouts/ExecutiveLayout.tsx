@@ -15,7 +15,7 @@ const config: WorkspaceConfig = {
   nav: [
     { label: 'Dashboard', to: '/executive', icon: <SpaceDashboardRoundedIcon />, end: true },
     { label: 'Customers', to: '/executive/customers', icon: <ContactsRoundedIcon /> },
-    { label: 'Enquiries', to: '/executive/enquiries', icon: <ReceiptLongRoundedIcon /> },
+    { label: 'Sales & Enquiries', to: '/executive/enquiries', icon: <ReceiptLongRoundedIcon /> },
     {
       label: 'Add Stock',
       to: '/executive/add-stock',
@@ -23,6 +23,8 @@ const config: WorkspaceConfig = {
       children: [
         { label: 'New Purchase', to: '/executive/add-stock/new-purchase' },
         { label: 'On Arrival', to: '/executive/add-stock/on-arrival' },
+        { label: 'Purchase History', to: '/executive/add-stock/purchases' },
+        { label: 'Arrivals Log', to: '/executive/add-stock/arrivals' },
       ],
     },
     { label: 'New Sale', to: '/executive/sales', icon: <PointOfSaleRoundedIcon /> },
@@ -32,12 +34,14 @@ const config: WorkspaceConfig = {
   titles: {
     '/executive': 'Dashboard',
     '/executive/customers': 'Customer Management',
-    '/executive/enquiries': 'Customer Enquiries',
+    '/executive/enquiries': 'Sales & Enquiries',
     '/executive/sales': 'Sales Operations',
     '/executive/products': 'Product Management',
     '/executive/incentives': 'My Incentives',
     '/executive/add-stock/new-purchase': 'New Purchase',
     '/executive/add-stock/on-arrival': 'On Arrival',
+    '/executive/add-stock/purchases': 'Purchase History',
+    '/executive/add-stock/arrivals': 'Arrivals Log',
   },
   user: { name: 'Rahul Verma', role: 'Sales Executive · Pune', initials: 'RV' },
   exit: { to: ROUTES.home, label: 'Customer App', icon: <StorefrontRoundedIcon /> },

@@ -14,8 +14,13 @@ export const getAdminStockRequests = asyncWrapper(async (req, res) => {
   const queryObj = {};
 
   if (status) queryObj.status = status;
-  if (requesterId) queryObj.requesterId = requesterId;
   if (category) queryObj.category = category;
+
+  if (req.user.role === 'executive') {
+    queryObj.requesterId = req.user._id;
+  } else if (requesterId) {
+    queryObj.requesterId = requesterId;
+  }
 
   const result = await paginate(StockRequest, queryObj, req.query, {
     sort: { createdAt: -1 },
@@ -195,7 +200,10 @@ export const getVendorPurchases = asyncWrapper(async (req, res) => {
   }
 
   const result = await paginate(VendorPurchase, queryObj, req.query, {
-    sort: { purchaseDate: -1 }
+    sort: { purchaseDate: -1 },
+    populate: [
+      { path: 'purchasedBy', select: 'name email role mobile' }
+    ]
   });
 
   return successResponse(

@@ -88,8 +88,7 @@ export default function OrdersAdminPage() {
     {
       field: 'reference',
       headerName: 'Order',
-      flex: 1,
-      minWidth: 170,
+      width: 170,
       renderCell: (p) => (
         <Box>
           <Typography className="tnum" sx={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.2 }}>
@@ -99,6 +98,27 @@ export default function OrdersAdminPage() {
             {formatDate(p.row.placedOn)} · {p.row.lines.length} items
           </Typography>
         </Box>
+      ),
+    },
+    {
+      field: 'productsSold',
+      headerName: 'Products Sold',
+      flex: 1.5,
+      minWidth: 220,
+      renderCell: (p) => (
+        <Typography sx={{ fontSize: 13, display: 'flex', alignItems: 'center', height: '100%', color: 'var(--ink-700)' }}>
+          {p.row.lines.map((line) => `${line.name} (${line.quantity} ${line.unit})`).join(', ')}
+        </Typography>
+      ),
+    },
+    {
+      field: 'salesExecutive',
+      headerName: 'Sales Executive',
+      width: 180,
+      renderCell: (p) => (
+        <span style={{ display: 'flex', alignItems: 'center', height: '100%', fontSize: 13, fontWeight: p.row.executiveId ? 600 : 400, color: p.row.executiveId ? 'var(--brand-700)' : 'var(--ink-500)' }}>
+          {p.row.executiveId?.name || 'Storefront / Self-service'}
+        </span>
       ),
     },
     {

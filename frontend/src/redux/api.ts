@@ -177,6 +177,7 @@ export const api = createApi({
           cancellationReason: o.cancellationReason,
           quotedPrices: o.quotedPrices,
           quotedShipping: o.quotedShipping,
+          executiveId: o.executiveId || null,
         }));
       },
       providesTags: ['Order'],
@@ -609,6 +610,7 @@ export const api = createApi({
           total: v.total || 0,
           date: v.purchaseDate || new Date().toISOString(),
           status: v.status || 'pending',
+          purchaser: v.purchasedBy?.name || 'Unknown',
         }));
       },
     }),

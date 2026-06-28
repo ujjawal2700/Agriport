@@ -33,6 +33,7 @@ export default function AdminLayout() {
       children: [
         { label: 'New Purchase', to: '/admin/add-stock/new-purchase' },
         { label: 'On Arrival', to: '/admin/add-stock/on-arrival' },
+        { label: 'Purchase History', to: '/admin/add-stock/purchases' },
       ],
     },
     { label: 'New Sale', to: '/admin/new-sale', icon: <PointOfSaleRoundedIcon /> },
@@ -54,6 +55,7 @@ export default function AdminLayout() {
     '/admin/new-sale': 'Sales Operations',
     '/admin/add-stock/new-purchase': 'New Purchase',
     '/admin/add-stock/on-arrival': 'On Arrival',
+    '/admin/add-stock/purchases': 'Purchase History',
   }
 
   const config: WorkspaceConfig = {

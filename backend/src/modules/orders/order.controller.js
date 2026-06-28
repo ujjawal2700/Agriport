@@ -276,7 +276,10 @@ export const getOrders = asyncWrapper(async (req, res) => {
   }
 
   const result = await paginate(Order, queryObj, req.query, {
-    sort: { createdAt: -1 }
+    sort: { createdAt: -1 },
+    populate: [
+      { path: 'executiveId', select: 'name email role' }
+    ]
   });
 
   return successResponse(
@@ -337,7 +340,10 @@ export const getAdminOrders = asyncWrapper(async (req, res) => {
   }
 
   const result = await paginate(Order, queryObj, req.query, {
-    sort: { createdAt: -1 }
+    sort: { createdAt: -1 },
+    populate: [
+      { path: 'executiveId', select: 'name email role' }
+    ]
   });
 
   return successResponse(

@@ -8,8 +8,8 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Get all stock requests (Admin/Manager only)
-router.get('/stock-requests', authorize('admin', 'manager'), inventoryController.getAdminStockRequests);
+// Get all stock requests (Admin/Manager/Executive)
+router.get('/stock-requests', authorize('admin', 'manager', 'executive'), inventoryController.getAdminStockRequests);
 
 // Approve or reject a stock request (Admin only)
 router.patch('/stock-requests/:id', authorize('admin'), inventoryController.updateStockRequestStatus);

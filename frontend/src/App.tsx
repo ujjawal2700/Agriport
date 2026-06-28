@@ -56,6 +56,8 @@ const ExecutiveIncentivesPage = lazy(() => import('@/pages/executive/ExecutiveIn
 const ExecutiveProductsPage = lazy(() => import('@/pages/executive/ExecutiveProductsPage'))
 const NewPurchasePage = lazy(() => import('@/pages/executive/NewPurchasePage'))
 const OnArrivalPage = lazy(() => import('@/pages/executive/OnArrivalPage'))
+const PurchaseHistoryPage = lazy(() => import('@/pages/executive/PurchaseHistoryPage'))
+const ArrivalsLogPage = lazy(() => import('@/pages/executive/ArrivalsLogPage'))
 
 // Misc
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
@@ -134,6 +136,7 @@ export default function App() {
             <Route path="inventory" element={<InventoryAdminPage />} />
             <Route path="add-stock/new-purchase" element={<NewPurchasePage />} />
             <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
+            <Route path="add-stock/purchases" element={<PurchaseHistoryPage />} />
             <Route path="reports" element={<ReportsAdminPage />} />
             <Route path="storefront" element={<AdminStorefrontPage />} />
           </Route>
@@ -158,6 +161,8 @@ export default function App() {
             <Route path="products" element={<ExecutiveProductsPage />} />
             <Route path="add-stock/new-purchase" element={<NewPurchasePage />} />
             <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
+            <Route path="add-stock/purchases" element={<PurchaseHistoryPage />} />
+            <Route path="add-stock/arrivals" element={<ArrivalsLogPage />} />
           </Route>
 
           <Route path="/404" element={<NotFoundPage />} />

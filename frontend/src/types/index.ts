@@ -131,6 +131,7 @@ export interface Order {
   deliveryAddress?: string
   quotedPrices?: Record<string, number>   // productId → agreed unit price
   quotedShipping?: number
+  executiveId?: { id: string; name: string; role: string } | null
 }
 
 export interface Transaction {
@@ -324,6 +325,7 @@ export interface VendorPurchase {
   total: number
   date: string
   status: 'received' | 'pending' | 'ordered'
+  purchaser?: string
 }
 
 export interface PurchaseDraft {

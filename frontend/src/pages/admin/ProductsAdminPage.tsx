@@ -116,6 +116,16 @@ export default function ProductsAdminPage() {
       renderCell: (params) => <span style={{ display: 'flex', alignItems: 'center', height: '100%' }}>{params.row.specifications?.Grade || 'Premium'}</span>,
     },
     {
+      field: 'availableStock',
+      headerName: 'Available Stock',
+      width: 160,
+      renderCell: (params) => (
+        <span style={{ display: 'flex', alignItems: 'center', height: '100%', fontWeight: 700, color: 'var(--brand-700)' }}>
+          {params.row.availableStock?.toLocaleString('en-IN')} {params.row.unit}
+        </span>
+      ),
+    },
+    {
       field: 'actions',
       headerName: '',
       width: 100,

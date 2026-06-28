@@ -23,6 +23,12 @@ import {
   Select,
   FormControl,
   InputLabel,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
 } from '@mui/material'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
@@ -54,13 +60,15 @@ import ProductThumb from '@/components/common/ProductThumb'
 import { formatDate, formatMoney } from '@/utils/format'
 import { generateQuotationInvoice } from '@/utils/documents'
 import toast from 'react-hot-toast'
+import { useAppSelector } from '@/redux/hooks'
 
-type Filter = 'all' | OrderStatus
+type Filter = 'all' | OrderStatus | 'sales_log'
 
 export default function ExecutiveEnquiriesPage() {
   const { data: serverOrders = [], isLoading: isLoadingOrders } = useGetOrdersQuery()
   const { data: crmCustomers = [] } = useGetCrmCustomersQuery()
   const { data: products = [] } = useGetProductsQuery()
+  const user = useAppSelector((state) => state.auth.user)
 
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation()
   const [quoteOrder, { isLoading: isQuoting }] = useQuoteOrderMutation()
@@ -109,6 +117,12 @@ export default function ExecutiveEnquiriesPage() {
     }, {})
   }, [serverOrders])
 
+  const mySalesCount = useMemo(() => {
+    return serverOrders.filter(
+      (o) => o.executiveId && o.executiveId.id === user?.id
+    ).length
+  }, [serverOrders, user])
+
   // Filtered enquiries
   const filteredEnquiries = useMemo(() => {
     const s = search.toLowerCase()
@@ -121,7 +135,12 @@ export default function ExecutiveEnquiriesPage() {
       if (!matchSearch) return false
 
       // Tab filter
-      if (filter !== 'all' && o.status !== filter) return false
+      if (filter === 'sales_log') {
+        const isAttributedToMe = o.executiveId && o.executiveId.id === user?.id
+        if (!isAttributedToMe) return false
+      } else if (filter !== 'all' && o.status !== filter) {
+        return false
+      }
 
       // Sales Executive assignment filter (Dynamic match against CRM portfolio)
       if (myCustomersOnly) {
@@ -293,6 +312,7 @@ export default function ExecutiveEnquiriesPage() {
           <Tab value="confirmed" label={`Confirmed (${counts.confirmed ?? 0})`} />
           <Tab value="completed" label={`Completed (${counts.completed ?? 0})`} />
           <Tab value="cancelled" label={`Cancelled (${counts.cancelled ?? 0})`} />
+          <Tab value="sales_log" label={`My Sales Log (${mySalesCount})`} />
         </Tabs>
         <FormControlLabel
           control={<Switch checked={myCustomersOnly} onChange={(e) => setMyCustomersOnly(e.target.checked)} color="primary" />}
@@ -351,6 +371,61 @@ export default function ExecutiveEnquiriesPage() {
           <Typography sx={{ fontSize: 13.5, color: 'var(--ink-500)', mt: 0.5 }}>
             No customer enquiries match your current filters.
           </Typography>
+        </Box>
+      ) : filter === 'sales_log' ? (
+        <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow
+                  sx={{
+                    bgcolor: 'var(--ink-50)',
+                    '& th': {
+                      fontWeight: 700,
+                      fontSize: 12,
+                      color: 'var(--ink-600)',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      borderColor: 'var(--ink-200)',
+                    },
+                  }}
+                >
+                  <TableCell>Date</TableCell>
+                  <TableCell>Order Ref</TableCell>
+                  <TableCell>Customer Company</TableCell>
+                  <TableCell>Products Sold</TableCell>
+                  <TableCell>Total Amount</TableCell>
+                  <TableCell>Payment Status</TableCell>
+                  <TableCell align="right">Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredEnquiries.map((enquiry) => (
+                  <TableRow key={enquiry.id} hover sx={{ '& td': { borderColor: 'var(--ink-100)', py: 1.5 } }}>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{formatDate(enquiry.placedOn)}</TableCell>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 700 }} className="tnum">
+                      {enquiry.reference}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>
+                      {enquiry.companyName || enquiry.customerName || 'Direct Customer'}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 13 }}>
+                      {enquiry.lines.map((line) => `${line.name} (${line.quantity} ${line.unit})`).join(', ')}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-600)' }} className="tnum">
+                      {formatMoney(enquiry.total)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusChip kind="payment" value={enquiry.paymentStatus} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <StatusChip kind="order" value={enquiry.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Box>
       ) : (
         <Box className="grid grid-cols-1 md:grid-cols-2 gap-6">
