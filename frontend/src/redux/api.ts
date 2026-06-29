@@ -611,6 +611,7 @@ export const api = createApi({
           date: v.purchaseDate || new Date().toISOString(),
           status: v.status || 'pending',
           purchaser: v.purchasedBy?.name || 'Unknown',
+          notes: v.notes || '',
         }));
       },
     }),

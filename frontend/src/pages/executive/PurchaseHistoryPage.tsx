@@ -144,6 +144,7 @@ export default function PurchaseHistoryPage() {
                   <TableCell>Quantity</TableCell>
                   <TableCell>Unit Price</TableCell>
                   <TableCell>Total Cost</TableCell>
+                  <TableCell>Details</TableCell>
                   <TableCell align="right">Status</TableCell>
                 </TableRow>
               </TableHead>
@@ -166,6 +167,9 @@ export default function PurchaseHistoryPage() {
                     </TableCell>
                     <TableCell sx={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-600)' }} className="tnum">
                       {formatMoney(p.total)}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 12.5, color: 'var(--ink-600)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.notes}>
+                      {p.notes || '-'}
                     </TableCell>
                     <TableCell align="right">
                       <Chip

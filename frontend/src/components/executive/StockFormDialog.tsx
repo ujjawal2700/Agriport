@@ -80,6 +80,14 @@ interface StockFormDialogProps {
   formMode?: 'sale' | 'purchase' | 'arrival'
 }
 
+const getQtyLabel = (packingType: string, mode: string) => {
+  const plural = packingType === 'Cartoon' ? 'Cartons' : `${packingType}s`
+  if (mode === 'sale') return `Quantity to Sell (${plural}) *`
+  if (mode === 'purchase') return `Quantity to Purchase (${plural}) *`
+  if (mode === 'arrival') return `Quantity Arriving (${plural}) *`
+  return `Available Stock (${plural}) *`
+}
+
 export default function StockFormDialog({ open, onClose, productToEdit, onSave, onSavePurchase, onSaveArrival, onSaveSale, formMode }: StockFormDialogProps) {
   const { data: customers } = useGetCrmCustomersQuery()
   const { data: dbProducts } = useGetProductsQuery({ isExecutive: true })
@@ -99,6 +107,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
   const [stockInput, setStockInput] = useState<number | ''>('')
   const [priceInput, setPriceInput] = useState<number | ''>('')
   const [packingTypeInput, setPackingTypeInput] = useState('Cartoon')
+  const [netWeightInput, setNetWeightInput] = useState<number | ''>('')
+  const [grossWeightInput, setGrossWeightInput] = useState<number | ''>('')
 
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -170,12 +180,22 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       toast.error(`${priceLabel} must be a non-negative number`)
       return
     }
+    if (netWeightInput !== '' && (netWeightInput < 0 || isNaN(Number(netWeightInput)))) {
+      toast.error('Net Weight must be a non-negative number')
+      return
+    }
+    if (grossWeightInput !== '' && (grossWeightInput < 0 || isNaN(Number(grossWeightInput)))) {
+      toast.error('Gross Weight must be a non-negative number')
+      return
+    }
 
     const newSizeVar = {
       size: sizeVal,
       stock: Number(stockInput),
       price: Number(priceInput),
       packingType: packingTypeInput,
+      netWeight: netWeightInput === '' ? undefined : Number(netWeightInput),
+      grossWeight: grossWeightInput === '' ? undefined : Number(grossWeightInput),
     }
 
     const updated = [...currentSizes]
@@ -191,6 +211,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     setStockInput('')
     setPriceInput('')
     setPackingTypeInput('Cartoon')
+    setNetWeightInput('')
+    setGrossWeightInput('')
     setEditingSizeIndex(null)
     toast.success(editingSizeIndex !== null ? 'Size variant updated' : 'Size variant added')
   }
@@ -201,6 +223,8 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     setStockInput(v.stock)
     setPriceInput(v.price)
     setPackingTypeInput(v.packingType ?? 'Cartoon')
+    setNetWeightInput(v.netWeight ?? '')
+    setGrossWeightInput(v.grossWeight ?? '')
     setEditingSizeIndex(idx)
 
     setShowInlineEditor(true)
@@ -261,7 +285,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         return
       }
 
-      const quantity = form.sizeVariants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0
+      const quantity = form.sizeVariants?.reduce((sum, v) => sum + (v.stock * (v.netWeight || 1)), 0) || 0
       const buyPrice = form.sizeVariants?.[0]?.price || matchedProduct.basePrice || 0
       const unit = matchedProduct.unit || 'kg'
 
@@ -278,6 +302,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         form.containerOptionFull ? `Full container: ${form.containerOptionFull}` : '',
         form.containerOptionHalf ? `Cold storage: ${form.containerOptionHalf}` : '',
         form.shortDescription ? `Notes: ${form.shortDescription}` : '',
+        form.sizeVariants?.length ? `Variants: ${form.sizeVariants.map(v => `${v.size} (${v.stock} ${v.packingType || 'Cartoon'} · Net: ${v.netWeight || '-'}kg / Gross: ${v.grossWeight || '-'}kg)`).join(', ')}` : '',
       ].filter(Boolean).join(', ')
 
       const finalImages = uploadedImages.filter(Boolean)
@@ -314,7 +339,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         return
       }
 
-      const requestedChange = form.sizeVariants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0
+      const requestedChange = form.sizeVariants?.reduce((sum, v) => sum + (v.stock * (v.netWeight || 1)), 0) || 0
       if (requestedChange <= 0) {
         toast.error('At least one variant with a positive quantity must be added.')
         return
@@ -324,6 +349,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         form.containerOptionFull ? `Full container: ${form.containerOptionFull}` : '',
         form.containerOptionHalf ? `Cold storage: ${form.containerOptionHalf}` : '',
         form.shortDescription ? `Notes: ${form.shortDescription}` : '',
+        form.sizeVariants?.length ? `Variants: ${form.sizeVariants.map(v => `${v.size} (${v.stock} ${v.packingType || 'Cartoon'} · Net: ${v.netWeight || '-'}kg / Gross: ${v.grossWeight || '-'}kg)`).join(', ')}` : '',
       ].filter(Boolean).join(', ')
 
       const finalImages = uploadedImages.filter(Boolean)
@@ -358,7 +384,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         return
       }
 
-      const quantity = form.sizeVariants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0
+      const quantity = form.sizeVariants?.reduce((sum, v) => sum + (v.stock * (v.netWeight || 1)), 0) || 0
       const unitPrice = form.sizeVariants?.[0]?.price || matchedProduct.basePrice || 0
       const unit = matchedProduct.unit || 'kg'
 
@@ -658,7 +684,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                     onChange={(e) => setSizeInput(e.target.value)}
                   />
                   <TextField
-                    label={formMode === 'sale' ? 'Quantity to Sell *' : formMode === 'purchase' ? 'Quantity to Purchase *' : formMode === 'arrival' ? 'Quantity Arriving *' : 'Available Stock *'}
+                    label={getQtyLabel(packingTypeInput, formMode || '')}
                     placeholder="e.g. 25"
                     size="small"
                     type="number"
@@ -694,6 +720,45 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                   </TextField>
                 </Box>
 
+                {formMode !== 'sale' && (
+                  <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3" sx={{ mt: 1.5 }}>
+                    <TextField
+                      label="Net Weight *"
+                      placeholder="e.g. 50"
+                      size="small"
+                      type="number"
+                      fullWidth
+                      slotProps={{
+                        input: {
+                          endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
+                        },
+                      }}
+                      value={netWeightInput}
+                      onChange={(e) => setNetWeightInput(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                    <TextField
+                      label="Gross Weight *"
+                      placeholder="e.g. 51.5"
+                      size="small"
+                      type="number"
+                      fullWidth
+                      slotProps={{
+                        input: {
+                          endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
+                        },
+                      }}
+                      value={grossWeightInput}
+                      onChange={(e) => setGrossWeightInput(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </Box>
+                )}
+
+                {stockInput && netWeightInput && (
+                  <Typography sx={{ fontSize: 12, color: 'var(--brand-600)', mt: 1, fontWeight: 600 }}>
+                    Total weight to add: {(Number(stockInput) * Number(netWeightInput)).toLocaleString('en-IN')} kg ({stockInput} {packingTypeInput === 'Cartoon' ? 'Cartons' : `${packingTypeInput}s`} × {netWeightInput} kg)
+                  </Typography>
+                )}
+
                 {/* Maximum 6 size variants check message */}
                 {(form.sizeVariants ?? []).length >= 6 && editingSizeIndex === null && (
                   <Typography sx={{ fontSize: 11.5, color: '#c0392b', mt: 1, fontWeight: 600 }}>
@@ -724,8 +789,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
             </Box>
           )}
 
-          {/* Display Saved Variants in a single Table */}
-          {((form.sizeVariants && form.sizeVariants.length > 0) || form.weightVariant) && (
+          {form.sizeVariants && form.sizeVariants.length > 0 && (
             <Box sx={{ mb: 2.5 }}>
               <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1 }}>
                 Saved Variants
@@ -755,19 +819,11 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
                           <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{v.size}</TableCell>
                           <TableCell sx={{ fontSize: 13 }}>{v.packingType ?? 'Cartoon'}</TableCell>
                           
-                          {/* If weightVariant exists and this is the first size row, show netWeight & grossWeight */}
                           {formMode !== 'sale' && (
-                            idx === 0 && form.weightVariant ? (
-                              <>
-                                <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.netWeight} kg</TableCell>
-                                <TableCell sx={{ fontSize: 13 }}>{form.weightVariant.grossWeight} kg</TableCell>
-                              </>
-                            ) : (
-                              <>
-                                <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                                <TableCell sx={{ fontSize: 13, color: 'var(--ink-400)' }}>-</TableCell>
-                              </>
-                            )
+                            <>
+                              <TableCell sx={{ fontSize: 13 }}>{v.netWeight ? `${v.netWeight} kg` : '-'}</TableCell>
+                              <TableCell sx={{ fontSize: 13 }}>{v.grossWeight ? `${v.grossWeight} kg` : '-'}</TableCell>
+                            </>
                           )}
 
                           <TableCell sx={{ fontSize: 13 }}>{v.stock}</TableCell>
@@ -794,76 +850,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
             </Box>
           )}
 
-          {/* Weight Variant Option */}
-          {formMode !== 'sale' && (
-            <Box sx={{ mt: 2.5, p: 2, borderRadius: 2, border: '1px solid var(--ink-200)', bgcolor: 'var(--ink-50)' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Weight Variant
-                </Typography>
-              </Box>
-              <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <TextField
-                  label="Net Weight *"
-                  placeholder="e.g. 5"
-                  size="small"
-                  type="number"
-                  fullWidth
-                  slotProps={{
-                    input: {
-                      endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
-                    },
-                  }}
-                  value={form.weightVariant?.netWeight ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? '' : Number(e.target.value)
-                    setForm((f) => {
-                      const gross = f.weightVariant?.grossWeight ?? 0
-                      if (val === '' && gross === 0) {
-                        return { ...f, weightVariant: undefined }
-                      }
-                      return {
-                        ...f,
-                        weightVariant: {
-                          netWeight: val === '' ? 0 : Number(val),
-                          grossWeight: gross,
-                        }
-                      }
-                    })
-                  }}
-                />
-                <TextField
-                  label="Gross Weight *"
-                  placeholder="e.g. 5.5"
-                  size="small"
-                  type="number"
-                  fullWidth
-                  slotProps={{
-                    input: {
-                      endAdornment: <InputAdornment position="end">/kg</InputAdornment>,
-                    },
-                  }}
-                  value={form.weightVariant?.grossWeight ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? '' : Number(e.target.value)
-                    setForm((f) => {
-                      const net = f.weightVariant?.netWeight ?? 0
-                      if (val === '' && net === 0) {
-                        return { ...f, weightVariant: undefined }
-                      }
-                      return {
-                        ...f,
-                        weightVariant: {
-                          netWeight: net,
-                          grossWeight: val === '' ? 0 : Number(val),
-                        }
-                      }
-                    })
-                  }}
-                />
-              </Box>
-            </Box>
-          )}
+
 
           {/* Container Options */}
           {formMode !== 'sale' && (

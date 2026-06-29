@@ -155,6 +155,7 @@ export default function ArrivalsLogPage() {
                   <TableCell>Category</TableCell>
                   <TableCell>Quantity</TableCell>
                   <TableCell>Adjustment Type</TableCell>
+                  <TableCell>Details</TableCell>
                   <TableCell align="right">Status</TableCell>
                 </TableRow>
               </TableHead>
@@ -174,6 +175,9 @@ export default function ArrivalsLogPage() {
                         label={TYPE_LABELS[r.type] || r.type}
                         sx={{ fontSize: 11.5 }}
                       />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 12.5, color: 'var(--ink-600)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.notes}>
+                      {r.notes || '-'}
                     </TableCell>
                     <TableCell align="right">
                       <Chip

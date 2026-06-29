@@ -74,13 +74,14 @@ export default function ExecutiveProductsPage() {
               <TableCell>Category</TableCell>
               <TableCell>Origin</TableCell>
               <TableCell>Grade</TableCell>
+              <TableCell>Packaging & Sizes</TableCell>
               <TableCell>Available Stock</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 6, color: 'var(--ink-400)' }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'var(--ink-400)' }}>
                   <InventoryRoundedIcon sx={{ fontSize: 36, mb: 1, display: 'block', mx: 'auto', opacity: 0.4 }} />
                   No products found
                 </TableCell>
@@ -98,6 +99,9 @@ export default function ExecutiveProductsPage() {
                   <TableCell sx={{ fontSize: 13 }}>{p.category}</TableCell>
                   <TableCell sx={{ fontSize: 13 }}>{p.origin}</TableCell>
                   <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{p.specifications?.Grade || 'Premium'}</TableCell>
+                  <TableCell sx={{ fontSize: 13, color: 'var(--ink-600)' }}>
+                    {p.specifications?.['Packing Type'] || 'Cartoon'} ({p.specifications?.['Size or Count'] || '-'})
+                  </TableCell>
                   <TableCell sx={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-700)' }}>
                     {p.availableStock?.toLocaleString('en-IN')} {p.unit}
                   </TableCell>
@@ -154,6 +158,8 @@ export default function ExecutiveProductsPage() {
                   <DetailRow label="Category" value={detailProduct.category} />
                   <DetailRow label="Origin" value={detailProduct.origin} />
                   <DetailRow label="Grade" value={detailProduct.specifications?.Grade || 'Premium'} />
+                  <DetailRow label="Packing Type" value={detailProduct.specifications?.['Packing Type'] || 'Cartoon'} />
+                  <DetailRow label="Sizes" value={detailProduct.specifications?.['Size or Count'] || '-'} />
                   <DetailRow label="Available Stock" value={`${detailProduct.availableStock?.toLocaleString('en-IN')} ${detailProduct.unit}`} />
                 </Box>
               </Box>

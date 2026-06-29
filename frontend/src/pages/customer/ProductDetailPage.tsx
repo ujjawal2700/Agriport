@@ -11,6 +11,7 @@ import {
   TableCell,
   TableRow,
   TextField,
+  MenuItem,
 } from '@mui/material'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
@@ -45,7 +46,10 @@ export default function ProductDetailPage() {
     if (product?.specifications?.['Packing Type']) {
       setPackingType(product.specifications['Packing Type'])
     }
-  }, [product])
+    if (product?.sizeVariants && product.sizeVariants.length > 0 && !specificSize) {
+      setSpecificSize(product.sizeVariants[0].size)
+    }
+  }, [product, specificSize])
 
   if (isLoading) return <ProductDetailSkeleton />
   if (!product)
@@ -56,13 +60,15 @@ export default function ProductDetailPage() {
   // Initialise qty to MOQ on first resolve
   const effectiveQty = Math.max(qty, product.moq)
   const outOfStock = product.stockStatus === 'out_of_stock'
+  const selectedVariant = product.sizeVariants?.find((v) => v.size === specificSize)
 
   const handleAdd = () => {
+    const activePackingType = selectedVariant?.packingType || packingType
     const updatedProduct = {
       ...product,
       specifications: {
         ...product.specifications,
-        'Packing Type': packingType,
+        'Packing Type': activePackingType,
         'Specific Size': specificSize || 'Not specified',
         'Container Option': containerOption === 'full' ? 'Full Container' : 'Half Container',
       },
@@ -202,20 +208,48 @@ export default function ProductDetailPage() {
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
                   SPECIFIC SIZE
                 </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  placeholder={product.sizePlaceholder || 'e.g. 400x300x300 mm'}
-                  value={specificSize}
-                  onChange={(e) => setSpecificSize(e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2.5,
-                      bgcolor: 'var(--ink-50)',
-                      '& fieldset': { borderColor: 'var(--ink-200)' },
-                    }
-                  }}
-                />
+                {product.sizeVariants && product.sizeVariants.length > 0 ? (
+                  <TextField
+                    select
+                    size="small"
+                    fullWidth
+                    value={specificSize}
+                    onChange={(e) => setSpecificSize(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2.5,
+                        bgcolor: 'var(--ink-50)',
+                        '& fieldset': { borderColor: 'var(--ink-200)' },
+                      }
+                    }}
+                  >
+                    {product.sizeVariants.map((sv) => (
+                      <MenuItem key={sv.size} value={sv.size}>
+                        {sv.size} {sv.netWeight ? `(Net: ${sv.netWeight} kg / Gross: ${sv.grossWeight} kg)` : ''} — ₹{sv.price}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder={product.sizePlaceholder || 'e.g. 400x300x300 mm'}
+                    value={specificSize}
+                    onChange={(e) => setSpecificSize(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2.5,
+                        bgcolor: 'var(--ink-50)',
+                        '& fieldset': { borderColor: 'var(--ink-200)' },
+                      }
+                    }}
+                  />
+                )}
+                {selectedVariant && (
+                  <Typography sx={{ fontSize: 12, color: 'var(--brand-600)', fontWeight: 600, mt: 1 }}>
+                    Packaging: {selectedVariant.packingType || 'Cartoon'} {selectedVariant.netWeight ? `· Net Weight: ${selectedVariant.netWeight} kg · Gross Weight: ${selectedVariant.grossWeight} kg` : ''}
+                  </Typography>
+                )}
               </Box>
               <Box>
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>

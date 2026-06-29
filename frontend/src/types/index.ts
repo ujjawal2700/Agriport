@@ -32,6 +32,8 @@ export interface SizeVariant {
   stock: number
   price: number
   packingType?: string
+  netWeight?: number
+  grossWeight?: number
 }
 
 export interface WeightVariant {
@@ -232,6 +234,7 @@ export interface StockRequest {
   requestedChange: number
   requestedOn: string
   status: 'pending' | 'approved' | 'rejected'
+  notes?: string
 }
 
 export interface DashboardStats {
@@ -326,6 +329,7 @@ export interface VendorPurchase {
   date: string
   status: 'received' | 'pending' | 'ordered'
   purchaser?: string
+  notes?: string
 }
 
 export interface PurchaseDraft {

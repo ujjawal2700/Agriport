@@ -116,6 +116,20 @@ export default function ProductsAdminPage() {
       renderCell: (params) => <span style={{ display: 'flex', alignItems: 'center', height: '100%' }}>{params.row.specifications?.Grade || 'Premium'}</span>,
     },
     {
+      field: 'packaging',
+      headerName: 'Packaging & Sizes',
+      width: 220,
+      renderCell: (params) => {
+        const packing = params.row.specifications?.['Packing Type'] || 'Cartoon'
+        const sizeOrCount = params.row.specifications?.['Size or Count'] || '-'
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', height: '100%', fontSize: '13px', color: 'var(--ink-600)' }} title={`${packing} · Sizes: ${sizeOrCount}`}>
+            {packing} ({sizeOrCount})
+          </span>
+        )
+      },
+    },
+    {
       field: 'availableStock',
       headerName: 'Available Stock',
       width: 160,
