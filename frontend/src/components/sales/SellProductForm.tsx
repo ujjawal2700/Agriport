@@ -1,12 +1,33 @@
 import { useMemo, useState } from 'react'
-import { Box, Typography, Button, Divider } from '@mui/material'
-import { useGetProductsQuery, useCreateVendorPurchaseMutation, useCreateStockRequestMutation, useCreateOrderMutation } from '@/redux/api'
+import {
+  Box,
+  Typography,
+  Button,
+  Divider,
+  TextField,
+  MenuItem,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  IconButton,
+} from '@mui/material'
+import {
+  useGetProductsQuery,
+  useCreateVendorPurchaseMutation,
+  useCreateStockRequestMutation,
+  useCreateOrderMutation,
+  useGetCrmCustomersQuery,
+} from '@/redux/api'
 import { resolveUnitPrice } from '@/utils/pricing'
 import { formatMoney } from '@/utils/format'
-import type { Product, PurchaseDraft, ArrivalDraft, SaleDraft } from '@/types'
+import type { Product, PurchaseDraft, ArrivalDraft, SaleDraft, SaleItemDraft } from '@/types'
 import toast from 'react-hot-toast'
 import StockFormDialog from '@/components/executive/StockFormDialog'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 
 export default function SellProductForm({
   formMode,
@@ -40,11 +61,28 @@ export default function SellProductForm({
     setShowSummary(true)
   }
 
-  const [saleDraft, setSaleDraft] = useState<SaleDraft | null>(null)
+  const { data: customers } = useGetCrmCustomersQuery()
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [paymentMode, setPaymentMode] = useState<'offline' | 'bank_transfer' | 'cash'>('offline')
+  const [saleNotes, setSaleNotes] = useState('')
+  const [saleItems, setSaleItems] = useState<SaleItemDraft[]>([])
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation()
 
-  const handleSaleDialogSave = (draft: SaleDraft) => {
-    setSaleDraft(draft)
+  const handleSaleDialogSave = (draft: SaleItemDraft) => {
+    setSaleItems((prev) => {
+      const idx = prev.findIndex((item) => item.productId === draft.productId)
+      if (idx > -1) {
+        const updated = [...prev]
+        updated[idx] = {
+          ...updated[idx],
+          quantity: updated[idx].quantity + draft.quantity,
+          unitPrice: draft.unitPrice,
+        }
+        return updated
+      }
+      return [...prev, draft]
+    })
     setShowSummary(true)
   }
 
@@ -71,10 +109,71 @@ export default function SellProductForm({
       <Box className={(isPurchaseOrArrival && !showSummary) ? "flex flex-col gap-6" : "lg:col-span-2 flex flex-col gap-6"}>
 
 
+        {formMode === 'sale' && (
+          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 2.5 }}>Customer & Order Configuration</Typography>
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <TextField
+                select
+                label="Select Customer"
+                size="small"
+                fullWidth
+                value={selectedCustomerId}
+                onChange={(e) => {
+                  const cid = e.target.value
+                  setSelectedCustomerId(cid)
+                  const cust = customers?.find((c) => c.id === cid)
+                  if (cust) {
+                    setDeliveryAddress(cust.city ? `Delivery to ${cust.city}` : 'Pickup from Agriport Warehouse')
+                  }
+                }}
+              >
+                {(customers ?? []).map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.company || c.name} — {c.phone}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Payment Mode"
+                size="small"
+                fullWidth
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value as any)}
+              >
+                <MenuItem value="offline">Offline Payment</MenuItem>
+                <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+                <MenuItem value="cash">Cash on Delivery</MenuItem>
+              </TextField>
+            </Box>
+
+            <Box className="grid grid-cols-1 gap-4">
+              <TextField
+                label="Delivery Address"
+                size="small"
+                fullWidth
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+              />
+              <TextField
+                label="Short Notes / Instructions"
+                size="small"
+                fullWidth
+                multiline
+                rows={2}
+                value={saleNotes}
+                onChange={(e) => setSaleNotes(e.target.value)}
+              />
+            </Box>
+          </Box>
+        )}
+
         <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 16 }}>
-              {formMode === 'purchase' ? 'Purchase configuration' : formMode === 'arrival' ? 'Arrival configuration' : 'Product & pricing'}
+              {formMode === 'purchase' ? 'Purchase configuration' : formMode === 'arrival' ? 'Arrival configuration' : 'Products in Sale'}
             </Typography>
             <Button
               variant="contained"
@@ -94,7 +193,7 @@ export default function SellProductForm({
                 boxShadow: 'none',
               }}
             >
-              {(formMode === 'purchase' && purchaseDraft) || (formMode === 'arrival' && arrivalDraft) || (formMode === 'sale' && saleDraft) ? 'Change' : 'Add'}
+              {(formMode === 'purchase' && purchaseDraft) || (formMode === 'arrival' && arrivalDraft) ? 'Change' : 'Add'}
             </Button>
           </Box>
 
@@ -220,57 +319,79 @@ export default function SellProductForm({
                 </Box>
               )}
             </Box>
-          ) : formMode === 'sale' && saleDraft ? (
+          ) : formMode === 'sale' ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>CUSTOMER</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{saleDraft.customerName}</Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>PRODUCT</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{saleDraft.productName}</Typography>
-                </Box>
-              </Box>
-              <Box className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>QUANTITY</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }} className="tnum">
-                    {saleDraft.quantity} {saleDraft.unit}
+              {saleItems.length === 0 ? (
+                <Box
+                  sx={{
+                    border: '1.5px dashed var(--ink-200)',
+                    borderRadius: 3,
+                    py: 5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 1.5,
+                    bgcolor: 'var(--ink-50)',
+                  }}
+                >
+                  <Typography sx={{ fontSize: 14, color: 'var(--ink-500)', fontWeight: 600 }}>
+                    No products added to this sale yet.
                   </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AddRoundedIcon />}
+                    onClick={() => {
+                      setSelectedProduct(null)
+                      setStockDialogOpen(true)
+                    }}
+                    sx={{ textTransform: 'none', borderRadius: 2 }}
+                  >
+                    Add Product
+                  </Button>
                 </Box>
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>QUOTED PRICE</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }} className="tnum">
-                    {formatMoney(saleDraft.unitPrice)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>SUBTOTAL</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-600)' }} className="tnum">
-                    {formatMoney(saleDraft.quantity * saleDraft.unitPrice)}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>DELIVERY ADDRESS</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{saleDraft.deliveryAddress}</Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>PAYMENT MODE</Typography>
-                  <Typography sx={{ fontSize: 14, fontWeight: 600, textTransform: 'capitalize' }}>
-                    {saleDraft.paymentMode}
-                  </Typography>
-                </Box>
-              </Box>
-              {saleDraft.notes && (
-                <Box>
-                  <Typography sx={{ fontSize: 12, color: 'var(--ink-400)', fontWeight: 600 }}>NOTES</Typography>
-                  <Typography sx={{ fontSize: 13, color: 'var(--ink-600)', fontStyle: 'italic' }}>
-                    {saleDraft.notes}
-                  </Typography>
-                </Box>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'var(--ink-50)', '& th': { fontWeight: 700, fontSize: 11, color: 'var(--ink-600)', letterSpacing: '0.04em', textTransform: 'uppercase' } }}>
+                        <TableCell>Product Name</TableCell>
+                        <TableCell align="right">Qty</TableCell>
+                        <TableCell align="right">Unit Price</TableCell>
+                        <TableCell align="right">Subtotal</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {saleItems.map((item, idx) => (
+                        <TableRow key={idx} hover sx={{ '& td': { py: 1.25 } }}>
+                          <TableCell sx={{ fontWeight: 600, fontSize: 13 }}>{item.productName}</TableCell>
+                          <TableCell align="right" className="tnum" sx={{ fontSize: 13 }}>
+                            {item.quantity} {item.unit}
+                          </TableCell>
+                          <TableCell align="right" className="tnum" sx={{ fontSize: 13 }}>
+                            {formatMoney(item.unitPrice)}
+                          </TableCell>
+                          <TableCell align="right" className="tnum" sx={{ fontWeight: 600, fontSize: 13, color: 'var(--brand-600)' }}>
+                            {formatMoney(item.quantity * item.unitPrice)}
+                          </TableCell>
+                          <TableCell align="right">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => {
+                                setSaleItems((prev) => prev.filter((_, i) => i !== idx))
+                              }}
+                            >
+                              <DeleteOutlineRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               )}
             </Box>
           ) : (
@@ -307,8 +428,6 @@ export default function SellProductForm({
               <Typography sx={{ fontSize: 12.5, color: 'var(--ink-400)', textAlign: 'center' }}>
                 {formMode === 'purchase'
                   ? 'Click "Add" to configure vendor purchase details'
-                  : formMode === 'sale'
-                  ? 'Click "Add" to configure portfolio customer sale details'
                   : 'Click "Add Product" to select and configure a product'}
               </Typography>
             </Box>
@@ -528,61 +647,65 @@ export default function SellProductForm({
         </Box>
       )}
 
-      {formMode === 'sale' && showSummary && saleDraft && (
+      {formMode === 'sale' && showSummary && saleItems.length > 0 && (
         <Box>
           <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: 3, position: 'sticky', top: 84 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 2 }}>Sale summary</Typography>
             
-            <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>{saleDraft.productName}</Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, mb: 1, color: 'var(--ink-600)' }}>
+              {saleItems.length} {saleItems.length === 1 ? 'Product' : 'Products'} Selected
+            </Typography>
             
             <Box className="flex flex-col gap-2 mb-3">
               <Box className="flex justify-between">
                 <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Customer</Typography>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>{saleDraft.customerName}</Typography>
-              </Box>
-              <Box className="flex justify-between">
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Quantity</Typography>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 600 }} className="tnum">
-                  {saleDraft.quantity} {saleDraft.unit}
+                <Typography sx={{ fontSize: 12.5, fontWeight: 600 }}>
+                  {customers?.find((c) => c.id === selectedCustomerId)?.company || 'Not Selected'}
                 </Typography>
               </Box>
               <Box className="flex justify-between">
-                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Unit Price</Typography>
+                <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Total Items Qty</Typography>
                 <Typography sx={{ fontSize: 12.5, fontWeight: 600 }} className="tnum">
-                  {formatMoney(saleDraft.unitPrice)}
+                  {saleItems.reduce((acc, curr) => acc + curr.quantity, 0)} units
                 </Typography>
               </Box>
               <Box className="flex justify-between">
                 <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Subtotal</Typography>
                 <Typography sx={{ fontSize: 12.5, fontWeight: 600 }} className="tnum">
-                  {formatMoney(saleDraft.quantity * saleDraft.unitPrice)}
+                  {formatMoney(saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0))}
                 </Typography>
               </Box>
               <Box className="flex justify-between">
                 <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>GST (5%)</Typography>
                 <Typography sx={{ fontSize: 12.5, fontWeight: 600 }} className="tnum">
-                  {formatMoney(Math.round(saleDraft.quantity * saleDraft.unitPrice * 0.05 * 100) / 100)}
+                  {formatMoney(
+                    Math.round(
+                      saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0) * 0.05 * 100
+                    ) / 100
+                  )}
                 </Typography>
               </Box>
               <Box className="flex justify-between">
                 <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Shipping</Typography>
                 <Typography sx={{ fontSize: 12.5, fontWeight: 600 }} className="tnum">
-                  {saleDraft.quantity * saleDraft.unitPrice >= 50000 ? 'Free' : formatMoney(1500)}
+                  {saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0) >= 50000 ? 'Free' : formatMoney(1500)}
                 </Typography>
               </Box>
               <Box className="flex justify-between">
                 <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Payment Mode</Typography>
                 <Typography sx={{ fontSize: 12.5, fontWeight: 600, textTransform: 'capitalize' }}>
-                  {saleDraft.paymentMode}
+                  {paymentMode}
                 </Typography>
               </Box>
               <Box className="flex justify-between">
                 <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>Grand Total</Typography>
                 <Typography sx={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-600)' }} className="tnum">
                   {formatMoney(
-                    saleDraft.quantity * saleDraft.unitPrice +
-                    Math.round(saleDraft.quantity * saleDraft.unitPrice * 0.05 * 100) / 100 +
-                    (saleDraft.quantity * saleDraft.unitPrice >= 50000 ? 0 : 1500)
+                    saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0) +
+                    Math.round(
+                      saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0) * 0.05 * 100
+                    ) / 100 +
+                    (saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0) >= 50000 ? 0 : 1500)
                   )}
                 </Typography>
               </Box>
@@ -596,30 +719,36 @@ export default function SellProductForm({
               size="large"
               disabled={isCreatingOrder}
               onClick={async () => {
-                const subtotal = saleDraft.quantity * saleDraft.unitPrice
+                if (!selectedCustomerId) {
+                  toast.error('Please select a customer first.')
+                  return
+                }
+                const subtotal = saleItems.reduce((acc, curr) => acc + curr.quantity * curr.unitPrice, 0)
                 const shipping = subtotal >= 50000 ? 0 : 1500
                 try {
                   const res = await createOrder({
-                    customerId: saleDraft.customerId,
-                    lines: [
-                      {
-                        productId: saleDraft.productId,
-                        quantity: saleDraft.quantity,
-                        unit: saleDraft.unit,
-                      },
-                    ],
-                    paymentMode: saleDraft.paymentMode,
-                    deliveryAddress: saleDraft.deliveryAddress,
-                    quotedPrices: {
-                      [saleDraft.productId]: saleDraft.unitPrice,
-                    },
+                    customerId: selectedCustomerId,
+                    lines: saleItems.map(item => ({
+                      productId: item.productId,
+                      quantity: item.quantity,
+                      unit: item.unit,
+                    })),
+                    paymentMode,
+                    deliveryAddress,
+                    quotedPrices: Object.fromEntries(
+                      saleItems.map(item => [item.productId, item.unitPrice])
+                    ),
                     quotedShipping: shipping,
                   }).unwrap()
 
                   toast.success(`Sale recorded successfully! Order Ref: ${res.data?.reference || ''}`)
                   
                   // Reset states
-                  setSaleDraft(null)
+                  setSaleItems([])
+                  setSelectedCustomerId('')
+                  setDeliveryAddress('')
+                  setSaleNotes('')
+                  setPaymentMode('offline')
                   setShowSummary(false)
                 } catch (err: any) {
                   toast.error(err.data?.message || 'Failed to record sale')

@@ -28,7 +28,7 @@ import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import { api, useGetCrmCustomersQuery, useGetProductsQuery } from '@/redux/api'
 import { useAppDispatch } from '@/redux/hooks'
 import { generateSlabs } from '@/utils/pricing'
-import type { Product, PricingSlab, PurchaseDraft, ArrivalDraft, SaleDraft } from '@/types'
+import type { Product, PricingSlab, PurchaseDraft, ArrivalDraft, SaleDraft, SaleItemDraft } from '@/types'
 import toast from 'react-hot-toast'
 import { COUNTRIES } from '@/constants/countries'
 
@@ -76,7 +76,7 @@ interface StockFormDialogProps {
   onSave?: (product: Product, mode: 'add' | 'update') => void
   onSavePurchase?: (draft: PurchaseDraft) => void
   onSaveArrival?: (draft: ArrivalDraft) => void
-  onSaveSale?: (draft: SaleDraft) => void
+  onSaveSale?: (draft: SaleItemDraft) => void
   formMode?: 'sale' | 'purchase' | 'arrival'
 }
 
@@ -348,10 +348,6 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
     }
 
     if (formMode === 'sale') {
-      if (!selectedCustomerId) {
-        toast.error('Customer is required.')
-        return
-      }
       if (!form.name) {
         toast.error('Product is required.')
         return
@@ -376,23 +372,12 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
         return
       }
 
-      const selectedCustomerObj = customers?.find((c) => c.id === selectedCustomerId)
-      const customerName = selectedCustomerObj ? (selectedCustomerObj.company || selectedCustomerObj.name) : 'Unknown Customer'
-
       onSaveSale?.({
-        customerId: selectedCustomerId,
-        customerName,
         productId: matchedProduct.id,
         productName: matchedProduct.name,
-        category: matchedProduct.category || 'General',
         quantity,
         unit,
         unitPrice,
-        deliveryAddress: selectedCustomerObj?.city
-          ? `Delivery to ${selectedCustomerObj.city}`
-          : 'Pickup from Agriport Warehouse',
-        paymentMode: 'offline',
-        notes: form.shortDescription || '',
       })
       onClose()
       return
@@ -503,7 +488,7 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
       </DialogTitle>
 
       <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 3 }}>
-        {(formMode === 'purchase' || formMode === 'sale' || !formMode) && (
+        {(formMode === 'purchase' || !formMode) && (
           <>
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: 13.5, mb: 1.5, color: 'var(--ink-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>

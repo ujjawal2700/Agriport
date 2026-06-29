@@ -354,6 +354,14 @@ export interface ArrivalDraft {
   images?: string[]
 }
 
+export interface SaleItemDraft {
+  productId: string
+  productName: string
+  quantity: number
+  unit: string
+  unitPrice: number
+}
+
 export interface SaleDraft {
   customerId: string
   customerName: string
@@ -364,7 +372,7 @@ export interface SaleDraft {
   unit: string
   unitPrice: number
   deliveryAddress: string
-  paymentMode: string
+  paymentMode: PaymentMode
   notes: string
 }
 
