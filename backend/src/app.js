@@ -48,11 +48,14 @@ const whitelist = [
   "http://localhost:3000",
 ];
 
+// Allow any Vercel production/preview subdomain (e.g. agriport-9yms.vercel.app)
+const vercelDomainRegex = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, or postman)
-      if (!origin || whitelist.indexOf(origin) !== -1) {
+      if (!origin || whitelist.indexOf(origin) !== -1 || vercelDomainRegex.test(origin)) {
         callback(null, true);
       } else {
         callback(new AppError("Not allowed by CORS", 403));
