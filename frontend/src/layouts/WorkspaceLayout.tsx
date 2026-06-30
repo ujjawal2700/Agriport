@@ -16,6 +16,7 @@ import {
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import Logo from '@/components/common/Logo'
@@ -72,8 +73,13 @@ function Sidebar({ config, onNavigate }: { config: WorkspaceConfig; onNavigate?:
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: '#0A3324', color: '#fff' }}>
-      <Box sx={{ px: 2.5, py: 2.5 }}>
+      <Box sx={{ px: 2.5, py: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Logo light size={32} />
+        {onNavigate && (
+          <IconButton onClick={onNavigate} sx={{ color: 'rgba(255,255,255,0.7)', '&:hover': { color: '#fff' } }}>
+            <CloseRoundedIcon />
+          </IconButton>
+        )}
       </Box>
       <Box sx={{ px: 2, py: 1, flex: 1, overflowY: 'auto' }}>
         <Typography sx={{ px: 1.5, py: 1, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.4)' }}>
@@ -202,6 +208,7 @@ function Sidebar({ config, onNavigate }: { config: WorkspaceConfig; onNavigate?:
           to={config.exit.to}
           startIcon={config.exit.icon}
           fullWidth
+          onClick={onNavigate}
           sx={{ justifyContent: 'flex-start', color: 'rgba(255,255,255,0.8)', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
         >
           {config.exit.label}
@@ -215,6 +222,7 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [desktopOpen, setDesktopOpen] = useState(true)
   const location = useLocation()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
@@ -242,15 +250,24 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
     navigate(config.loginPath, { replace: true })
   }
 
+  const handleToggleSidebar = () => {
+    if (isDesktop) {
+      setDesktopOpen(!desktopOpen)
+    } else {
+      setMobileOpen(!mobileOpen)
+    }
+  }
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#F4F6F8' }}>
-      {isDesktop ? (
+      {isDesktop && desktopOpen && (
         <Box component="nav" sx={{ width: W, flexShrink: 0 }}>
           <Box sx={{ position: 'fixed', width: W, height: '100vh' }}>
             <Sidebar config={config} />
           </Box>
         </Box>
-      ) : (
+      )}
+      {!isDesktop && (
         <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)} slotProps={{ paper: { sx: { width: W, border: 'none' } } }}>
           <Sidebar config={config} onNavigate={() => setMobileOpen(false)} />
         </Drawer>
@@ -263,25 +280,35 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
             top: 0,
             zIndex: 10,
             height: 64,
-            px: { xs: 2, md: 3 },
+            px: { xs: 1.5, sm: 2, md: 3 },
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
+            gap: { xs: 1, sm: 2 },
             bgcolor: 'rgba(255,255,255,0.85)',
             backdropFilter: 'saturate(180%) blur(12px)',
             borderBottom: '1px solid var(--ink-200)',
           }}
         >
-          {!isDesktop && (
-            <IconButton onClick={() => setMobileOpen(true)} edge="start">
-              <MenuRoundedIcon />
-            </IconButton>
-          )}
-          <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 700, fontSize: 19, lineHeight: 1.1 }}>
+          <IconButton onClick={handleToggleSidebar} edge="start" sx={{ color: 'var(--ink-700)' }}>
+            <MenuRoundedIcon />
+          </IconButton>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              noWrap
+              sx={{
+                fontFamily: '"Bricolage Grotesque", serif',
+                fontWeight: 700,
+                fontSize: { xs: 16, sm: 19 },
+                lineHeight: 1.1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               {title}
             </Typography>
-            <Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>{config.subtitle}</Typography>
+            <Typography sx={{ fontSize: 11, color: 'var(--ink-500)', display: { xs: 'none', sm: 'block' } }}>
+              {config.subtitle}
+            </Typography>
           </Box>
           <Tooltip title="Notifications">
             <IconButton onClick={handleOpenNotifications}>
@@ -381,22 +408,22 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
               )}
             </Box>
           </Popover>
-          <Box className="flex items-center gap-2" sx={{ pl: 1, borderLeft: '1px solid var(--ink-200)' }}>
-            <Avatar sx={{ width: 36, height: 36, bgcolor: 'var(--brand-700)', fontSize: 14 }}>{config.user.initials}</Avatar>
+          <Box className="flex items-center" sx={{ gap: { xs: 0.5, sm: 1, md: 2 }, pl: { xs: 0.5, sm: 1 }, borderLeft: '1px solid var(--ink-200)' }}>
+            <Avatar sx={{ width: { xs: 30, sm: 36 }, height: { xs: 30, sm: 36 }, bgcolor: 'var(--brand-700)', fontSize: { xs: 12, sm: 14 } }}>{config.user.initials}</Avatar>
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
               <Typography sx={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.1 }}>{config.user.name}</Typography>
               <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)' }}>{config.user.role}</Typography>
             </Box>
             <Tooltip title="Sign out">
-              <IconButton onClick={handleSignOut} size="small" sx={{ ml: 0.5 }}>
+              <IconButton onClick={handleSignOut} size="small">
                 <LogoutRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>
         </Box>
 
-        <Box component="main" sx={{ p: { xs: 2, md: 3.5 }, flex: 1 }}>
-          <Box className="animate-fade-up">
+        <Box component="main" sx={{ p: { xs: 2, md: 3.5 }, flex: 1, minWidth: 0 }}>
+          <Box className="animate-fade-up" sx={{ minWidth: 0 }}>
             <Suspense fallback={<PageFallback />}>
               <Outlet />
             </Suspense>
