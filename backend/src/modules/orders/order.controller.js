@@ -241,6 +241,9 @@ export const createOrder = asyncWrapper(async (req, res, next) => {
 
     // Emit order.placed event asynchronously after successful transaction commit
     eventBus.emit('order.placed', orderDoc);
+    if (orderDoc.paymentMode === 'offline' || orderDoc.paymentMode === 'bank_transfer') {
+      eventBus.emit('payment.submitted', { order: orderDoc, amount: orderDoc.total });
+    }
 
     return successResponse(res, orderDoc, 201, 'Order placed successfully.');
   } catch (error) {
@@ -407,6 +410,10 @@ export const updateOrderStatus = asyncWrapper(async (req, res, next) => {
 
   if (status === 'confirmed') {
     eventBus.emit('order.confirmed', order);
+  } else if (status === 'completed') {
+    eventBus.emit('order.delivered', order);
+  } else if (status === 'cancelled') {
+    eventBus.emit('order.cancelled', { order, cancelledBy: req.user, reason: order.cancellationReason });
   }
 
   return successResponse(res, order, 200, `Order status updated to "${status}" successfully.`);
@@ -496,6 +503,7 @@ export const quoteOrder = asyncWrapper(async (req, res, next) => {
   if (!order) {
     return next(new AppError('Order not found.', 404));
   }
+  const wasPlaced = order.status === 'placed';
 
   // Check authorization: only admin, manager, or assigned executive / crm owner
   if (req.user.role === 'executive') {
@@ -591,7 +599,14 @@ export const quoteOrder = asyncWrapper(async (req, res, next) => {
   await order.save();
 
   if (status === 'confirmed') {
+    if (wasPlaced) {
+      eventBus.emit('order.quoted', order);
+    }
     eventBus.emit('order.confirmed', order);
+  } else if (status === 'completed') {
+    eventBus.emit('order.delivered', order);
+  } else if (status === 'cancelled') {
+    eventBus.emit('order.cancelled', { order, cancelledBy: req.user, reason: order.cancellationReason });
   }
 
   return successResponse(res, order, 200, `Order status updated to "${status}" successfully.`);

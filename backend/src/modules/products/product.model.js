@@ -70,6 +70,16 @@ const productSchema = new mongoose.Schema(
         unitPrice: { type: Number, required: true },
       },
     ],
+    sizeVariants: [
+      {
+        size: { type: String, required: true },
+        stock: { type: Number, required: true, default: 0 },
+        price: { type: Number, required: true, default: 0 },
+        packingType: { type: String, default: 'Cartoon' },
+        netWeight: { type: Number },
+        grossWeight: { type: Number },
+      },
+    ],
     specifications: {
       type: Map,
       of: String,

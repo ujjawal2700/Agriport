@@ -6,6 +6,7 @@ import registerOnPaymentFailed from './handlers/onPaymentFailed.js';
 import registerOnExecutiveApproved from './handlers/onExecutiveApproved.js';
 import registerOnCustomerApproved from './handlers/onCustomerApproved.js';
 import registerOnPasswordResetRequested from './handlers/onPasswordResetRequested.js';
+import registerOnNotificationTrigger from './handlers/onNotificationTrigger.js';
 
 // Register all decoupled handlers to the eventBus
 registerOnOrderPlaced(eventBus);
@@ -15,5 +16,6 @@ registerOnPaymentFailed(eventBus);
 registerOnExecutiveApproved(eventBus);
 registerOnCustomerApproved(eventBus);
 registerOnPasswordResetRequested(eventBus);
+registerOnNotificationTrigger(eventBus);
 
 export default eventBus;

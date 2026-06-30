@@ -344,6 +344,9 @@ export interface PurchaseDraft {
   notes: string
   specifications?: Record<string, string>
   images?: string[]
+  sizeVariants?: SizeVariant[]
+  origin?: string
+  leadTimeDays?: number
 }
 
 export interface ArrivalDraft {
@@ -356,6 +359,9 @@ export interface ArrivalDraft {
   notes: string
   specifications?: Record<string, string>
   images?: string[]
+  sizeVariants?: SizeVariant[]
+  origin?: string
+  leadTimeDays?: number
 }
 
 export interface SaleItemDraft {
@@ -399,3 +405,17 @@ export interface SalesStats {
   incentiveEarned: number
   commissionPct?: number
 }
+
+export interface InAppNotification {
+  id: string
+  recipientId: string
+  senderId?: string
+  title: string
+  message: string
+  type: 'order' | 'kyc' | 'stock' | 'payment' | 'auth'
+  read: boolean
+  entityId?: string
+  createdAt: string
+  updatedAt: string
+}
+

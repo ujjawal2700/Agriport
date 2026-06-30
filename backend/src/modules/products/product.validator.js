@@ -11,6 +11,16 @@ export const createProductSchema = z.object({
   category: objectIdSchema,
   origin: z.string().min(1, 'Origin is required').trim(),
   grade: z.string().min(1, 'Grade is required').trim(),
+  sizeVariants: z.array(
+    z.object({
+      size: z.string().min(1, 'Size is required').trim(),
+      stock: z.number().default(0),
+      price: z.number().default(0),
+      packingType: z.string().optional().default('Cartoon'),
+      netWeight: z.number().optional(),
+      grossWeight: z.number().optional(),
+    })
+  ).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

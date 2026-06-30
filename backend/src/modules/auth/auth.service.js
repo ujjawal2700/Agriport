@@ -166,6 +166,9 @@ export const signupCustomer = async (signupData, deviceInfo = {}) => {
   // Exclude password from return payload
   user.password = undefined;
 
+  // Emit customer.registered event
+  eventBus.emit('customer.registered', user);
+
   // If customer status is pending by default, do not return access tokens
   if (user.status !== 'active') {
     return {
@@ -212,6 +215,9 @@ export const signupExecutive = async (signupData, uploadedFiles) => {
   });
 
   user.password = undefined;
+
+  // Emit executive.registered event
+  eventBus.emit('executive.registered', user);
 
   return {
     user,

@@ -323,6 +323,9 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           ...(form.sizeVariants?.length ? { 'Size or Count': form.sizeVariants.map(v => v.size).join(', ') } : {}),
         },
         images: finalImages,
+        sizeVariants: form.sizeVariants ?? [],
+        origin: form.origin || form.specifications?.Origin || '',
+        leadTimeDays: form.leadTimeDays ? Number(form.leadTimeDays) : 0,
       })
       onClose()
       return
@@ -368,6 +371,9 @@ export default function StockFormDialog({ open, onClose, productToEdit, onSave, 
           ...(form.sizeVariants?.length ? { 'Size or Count': form.sizeVariants.map(v => v.size).join(', ') } : {}),
         },
         images: finalImages,
+        sizeVariants: form.sizeVariants ?? [],
+        origin: form.origin || form.specifications?.Origin || '',
+        leadTimeDays: form.leadTimeDays ? Number(form.leadTimeDays) : 0,
       })
       onClose()
       return

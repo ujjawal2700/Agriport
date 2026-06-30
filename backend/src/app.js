@@ -21,6 +21,7 @@ import inventoryRouter from "./modules/inventory/inventory.routes.js";
 import reportsRouter from "./modules/reports/reports.routes.js";
 import crmRouter from "./modules/crm/crm.routes.js";
 import salesRouter from "./modules/sales/sales.routes.js";
+import notificationRouter from "./modules/notifications/notification.routes.js";
 
 const app = express();
 
@@ -105,6 +106,7 @@ app.use("/api/v1/inventory", inventoryRouter);
 app.use("/api/v1/reports", reportsRouter);
 app.use("/api/v1/crm", crmRouter);
 app.use("/api/v1/sales", salesRouter);
+app.use("/api/v1/notifications", notificationRouter);
 
 app.get("/api/v1/health", (req, res) => {
   const dbState = mongoose.connection.readyState;

@@ -64,6 +64,24 @@ const stockRequestSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    sizeVariants: [
+      {
+        size: { type: String, required: true },
+        stock: { type: Number, required: true, default: 0 },
+        price: { type: Number, required: true, default: 0 },
+        packingType: { type: String, default: 'Cartoon' },
+        netWeight: { type: Number },
+        grossWeight: { type: Number },
+      },
+    ],
+    origin: {
+      type: String,
+      default: '',
+    },
+    leadTimeDays: {
+      type: Number,
+      default: 0,
+    },
     specifications: {
       type: Map,
       of: String,

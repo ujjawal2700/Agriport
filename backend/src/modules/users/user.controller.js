@@ -368,6 +368,9 @@ export const uploadDocument = asyncWrapper(async (req, res, next) => {
     uploadedOn: document.createdAt,
   };
 
+  // Emit kyc.uploaded event
+  eventBus.emit('kyc.uploaded', { user: req.user, document });
+
   return successResponse(res, responseDoc, 201, 'Document uploaded successfully.');
 });
 
@@ -611,6 +614,9 @@ export const updateUserTarget = asyncWrapper(async (req, res, next) => {
   user.target = Number(target);
   await user.save();
 
+  // Emit target assigned event
+  eventBus.emit('user.target_assigned', { user, target: user.target });
+
   return successResponse(res, serializeUser(user), 200, 'Sales target updated successfully.');
 });
 
@@ -635,6 +641,9 @@ export const assignManager = asyncWrapper(async (req, res, next) => {
   }
 
   await executive.save();
+
+  // Emit manager assigned event
+  eventBus.emit('user.manager_assigned', { executive, managerId });
 
   return successResponse(res, serializeUser(executive), 200, 'Sales Executive assigned to Manager successfully.');
 });

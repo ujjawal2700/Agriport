@@ -23,6 +23,7 @@ import type {
   SalesStats,
   HeroContent,
   TrustBadge,
+  InAppNotification,
 } from '@/types'
 
 
@@ -74,14 +75,22 @@ const mapProductResponse = (p: any): Product => {
     pricingSlabs: [],
     rating: 5,
     origin: p.origin || 'India',
-    leadTimeDays: 0,
+    leadTimeDays: specifications['Lead Time'] ? Number(specifications['Lead Time']) : 0,
+    sizeVariants: p.sizeVariants ? p.sizeVariants.map((v: any) => ({
+      size: v.size,
+      stock: v.stock || 0,
+      price: v.price || 0,
+      packingType: v.packingType || 'Cartoon',
+      netWeight: v.netWeight,
+      grossWeight: v.grossWeight,
+    })) : [],
   };
 };
 
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: axiosBaseQuery(),
-  tagTypes: ['Product', 'Category', 'Order', 'Document', 'AdminUser', 'StockRequest', 'Executive', 'Manager', 'SalesSetting', 'Storefront', 'CrmCustomer', 'FollowUp'],
+  tagTypes: ['Product', 'Category', 'Order', 'Document', 'AdminUser', 'StockRequest', 'Executive', 'Manager', 'SalesSetting', 'Storefront', 'CrmCustomer', 'FollowUp', 'Notification'],
   endpoints: (build) => ({
     getProducts: build.query<Product[], ProductQuery | void>({
       query: (arg) => {
@@ -853,6 +862,27 @@ export const api = createApi({
       }),
       invalidatesTags: ['Storefront'],
     }),
+    getNotifications: build.query<{ notifications: InAppNotification[] }, void>({
+      query: () => ({
+        url: '/notifications',
+        method: 'GET',
+      }),
+      providesTags: ['Notification'],
+    }),
+    markNotificationRead: build.mutation<InAppNotification, string>({
+      query: (id) => ({
+        url: `/notifications/${id}/read`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Notification'],
+    }),
+    markAllNotificationsRead: build.mutation<any, void>({
+      query: () => ({
+        url: '/notifications/read-all',
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Notification'],
+    }),
   }),
 })
 
@@ -923,4 +953,7 @@ export const {
   useUpdateFollowUpMutation,
   useDeleteFollowUpMutation,
   useQuoteOrderMutation,
+  useGetNotificationsQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
 } = api

@@ -6,6 +6,79 @@ import { paginate } from '../../utils/paginate.js';
 import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
+import eventBus from '../../events/index.js';
+
+// Helper to update product stock, size variants, specifications, origin, images and leadTimeDays
+const updateProductStockAndDetails = async (productId, { stockChange, type, sizeVariants, specifications, images, origin, leadTimeDays }, session) => {
+  const queryOpts = session ? { session } : {};
+  const product = session
+    ? await Product.findById(productId).session(session)
+    : await Product.findById(productId);
+  if (!product) {
+    throw new AppError('Product associated with this stock request/purchase not found.', 404);
+  }
+
+  // 1. Update stock
+  if (type === 'add') {
+    product.stock = (product.stock || 0) + stockChange;
+  } else if (type === 'update' || type === 'new_product') {
+    product.stock = stockChange;
+  } else {
+    throw new AppError('Invalid update type.', 400);
+  }
+
+  if (product.stock < 0) {
+    throw new AppError('Stock operation would result in negative product stock.', 400);
+  }
+
+  // 2. Update sizeVariants
+  if (sizeVariants && sizeVariants.length > 0) {
+    if (type === 'add') {
+      product.sizeVariants = product.sizeVariants || [];
+      for (const newVar of sizeVariants) {
+        const existingVar = product.sizeVariants.find(
+          (v) => v.size === newVar.size && (v.packingType || 'Cartoon') === (newVar.packingType || 'Cartoon')
+        );
+        if (existingVar) {
+          existingVar.stock = (existingVar.stock || 0) + newVar.stock;
+          if (newVar.price) existingVar.price = newVar.price;
+          if (newVar.netWeight) existingVar.netWeight = newVar.netWeight;
+          if (newVar.grossWeight) existingVar.grossWeight = newVar.grossWeight;
+        } else {
+          product.sizeVariants.push(newVar);
+        }
+      }
+    } else {
+      product.sizeVariants = sizeVariants;
+    }
+  }
+
+  // 3. Update specifications
+  if (specifications) {
+    const specsMap = specifications instanceof Map ? specifications : new Map(Object.entries(specifications));
+    for (const [key, val] of specsMap.entries()) {
+      product.specifications.set(key, val);
+    }
+  }
+
+  // 4. Update images
+  if (images && images.length > 0) {
+    product.images = images;
+  }
+
+  // 5. Update origin
+  if (origin) {
+    product.origin = origin;
+  }
+
+  // 6. Update leadTimeDays if present
+  if (leadTimeDays) {
+    product.specifications.set('Lead Time', leadTimeDays.toString());
+  }
+
+  await product.save(queryOpts);
+  return product;
+};
 
 // 1. Get all stock requests (Admin/Manager only)
 export const getAdminStockRequests = asyncWrapper(async (req, res) => {
@@ -86,49 +159,25 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
         await stockRequest.save();
       }
 
+      eventBus.emit('stockRequest.rejected', { stockRequest, reviewerId: req.user._id, reason: rejectionReason });
+
       return successResponse(res, stockRequest, 200, 'Stock request rejected successfully.');
     }
 
     // If approved:
-    let updateQuery = {};
-    if (stockRequest.type === 'add') {
-      updateQuery = { $inc: { stock: stockRequest.requestedChange } };
-    } else if (stockRequest.type === 'update' || stockRequest.type === 'new_product') {
-      updateQuery = { $set: { stock: stockRequest.requestedChange } };
-    } else {
-      throw new AppError('Invalid stock request type.', 400);
-    }
-
-    // Set dynamic specifications in the product
-    if (stockRequest.specifications && stockRequest.specifications.size > 0) {
-      updateQuery.$set = updateQuery.$set || {};
-      for (const [key, val] of stockRequest.specifications.entries()) {
-        updateQuery.$set[`specifications.${key}`] = val;
-      }
-    }
-
-    // Propagate images if present
-    if (stockRequest.images && stockRequest.images.length > 0) {
-      updateQuery.$set = updateQuery.$set || {};
-      updateQuery.$set.images = stockRequest.images;
-    }
-
-    const updateOptions = { new: true };
-    if (session) updateOptions.session = session;
-
-    const product = await Product.findByIdAndUpdate(
+    const product = await updateProductStockAndDetails(
       stockRequest.productId,
-      updateQuery,
-      updateOptions
+      {
+        stockChange: stockRequest.requestedChange,
+        type: stockRequest.type,
+        sizeVariants: stockRequest.sizeVariants,
+        specifications: stockRequest.specifications,
+        images: stockRequest.images,
+        origin: stockRequest.origin,
+        leadTimeDays: stockRequest.leadTimeDays,
+      },
+      session
     );
-
-    if (!product) {
-      throw new AppError('Product associated with this stock request not found.', 404);
-    }
-
-    if (product.stock < 0) {
-      throw new AppError('Stock request would result in negative product stock.', 400);
-    }
 
     stockRequest.status = 'approved';
     stockRequest.reviewedBy = req.user._id;
@@ -140,6 +189,8 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
     } else {
       await stockRequest.save();
     }
+
+    eventBus.emit('stockRequest.approved', { stockRequest, reviewerId: req.user._id });
 
     return successResponse(
       res,
@@ -161,7 +212,7 @@ export const updateStockRequestStatus = asyncWrapper(async (req, res, next) => {
 
 // 3. Create a stock request (Executive/Manager only)
 export const createStockRequest = asyncWrapper(async (req, res, next) => {
-  const { productId, type, requestedChange, notes, specifications, images } = req.body;
+  const { productId, type, requestedChange, notes, specifications, images, sizeVariants, origin, leadTimeDays } = req.body;
 
   if (!productId || !type || requestedChange === undefined) {
     return next(new AppError('Product ID, request type, and requested change quantity are required.', 400));
@@ -185,7 +236,12 @@ export const createStockRequest = asyncWrapper(async (req, res, next) => {
     status: 'pending',
     specifications: specifications || {},
     images: images || [],
+    sizeVariants: sizeVariants || [],
+    origin: origin || '',
+    leadTimeDays: leadTimeDays ? Number(leadTimeDays) : 0,
   });
+
+  eventBus.emit('stockRequest.created', stockRequest);
 
   return successResponse(res, stockRequest, 201, 'Stock request raised successfully.');
 });
@@ -280,27 +336,26 @@ export const createVendorPurchase = asyncWrapper(async (req, res, next) => {
 
     // If already received, immediately add to stock and update specifications atomically
     if (purchaseStatus === 'received') {
-      const updateOptions = session ? { session } : {};
-      const updateQuery = { $inc: { stock: qty } };
-      if (specifications && Object.keys(specifications).length > 0) {
-        updateQuery.$set = {};
-        for (const [key, val] of Object.entries(specifications)) {
-          updateQuery.$set[`specifications.${key}`] = val;
-        }
-      }
-      const updatedProduct = await Product.findByIdAndUpdate(
+      await updateProductStockAndDetails(
         productId,
-        updateQuery,
-        { new: true, ...updateOptions }
+        {
+          stockChange: qty,
+          type: 'add',
+          sizeVariants: req.body.sizeVariants,
+          specifications,
+          images: req.body.images,
+          origin: req.body.origin,
+          leadTimeDays: req.body.leadTimeDays,
+        },
+        session
       );
-      if (!updatedProduct) {
-        throw new AppError('Failed to update product stock.', 500);
-      }
     }
 
     if (session) {
       await session.commitTransaction();
     }
+
+    eventBus.emit('vendorPurchase.created', { purchase: purchaseDoc, purchaser: req.user });
 
     return successResponse(res, purchaseDoc, 201, 'Vendor purchase logged successfully.');
   } catch (error) {
