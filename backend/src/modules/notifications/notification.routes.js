@@ -7,6 +7,7 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
+router.get('/stream', notificationController.streamNotifications);
 router.get('/', notificationController.getNotifications);
 router.patch('/read-all', notificationController.markAllAsRead);
 router.patch('/:id/read', notificationController.markAsRead);

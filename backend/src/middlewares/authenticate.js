@@ -5,12 +5,14 @@ import User from '../modules/users/user.model.js';
 import asyncWrapper from '../utils/asyncWrapper.js';
 
 export const authenticate = asyncWrapper(async (req, res, next) => {
-  // 1. Get token from Authorization header
+  // 1. Get token from Authorization header or Query parameter
   let token;
   const authHeader = req.headers.authorization;
 
   if (authHeader && authHeader.startsWith('Bearer')) {
     token = authHeader.split(' ')[1];
+  } else if (req.query.token) {
+    token = req.query.token;
   }
 
   if (!token) {

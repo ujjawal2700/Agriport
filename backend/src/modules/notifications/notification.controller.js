@@ -3,6 +3,7 @@ import asyncWrapper from '../../utils/asyncWrapper.js';
 import AppError from '../../utils/AppError.js';
 import { successResponse } from '../../utils/apiResponse.js';
 import { paginate } from '../../utils/paginate.js';
+import { registerClient, unregisterClient } from './sseManager.js';
 
 // 1. Get notifications for the logged-in user
 export const getNotifications = asyncWrapper(async (req, res) => {
@@ -47,3 +48,26 @@ export const markAllAsRead = asyncWrapper(async (req, res) => {
 
   return successResponse(res, null, 200, 'All notifications marked as read.');
 });
+
+// 4. Stream notifications and pings via SSE (Server-Sent Events)
+export const streamNotifications = (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  res.write(': sse connection established\n\n');
+
+  registerClient(req.user._id, res);
+
+  const heartbeatInterval = setInterval(() => {
+    res.write(': heartbeat\n\n');
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
+    unregisterClient(req.user._id, res);
+    res.end();
+  });
+};

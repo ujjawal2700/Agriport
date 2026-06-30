@@ -41,6 +41,7 @@ import { useAppDispatch, useAppSelector, useCartCount } from '@/redux/hooks'
 import { signOut } from '@/redux/slices/authSlice'
 import { initials } from '@/utils/format'
 import toast from 'react-hot-toast'
+import useSSESync from '@/hooks/useSSESync'
 
 const NAV = [
   { label: 'Marketplace', to: ROUTES.products, icon: <StorefrontRoundedIcon sx={{ fontSize: 19 }} /> },
@@ -51,6 +52,9 @@ export default function CustomerLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useAppDispatch()
+  
+  // Initialize SSE synchronization stream
+  useSSESync()
   const cartCount = useCartCount()
   const user = useAppSelector((s) => s.auth.user)
   const isAuthed = useAppSelector((s) => s.auth.status === 'authenticated')

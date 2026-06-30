@@ -20,7 +20,7 @@ import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import Logo from '@/components/common/Logo'
 import PageFallback from '@/components/common/PageFallback'
-import { useAppDispatch } from '@/redux/hooks'
+import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { signOut } from '@/redux/slices/authSlice'
 import toast from 'react-hot-toast'
 import {
@@ -28,6 +28,7 @@ import {
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
 } from '@/redux/api'
+import useSSESync from '@/hooks/useSSESync'
 
 const W = 256
 
@@ -219,6 +220,9 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const title = config.titles[location.pathname] ?? config.subtitle
+
+  // Initialize SSE synchronization stream
+  useSSESync()
 
   const [notifAnchorEl, setNotifAnchorEl] = useState<HTMLButtonElement | null>(null)
 

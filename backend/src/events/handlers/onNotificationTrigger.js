@@ -1,8 +1,9 @@
 import logger from '../../config/logger.js';
 import Notification from '../../modules/notifications/notification.model.js';
 import User from '../../modules/users/user.model.js';
+import { sendSSEMessage } from '../../modules/notifications/sseManager.js';
 
-// Helper to create notifications in bulk or singly
+// Helper to create notifications in bulk or singly and push them via SSE
 const createNotification = async ({ recipientIds, senderId, title, message, type, entityId }) => {
   try {
     const ids = Array.isArray(recipientIds) ? recipientIds : [recipientIds];
@@ -15,8 +16,14 @@ const createNotification = async ({ recipientIds, senderId, title, message, type
       entityId,
     }));
     if (docs.length > 0) {
-      await Notification.insertMany(docs);
-      logger.info(`[Notifications] Created ${docs.length} notifications of type "${type}".`);
+      const createdDocs = await Notification.insertMany(docs);
+      logger.info(`[Notifications] Created ${createdDocs.length} notifications of type "${type}".`);
+      
+      // Push live notification and invalidate cache
+      for (const doc of createdDocs) {
+        sendSSEMessage(doc.recipientId, 'notification_created', doc);
+        sendSSEMessage(doc.recipientId, 'invalidate', ['Notification']);
+      }
     }
   } catch (err) {
     logger.error(`[Notifications] Error creating in-app notification for type "${type}":`, err);
@@ -46,6 +53,11 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'auth',
       entityId: customer._id,
     });
+    
+    // Invalidate AdminUser lists for admins
+    for (const id of admins) {
+      sendSSEMessage(id, 'invalidate', ['AdminUser']);
+    }
   });
 
   // 2. Executive Registered
@@ -59,6 +71,11 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'auth',
       entityId: executive._id,
     });
+
+    // Invalidate AdminUser and Executive lists for admins
+    for (const id of admins) {
+      sendSSEMessage(id, 'invalidate', ['AdminUser', 'Executive']);
+    }
   });
 
   // 3. Customer Approved
@@ -70,6 +87,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'auth',
       entityId: customer._id,
     });
+
+    sendSSEMessage(customer._id, 'invalidate', ['AdminUser']);
+    const admins = await getAdminIds();
+    for (const id of admins) {
+      sendSSEMessage(id, 'invalidate', ['AdminUser']);
+    }
   });
 
   // 4. Executive Approved
@@ -81,6 +104,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'auth',
       entityId: executive._id,
     });
+
+    sendSSEMessage(executive._id, 'invalidate', ['AdminUser', 'Executive']);
+    const admins = await getAdminIds();
+    for (const id of admins) {
+      sendSSEMessage(id, 'invalidate', ['AdminUser', 'Executive']);
+    }
   });
 
   // 5. KYC Uploaded
@@ -94,6 +123,11 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'kyc',
       entityId: user._id,
     });
+
+    for (const id of admins) {
+      sendSSEMessage(id, 'invalidate', ['Document', 'AdminUser']);
+    }
+    sendSSEMessage(user._id, 'invalidate', ['Document']);
   });
 
   // 6. Order Placed
@@ -111,6 +145,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'order',
       entityId: order._id,
     });
+
+    // Invalidate Order and Product cache tags for everyone involved
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order', 'Product']);
+    }
   });
 
   // 7. Order Quoted
@@ -123,6 +163,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'order',
       entityId: order._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order']);
+    }
   });
 
   // 8. Order Confirmed
@@ -134,6 +180,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'order',
       entityId: order._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order', 'Product']);
+    }
   });
 
   // 9. Order Cancelled
@@ -155,6 +207,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'order',
       entityId: order._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order', 'Product']);
+    }
   });
 
   // 10. Order Delivered
@@ -166,6 +224,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'order',
       entityId: order._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order']);
+    }
   });
 
   // 11. Payment Submitted
@@ -182,6 +246,11 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'payment',
       entityId: order._id,
     });
+
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order']);
+    }
   });
 
   // 12. Payment Verified
@@ -196,6 +265,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'payment',
       entityId: order._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [order.customerId, order.executiveId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Order']);
+    }
   });
 
   // 13. Stock Request Created
@@ -216,6 +291,11 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'stock',
       entityId: stockRequest._id,
     });
+
+    const notifyUsers = [stockRequest.requesterId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['StockRequest']);
+    }
   });
 
   // 14. Stock Request Approved
@@ -228,6 +308,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'stock',
       entityId: stockRequest._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [stockRequest.requesterId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['StockRequest', 'Product']);
+    }
   });
 
   // 15. Stock Request Rejected
@@ -240,6 +326,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'stock',
       entityId: stockRequest._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [stockRequest.requesterId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['StockRequest']);
+    }
   });
 
   // 16. Target Assigned
@@ -253,6 +345,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'auth',
       entityId: user._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [user._id, user.managerId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['AdminUser', 'Executive', 'Manager', 'SalesSetting']);
+    }
   });
 
   // 17. Manager Assigned
@@ -273,6 +371,12 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'auth',
       entityId: executive._id,
     });
+
+    const admins = await getAdminIds();
+    const notifyUsers = [executive._id, managerId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['AdminUser', 'Executive', 'Manager']);
+    }
   });
 
   // 18. Vendor Purchase Logged
@@ -289,5 +393,10 @@ export default function registerOnNotificationTrigger(eventBus) {
       type: 'stock',
       entityId: purchase._id,
     });
+
+    const notifyUsers = [purchaser._id, purchaser.managerId, ...admins].filter(Boolean);
+    for (const id of notifyUsers) {
+      sendSSEMessage(id, 'invalidate', ['Product', 'StockRequest']);
+    }
   });
 }
