@@ -2,8 +2,11 @@ import type { PricingSlab } from '@/types'
 
 /** Resolve the per-unit price for a given quantity from a product's pricing slabs. */
 export function resolveUnitPrice(slabs: PricingSlab[], qty: number): PricingSlab {
+  if (!slabs || slabs.length === 0) {
+    return { minQty: 1, maxQty: null, price: 0, label: 'Enquiry pricing' }
+  }
   const match = slabs.find((s) => qty >= s.minQty && (s.maxQty === null || qty <= s.maxQty))
-  return match ?? slabs[0]
+  return match ?? slabs[0] ?? { minQty: 1, maxQty: null, price: 0, label: 'Enquiry pricing' }
 }
 
 /** Generate the standard 4-tier wholesale slab ladder from a base price. */
@@ -18,6 +21,7 @@ export function generateSlabs(base: number): PricingSlab[] {
 
 /** Savings vs. the base (smallest-quantity) slab, in percent. */
 export function slabSavingsPct(slabs: PricingSlab[], qty: number): number {
+  if (!slabs || slabs.length === 0) return 0
   const base = slabs[0].price
   const current = resolveUnitPrice(slabs, qty).price
   if (base === 0) return 0

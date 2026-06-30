@@ -1,126 +1,143 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DataGrid } from '@mui/x-data-grid'
 import type { GridColDef } from '@mui/x-data-grid'
-import { Box, Typography, Button, IconButton, Tooltip, TextField } from '@mui/material'
+import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import TableCard from '@/components/admin/TableCard'
 import { gridSx } from '@/components/admin/gridStyles'
-import ProductThumb from '@/components/common/ProductThumb'
-import StatusChip from '@/components/common/StatusChip'
 import ProductFormDialog from '@/components/admin/ProductFormDialog'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
-import { useGetProductsQuery, useGetCategoriesQuery } from '@/redux/api'
-import { categories as mockCategories } from '@/mocks/data'
-import { formatMoney } from '@/utils/format'
+import {
+  useGetProductsQuery,
+  useGetCategoriesQuery,
+  useCreateProductMutation,
+  useUpdateProductMutation,
+  useDeleteProductMutation,
+} from '@/redux/api'
 import type { Product } from '@/types'
 import toast from 'react-hot-toast'
 
 export default function ProductsAdminPage() {
-  const { data: serverProducts, isLoading } = useGetProductsQuery()
+  const { data: serverProducts, isLoading } = useGetProductsQuery({ isExecutive: true })
   const { data: categories, refetch: refetchCategories } = useGetCategoriesQuery()
-  const [rows, setRows] = useState<Product[]>([])
+
+  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation()
+  const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation()
+  const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation()
+
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState<Product | null>(null)
-  const [newCategoryName, setNewCategoryName] = useState('')
-
-  useEffect(() => {
-    if (serverProducts) setRows(serverProducts)
-  }, [serverProducts])
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
-    return rows.filter((p) => p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s))
-  }, [rows, search])
+    const list = serverProducts || []
+    return list.filter((p) => 
+      p.name.toLowerCase().includes(s) || 
+      p.category.toLowerCase().includes(s) ||
+      p.origin.toLowerCase().includes(s)
+    )
+  }, [serverProducts, search])
 
   const categoryNames = useMemo(() => {
     return categories?.map((c) => c.name) ?? []
   }, [categories])
 
-  const handleCreateCategory = () => {
-    const trimmed = newCategoryName.trim()
-    if (!trimmed) {
-      toast.error('Please enter a category name')
-      return
-    }
-    if (mockCategories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      toast.error('Category already exists')
+  const handleSave = async (product: Product) => {
+    const catDoc = categories?.find((c) => c.name === product.category)
+    if (!catDoc) {
+      toast.error('Selected category is invalid or not found')
       return
     }
 
-    mockCategories.push({
-      id: `c-${Date.now()}`,
-      name: trimmed,
-      slug: trimmed.toLowerCase().replace(/\s+/g, '-'),
-      productCount: 0,
-      icon: 'folder',
-    })
+    const payload = {
+      name: product.name,
+      category: catDoc.id, // Mongoose ObjectId
+      origin: product.origin,
+      grade: product.specifications.Grade,
+    }
 
-    setNewCategoryName('')
-    toast.success(`Category "${trimmed}" created successfully`)
-    refetchCategories()
+    try {
+      if (editing) {
+        await updateProduct({ id: editing.id, ...payload }).unwrap()
+        toast.success('Product updated successfully')
+      } else {
+        await createProduct(payload).unwrap()
+        toast.success('Product added successfully')
+      }
+      setFormOpen(false)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to save product')
+    }
   }
 
-  const handleSave = (product: Product) => {
-    setRows((prev) => {
-      const exists = prev.some((p) => p.id === product.id)
-      return exists ? prev.map((p) => (p.id === product.id ? product : p)) : [product, ...prev]
-    })
-    toast.success(editing ? 'Product updated' : 'Product added')
-  }
-
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleting) return
-    setRows((prev) => prev.filter((p) => p.id !== deleting.id))
-    toast.success('Product deleted')
+    try {
+      await deleteProduct(deleting.id).unwrap()
+      toast.success('Product deleted successfully')
+      setDeleting(null)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to delete product')
+    }
   }
 
   const columns: GridColDef<Product>[] = [
     {
       field: 'name',
-      headerName: 'Product',
+      headerName: 'Product Name',
       flex: 1,
-      minWidth: 260,
+      minWidth: 200,
       renderCell: (params) => (
-        <Box className="flex items-center gap-2 py-1" sx={{ height: '100%' }}>
-          <Box sx={{ width: 40, height: 40, flexShrink: 0 }}>
-            <ProductThumb id={params.row.id} name={params.row.name} rounded={8} />
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {params.row.name}
-            </Typography>
-            <Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>{params.row.category}</Typography>
-          </Box>
-        </Box>
+        <Typography sx={{ fontWeight: 600, fontSize: 13.5, display: 'flex', alignItems: 'center', height: '100%' }}>
+          {params.row.name}
+        </Typography>
       ),
     },
     {
-      field: 'moq',
-      headerName: 'MOQ',
-      width: 90,
-      renderCell: (p) => <span className="tnum">{p.row.moq} {p.row.unit}</span>,
+      field: 'category',
+      headerName: 'Category',
+      width: 180,
+      renderCell: (params) => <span style={{ display: 'flex', alignItems: 'center', height: '100%' }}>{params.row.category}</span>,
     },
     {
-      field: 'basePrice',
-      headerName: 'Base Price',
-      width: 120,
-      renderCell: (p) => <span className="tnum" style={{ fontWeight: 700 }}>{formatMoney(p.row.basePrice)}</span>,
+      field: 'origin',
+      headerName: 'Origin',
+      width: 150,
+      renderCell: (params) => <span style={{ display: 'flex', alignItems: 'center', height: '100%' }}>{params.row.origin}</span>,
+    },
+    {
+      field: 'grade',
+      headerName: 'Grade',
+      width: 150,
+      renderCell: (params) => <span style={{ display: 'flex', alignItems: 'center', height: '100%' }}>{params.row.specifications?.Grade || 'Premium'}</span>,
+    },
+    {
+      field: 'packaging',
+      headerName: 'Packaging & Sizes',
+      width: 220,
+      renderCell: (params) => {
+        const packing = params.row.specifications?.['Packing Type'] || 'Cartoon'
+        const sizeOrCount = params.row.specifications?.['Size or Count'] || '-'
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', height: '100%', fontSize: '13px', color: 'var(--ink-600)' }} title={`${packing} · Sizes: ${sizeOrCount}`}>
+            {packing} ({sizeOrCount})
+          </span>
+        )
+      },
     },
     {
       field: 'availableStock',
-      headerName: 'Stock',
-      width: 110,
-      renderCell: (p) => <span className="tnum">{p.row.availableStock.toLocaleString('en-IN')}</span>,
-    },
-    {
-      field: 'stockStatus',
-      headerName: 'Status',
-      width: 130,
-      renderCell: (p) => <StatusChip kind="stock" value={p.row.stockStatus} />,
+      headerName: 'Available Stock',
+      width: 160,
+      renderCell: (params) => (
+        <span style={{ display: 'flex', alignItems: 'center', height: '100%', fontWeight: 700, color: 'var(--brand-700)' }}>
+          {params.row.availableStock?.toLocaleString('en-IN')} {params.row.unit}
+        </span>
+      ),
     },
     {
       field: 'actions',
@@ -131,7 +148,7 @@ export default function ProductsAdminPage() {
       align: 'right',
       headerAlign: 'right',
       renderCell: (p) => (
-        <Box>
+        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', alignItems: 'center', height: '100%' }}>
           <Tooltip title="Edit">
             <IconButton
               size="small"
@@ -155,34 +172,9 @@ export default function ProductsAdminPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Create Category Section */}
-      <Box sx={{ p: 3, bgcolor: '#fff', borderRadius: 4, border: '1px solid var(--ink-200)' }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 16, mb: 0.5 }}>Create Category</Typography>
-        <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)', mb: 2 }}>
-          Add a new product category to populate in the dropdown when adding or editing products.
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1.5, maxWidth: 500 }}>
-          <TextField
-            size="small"
-            placeholder="Category name (e.g. Beverages)"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            fullWidth
-            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-          />
-          <Button
-            variant="contained"
-            onClick={handleCreateCategory}
-            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, whiteSpace: 'nowrap' }}
-          >
-            Create Category
-          </Button>
-        </Box>
-      </Box>
-
       <TableCard
         title="Products"
-        count={rows.length}
+        count={filtered.length}
         search={search}
         onSearch={setSearch}
         searchPlaceholder="Search products…"
@@ -203,7 +195,7 @@ export default function ProductsAdminPage() {
           rows={filtered}
           columns={columns}
           loading={isLoading}
-          rowHeight={60}
+          rowHeight={52}
           disableRowSelectionOnClick
           disableColumnMenu
           pageSizeOptions={[10, 25, 50]}
@@ -218,6 +210,7 @@ export default function ProductsAdminPage() {
         categories={categoryNames}
         onClose={() => setFormOpen(false)}
         onSave={handleSave}
+        loading={isCreating || isUpdating}
       />
       <ConfirmDialog
         open={Boolean(deleting)}
@@ -231,6 +224,7 @@ export default function ProductsAdminPage() {
         destructive
         onConfirm={handleDelete}
         onClose={() => setDeleting(null)}
+        loading={isDeleting}
       />
     </Box>
   )

@@ -14,6 +14,7 @@ import {
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded'
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import toast from 'react-hot-toast'
 
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
@@ -22,18 +23,20 @@ import {
   addBanner,
   updateBanner,
   removeBanner,
-  addCategory,
-  updateCategory,
-  removeCategory,
   addTrustBadge,
   updateTrustBadge,
   removeTrustBadge,
   resetStorefront,
 } from '@/redux/slices/storefrontSlice'
 import {
-  CATEGORY_ICONS,
+  useUpdateStorefrontHeroMutation,
+  useUpdateStorefrontTrustBadgesMutation,
+  useAddStorefrontBannerMutation,
+  useUpdateStorefrontBannerMutation,
+  useDeleteStorefrontBannerMutation,
+} from '@/redux/api'
+import {
   TRUST_ICONS,
-  categoryIcon,
   trustIcon,
 } from '@/utils/contentIcons'
 
@@ -69,13 +72,70 @@ function Panel({ children }: { children: React.ReactNode }) {
 
 export default function AdminStorefrontPage() {
   const dispatch = useAppDispatch()
-  const { hero, banners, categories, trustBadges } = useAppSelector((s) => s.storefront)
+  const { hero, banners, trustBadges } = useAppSelector((s) => s.storefront)
   const [tab, setTab] = useState(0)
 
+  const [updateHeroMutation, { isLoading: isUpdatingHero }] = useUpdateStorefrontHeroMutation()
+  const [updateTrustBadgesMutation, { isLoading: isUpdatingBadges }] = useUpdateStorefrontTrustBadgesMutation()
+  const [addBannerMutation] = useAddStorefrontBannerMutation()
+  const [updateBannerMutation] = useUpdateStorefrontBannerMutation()
+  const [deleteBannerMutation] = useDeleteStorefrontBannerMutation()
+
   const handleReset = () => {
-    if (confirm('Reset all storefront content (hero, banners, categories, trust badges) to defaults?')) {
+    if (confirm('Reset all storefront content (hero, banners, trust badges) to defaults?')) {
       dispatch(resetStorefront())
-      toast.success('Storefront content reset to defaults')
+      toast.success('Storefront content reset to defaults. Remember to save your changes.')
+    }
+  }
+
+  const handleSaveHero = async () => {
+    try {
+      await updateHeroMutation(hero).unwrap()
+      toast.success('Hero content saved successfully!')
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to save hero content')
+    }
+  }
+
+  const handleSaveTrustBadges = async () => {
+    try {
+      await updateTrustBadgesMutation({ trustBadges }).unwrap()
+      toast.success('Trust badges saved successfully!')
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to save trust badges')
+    }
+  }
+
+  const handleAddBanner = async () => {
+    try {
+      await addBannerMutation({
+        title: 'New Promotion',
+        subtitle: 'Describe your offer here',
+        cta: 'Shop now',
+        accent: 'brand',
+      }).unwrap()
+      toast.success('Banner added successfully!')
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to add banner')
+    }
+  }
+
+  const handleDeleteBanner = async (id: string) => {
+    if (confirm('Are you sure you want to delete this banner?')) {
+      try {
+        await deleteBannerMutation(id).unwrap()
+        toast.success('Banner deleted successfully!')
+      } catch (err: any) {
+        toast.error(err?.data?.message || 'Failed to delete banner')
+      }
+    }
+  }
+
+  const handleUpdateBannerField = async (id: string, field: string, value: string) => {
+    try {
+      await updateBannerMutation({ id, banner: { [field]: value } }).unwrap()
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to update banner')
     }
   }
 
@@ -86,7 +146,7 @@ export default function AdminStorefrontPage() {
         <Box>
           <Typography sx={{ fontWeight: 700, fontSize: 20 }}>Storefront Content</Typography>
           <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }}>
-            Customise the customer home page hero, promotional banners, categories and product trust badges.
+            Customise the customer home page hero, promotional banners and product trust badges.
           </Typography>
         </Box>
         <Button
@@ -109,7 +169,6 @@ export default function AdminStorefrontPage() {
       >
         <Tab label="Hero Banner" />
         <Tab label={`Promo Banners (${banners.length})`} />
-        <Tab label={`Categories (${categories.length})`} />
         <Tab label={`Trust Badges (${trustBadges.length})`} />
       </Tabs>
 
@@ -182,6 +241,18 @@ export default function AdminStorefrontPage() {
             />
           </Box>
 
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="contained"
+              startIcon={<SaveRoundedIcon />}
+              onClick={handleSaveHero}
+              disabled={isUpdatingHero}
+              sx={{ borderRadius: 2.5, fontWeight: 700 }}
+            >
+              {isUpdatingHero ? 'Saving...' : 'Save Hero Content'}
+            </Button>
+          </Box>
+
           {/* Live preview */}
           <Divider sx={{ my: 3 }} />
           <SectionLabel>Preview</SectionLabel>
@@ -223,7 +294,7 @@ export default function AdminStorefrontPage() {
             <Panel key={b.id}>
               <Box className="flex items-start justify-between gap-2 mb-2">
                 <SectionLabel>Promotional banner</SectionLabel>
-                <IconButton size="small" onClick={() => dispatch(removeBanner(b.id))} sx={{ color: 'var(--danger, #c0392b)' }}>
+                <IconButton size="small" onClick={() => handleDeleteBanner(b.id)} sx={{ color: 'var(--danger, #c0392b)' }}>
                   <DeleteOutlineRoundedIcon fontSize="small" />
                 </IconButton>
               </Box>
@@ -234,6 +305,7 @@ export default function AdminStorefrontPage() {
                   fullWidth
                   value={b.title}
                   onChange={(e) => dispatch(updateBanner({ id: b.id, patch: { title: e.target.value } }))}
+                  onBlur={(e) => handleUpdateBannerField(b.id, 'title', e.target.value)}
                 />
                 <TextField
                   label="CTA button label"
@@ -241,6 +313,7 @@ export default function AdminStorefrontPage() {
                   fullWidth
                   value={b.cta}
                   onChange={(e) => dispatch(updateBanner({ id: b.id, patch: { cta: e.target.value } }))}
+                  onBlur={(e) => handleUpdateBannerField(b.id, 'cta', e.target.value)}
                 />
                 <TextField
                   label="Subtitle"
@@ -248,6 +321,7 @@ export default function AdminStorefrontPage() {
                   fullWidth
                   value={b.subtitle}
                   onChange={(e) => dispatch(updateBanner({ id: b.id, patch: { subtitle: e.target.value } }))}
+                  onBlur={(e) => handleUpdateBannerField(b.id, 'subtitle', e.target.value)}
                   className="sm:col-span-2"
                 />
                 <TextField
@@ -256,7 +330,11 @@ export default function AdminStorefrontPage() {
                   select
                   fullWidth
                   value={b.accent}
-                  onChange={(e) => dispatch(updateBanner({ id: b.id, patch: { accent: e.target.value } }))}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    dispatch(updateBanner({ id: b.id, patch: { accent: val } }))
+                    handleUpdateBannerField(b.id, 'accent', val)
+                  }}
                 >
                   {ACCENTS.map((a) => (
                     <MenuItem key={a.value} value={a.value}>{a.label}</MenuItem>
@@ -268,7 +346,7 @@ export default function AdminStorefrontPage() {
           <Button
             variant="outlined"
             startIcon={<AddRoundedIcon />}
-            onClick={() => dispatch(addBanner())}
+            onClick={handleAddBanner}
             sx={{ borderRadius: 2.5, fontWeight: 700, alignSelf: 'flex-start' }}
           >
             Add banner
@@ -276,83 +354,8 @@ export default function AdminStorefrontPage() {
         </Box>
       )}
 
-      {/* ── Categories ────────────────────────────────────────────────────── */}
-      {tab === 2 && (
-        <Box className="flex flex-col gap-3">
-          {categories.map((c) => (
-            <Panel key={c.id}>
-              <Box className="flex items-center gap-3">
-                <Box
-                  sx={{
-                    width: 44,
-                    height: 44,
-                    flexShrink: 0,
-                    borderRadius: 2,
-                    background: 'linear-gradient(145deg, var(--brand-50), #fff)',
-                    border: '1px solid var(--ink-200)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: 'var(--brand-600)',
-                  }}
-                >
-                  {categoryIcon(c.icon, { fontSize: 'small' })}
-                </Box>
-                <Box className="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1">
-                  <TextField
-                    label="Name"
-                    size="small"
-                    fullWidth
-                    value={c.name}
-                    onChange={(e) => dispatch(updateCategory({ id: c.id, patch: { name: e.target.value } }))}
-                    className="sm:col-span-2"
-                  />
-                  <TextField
-                    label="Product count"
-                    size="small"
-                    type="number"
-                    fullWidth
-                    value={c.productCount}
-                    onChange={(e) =>
-                      dispatch(updateCategory({ id: c.id, patch: { productCount: Number(e.target.value) } }))
-                    }
-                  />
-                  <TextField
-                    label="Icon"
-                    size="small"
-                    select
-                    fullWidth
-                    value={CATEGORY_ICONS[c.icon] ? c.icon : 'category'}
-                    onChange={(e) => dispatch(updateCategory({ id: c.id, patch: { icon: e.target.value } }))}
-                  >
-                    {Object.entries(CATEGORY_ICONS).map(([key, { label, Icon }]) => (
-                      <MenuItem key={key} value={key}>
-                        <ListItemIcon sx={{ minWidth: 30, color: 'var(--brand-600)' }}>
-                          <Icon fontSize="small" />
-                        </ListItemIcon>
-                        {label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Box>
-                <IconButton size="small" onClick={() => dispatch(removeCategory(c.id))} sx={{ color: 'var(--danger, #c0392b)' }}>
-                  <DeleteOutlineRoundedIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            </Panel>
-          ))}
-          <Button
-            variant="outlined"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => dispatch(addCategory())}
-            sx={{ borderRadius: 2.5, fontWeight: 700, alignSelf: 'flex-start' }}
-          >
-            Add category
-          </Button>
-        </Box>
-      )}
-
       {/* ── Trust badges ──────────────────────────────────────────────────── */}
-      {tab === 3 && (
+      {tab === 2 && (
         <Box className="flex flex-col gap-3">
           <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }}>
             These badges appear on every product detail page (alongside the auto dispatch &amp; origin badges).
@@ -407,14 +410,25 @@ export default function AdminStorefrontPage() {
               </Box>
             </Panel>
           ))}
-          <Button
-            variant="outlined"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => dispatch(addTrustBadge())}
-            sx={{ borderRadius: 2.5, fontWeight: 700, alignSelf: 'flex-start' }}
-          >
-            Add trust badge
-          </Button>
+          <Box className="flex items-center justify-between mt-2">
+            <Button
+              variant="outlined"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => dispatch(addTrustBadge())}
+              sx={{ borderRadius: 2.5, fontWeight: 700 }}
+            >
+              Add trust badge
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<SaveRoundedIcon />}
+              onClick={handleSaveTrustBadges}
+              disabled={isUpdatingBadges}
+              sx={{ borderRadius: 2.5, fontWeight: 700 }}
+            >
+              {isUpdatingBadges ? 'Saving...' : 'Save Trust Badges'}
+            </Button>
+          </Box>
         </Box>
       )}
     </Box>

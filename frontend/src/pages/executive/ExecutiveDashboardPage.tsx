@@ -32,7 +32,7 @@ export default function ExecutiveDashboardPage() {
 
   const targetPct = stats ? Math.min(100, Math.round((stats.revenue / stats.target) * 100)) : 0
   const pending = (followUps ?? []).filter((f) => !f.done)
-  const mySales = (sales ?? []).filter((s) => s.by === 'Rahul Verma')
+  const mySales = sales ?? []
 
   const tooltip = { borderRadius: 12, border: `1px solid ${ink[200]}`, fontSize: 13 }
 

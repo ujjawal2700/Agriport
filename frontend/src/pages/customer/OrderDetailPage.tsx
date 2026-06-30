@@ -15,7 +15,7 @@ import { useGetOrderQuery, useGetProductsQuery } from '@/redux/api'
 import { useAppDispatch } from '@/redux/hooks'
 import { addToCart } from '@/redux/slices/cartSlice'
 import { ROUTES, PAYMENT_MODE_LABEL } from '@/constants'
-import { formatMoney, formatDate } from '@/utils/format'
+import { formatDate } from '@/utils/format'
 import { downloadInvoice, downloadGatePass } from '@/utils/documents'
 import toast from 'react-hot-toast'
 
@@ -105,7 +105,7 @@ export default function OrderDetailPage() {
               {order.lines.map((l) => (
                 <Box key={l.productId} className="flex items-center gap-3">
                   <Box sx={{ width: 60, height: 60, flexShrink: 0 }}>
-                    <ProductThumb id={l.productId} name={l.name} />
+                    <ProductThumb id={l.productId} name={l.name} imageUrl={l.image || undefined} />
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography
@@ -116,36 +116,37 @@ export default function OrderDetailPage() {
                       {l.name}
                     </Typography>
                     <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }} className="tnum">
-                      {l.quantity} {l.unit} × {formatMoney(l.unitPrice)}
+                      Quantity: {l.quantity} {l.unit}
                     </Typography>
+                    {l.specifications && Object.keys(l.specifications).length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
+                        {Object.entries(l.specifications).map(([k, v]) => (
+                          <Typography
+                            key={k}
+                            sx={{
+                              fontSize: 11,
+                              bgcolor: 'var(--ink-100)',
+                              color: 'var(--ink-700)',
+                              px: 1,
+                              py: 0.25,
+                              borderRadius: 1,
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            <strong>{k}:</strong> {v}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
                   </Box>
-                  <Typography className="tnum" sx={{ fontWeight: 700 }}>
-                    {formatMoney(l.lineTotal)}
-                  </Typography>
                 </Box>
               ))}
             </Box>
             <Divider sx={{ my: 2.5 }} />
-            <Box sx={{ ml: 'auto', maxWidth: 320 }} className="flex flex-col gap-1.5">
-              {[
-                ['Subtotal', order.subtotal],
-                ['GST (5%)', order.tax],
-                ['Shipping', order.shipping],
-              ].map(([label, val]) => (
-                <Box key={label as string} className="flex justify-between">
-                  <Typography sx={{ fontSize: 14, color: 'var(--ink-600)' }}>{label}</Typography>
-                  <Typography className="tnum" sx={{ fontSize: 14, fontWeight: 600 }}>
-                    {formatMoney(val as number)}
-                  </Typography>
-                </Box>
-              ))}
-              <Divider sx={{ my: 1 }} />
-              <Box className="flex justify-between items-baseline">
-                <Typography sx={{ fontWeight: 700 }}>Total</Typography>
-                <Typography className="tnum" sx={{ fontFamily: '"Bricolage Grotesque", serif', fontWeight: 800, fontSize: 22, color: 'var(--brand-700)' }}>
-                  {formatMoney(order.total)}
-                </Typography>
-              </Box>
+            <Box sx={{ ml: 'auto', maxWidth: 350 }}>
+              <Typography sx={{ fontSize: 13, color: 'var(--ink-500)', lineHeight: 1.5 }}>
+                This is a wholesale B2B enquiry. Our team is processing your request and will contact you with product verification and logistics details.
+              </Typography>
             </Box>
           </Box>
 

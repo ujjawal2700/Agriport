@@ -23,6 +23,12 @@ import {
   Select,
   FormControl,
   InputLabel,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
 } from '@mui/material'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
@@ -41,21 +47,32 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import ShoppingBagRoundedIcon from '@mui/icons-material/ShoppingBagRounded'
 
-import { useGetOrdersQuery } from '@/redux/api'
-import { orders as mockOrders } from '@/mocks/data'
-import { salesRecords as mockSalesRecords } from '@/mocks/salesData'
-import type { Order, OrderStatus, SaleRecord, PaymentStatus } from '@/types'
+import {
+  useGetOrdersQuery,
+  useGetCrmCustomersQuery,
+  useGetProductsQuery,
+  useQuoteOrderMutation,
+  useCreateOrderMutation,
+} from '@/redux/api'
+import type { Order, OrderStatus, PaymentStatus } from '@/types'
 import StatusChip from '@/components/common/StatusChip'
 import ProductThumb from '@/components/common/ProductThumb'
 import { formatDate, formatMoney } from '@/utils/format'
 import { generateQuotationInvoice } from '@/utils/documents'
 import toast from 'react-hot-toast'
+import { useAppSelector } from '@/redux/hooks'
 
-type Filter = 'all' | OrderStatus
+type Filter = 'all' | OrderStatus | 'sales_log'
 
 export default function ExecutiveEnquiriesPage() {
-  const { data: serverOrders, refetch } = useGetOrdersQuery()
-  const [rows, setRows] = useState<Order[]>([])
+  const { data: serverOrders = [], isLoading: isLoadingOrders } = useGetOrdersQuery()
+  const { data: crmCustomers = [] } = useGetCrmCustomersQuery()
+  const { data: products = [] } = useGetProductsQuery()
+  const user = useAppSelector((state) => state.auth.user)
+
+  const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation()
+  const [quoteOrder, { isLoading: isQuoting }] = useQuoteOrderMutation()
+
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [myCustomersOnly, setMyCustomersOnly] = useState(false)
@@ -74,33 +91,42 @@ export default function ExecutiveEnquiriesPage() {
   // ── Add Enquiry dialog state ─────────────────────────────────────────────
   const [addEnquiryOpen, setAddEnquiryOpen] = useState(false)
   const [newEnquiryForm, setNewEnquiryForm] = useState({
-    customerName: '',
-    companyName: '',
-    customerPhone: '',
-    customerCity: '',
+    crmCustomerId: '',
     deliveryAddress: '',
   })
   const [newEnquiryLines, setNewEnquiryLines] = useState([
-    { productName: '', quantity: 1, unit: 'unit' },
+    { productId: '', quantity: 1, unit: 'kg' },
   ])
 
-  useEffect(() => {
-    // Read directly from the shared array in data.ts to ensure session updates are visible
-    setRows([...mockOrders])
-  }, [serverOrders])
+  // Track selectable CRM customers that have platform accounts
+  const platformCustomers = useMemo(() => {
+    return crmCustomers.filter((c) => !!c.platformUserId)
+  }, [crmCustomers])
+
+  // Synchronized detail reference
+  const activeSelectedEnquiry = useMemo(() => {
+    if (!selectedEnquiry) return null
+    return serverOrders.find((o) => o.id === selectedEnquiry.id) || selectedEnquiry
+  }, [serverOrders, selectedEnquiry])
 
   // Count enquiries per status
   const counts = useMemo(() => {
-    return rows.reduce<Record<string, number>>((acc, o) => {
+    return serverOrders.reduce<Record<string, number>>((acc, o) => {
       acc[o.status] = (acc[o.status] ?? 0) + 1
       return acc
     }, {})
-  }, [rows])
+  }, [serverOrders])
+
+  const mySalesCount = useMemo(() => {
+    return serverOrders.filter(
+      (o) => o.executiveId && o.executiveId.id === user?.id
+    ).length
+  }, [serverOrders, user])
 
   // Filtered enquiries
   const filteredEnquiries = useMemo(() => {
     const s = search.toLowerCase()
-    return rows.filter((o) => {
+    return serverOrders.filter((o) => {
       // Search
       const matchSearch =
         o.reference.toLowerCase().includes(s) ||
@@ -109,56 +135,26 @@ export default function ExecutiveEnquiriesPage() {
       if (!matchSearch) return false
 
       // Tab filter
-      if (filter !== 'all' && o.status !== filter) return false
+      if (filter === 'sales_log') {
+        const isAttributedToMe = o.executiveId && o.executiveId.id === user?.id
+        if (!isAttributedToMe) return false
+      } else if (filter !== 'all' && o.status !== filter) {
+        return false
+      }
 
-      // Sales Executive assignment filter (Rahul Verma)
-      // Rohan Mehta (Megha Trading Co.) and Sana Qureshi (Qureshi Agro) are owned by Rahul Verma.
+      // Sales Executive assignment filter (Dynamic match against CRM portfolio)
       if (myCustomersOnly) {
-        const belongsToMe =
-          o.companyName === 'Megha Trading Co.' ||
-          o.companyName === 'Qureshi Agro' ||
-          o.customerName === 'Rohan Mehta' ||
-          o.customerName === 'Sana Qureshi'
+        const belongsToMe = crmCustomers.some(
+          (c) =>
+            (c.company && c.company.toLowerCase() === o.companyName?.toLowerCase()) ||
+            c.name.toLowerCase() === o.customerName?.toLowerCase()
+        )
         if (!belongsToMe) return false
       }
 
       return true
     })
-  }, [rows, filter, search, myCustomersOnly])
-
-  const patchOrder = (id: string, status: OrderStatus, paymentStatus?: PaymentStatus, timelineLabel?: string, extra?: Partial<Order>) => {
-    const updated = mockOrders.map((o) => {
-      if (o.id === id) {
-        const newTimeline = o.trackingTimeline.map((t) => {
-          if (t.label === timelineLabel || t.label.toLowerCase().includes(status)) {
-            return { ...t, done: true, at: new Date().toISOString() }
-          }
-          return t
-        })
-        return {
-          ...o,
-          status,
-          ...(paymentStatus ? { paymentStatus } : {}),
-          trackingTimeline: newTimeline,
-          ...extra,
-        }
-      }
-      return o
-    })
-    
-    // Update shared memory
-    mockOrders.length = 0
-    mockOrders.push(...updated)
-    setRows([...mockOrders])
-
-    // Update active modal reference if open
-    if (selectedEnquiry && selectedEnquiry.id === id) {
-      const activeObj = mockOrders.find((x) => x.id === id)
-      if (activeObj) setSelectedEnquiry(activeObj)
-    }
-
-    refetch()
-  }
+  }, [serverOrders, filter, search, myCustomersOnly, crmCustomers])
 
   /** Open the price-entry dialog instead of immediately confirming */
   const handleConfirm = (o: Order) => {
@@ -174,22 +170,29 @@ export default function ExecutiveEnquiriesPage() {
   }
 
   /** Confirm enquiry, save prices, generate invoice, prepare WhatsApp message */
-  const handlePricingConfirm = () => {
+  const handlePricingConfirm = async () => {
     if (!pricingEnquiry) return
     const allFilled = pricingEnquiry.lines.every((l) => (linePrices[l.productId] ?? 0) > 0)
     if (!allFilled) {
       toast.error('Please enter a price for every product before confirming.')
       return
     }
-    // Save prices to the order object
-    patchOrder(pricingEnquiry.id, 'confirmed', undefined, 'Admin approval', {
-      quotedPrices: { ...linePrices },
-      quotedShipping: shippingCharge,
-    })
-    // Generate printable invoice + get WhatsApp message string
-    const msg = generateQuotationInvoice(pricingEnquiry, linePrices, shippingCharge)
-    setWhatsappMsg(msg)
-    toast.success(`Enquiry ${pricingEnquiry.reference} confirmed! Invoice generated.`)
+    try {
+      await quoteOrder({
+        id: pricingEnquiry.id,
+        status: 'confirmed',
+        quotedPrices: { ...linePrices },
+        quotedShipping: shippingCharge,
+      }).unwrap()
+
+      // Generate printable invoice + get WhatsApp message string
+      const msg = generateQuotationInvoice(pricingEnquiry, linePrices, shippingCharge)
+      setWhatsappMsg(msg)
+      toast.success(`Enquiry ${pricingEnquiry.reference} confirmed! Invoice generated.`)
+      setPricingOpen(false)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to quote and confirm enquiry')
+    }
   }
 
   const handleSendWhatsApp = (order: Order, msg: string) => {
@@ -198,59 +201,35 @@ export default function ExecutiveEnquiriesPage() {
     window.open(url, '_blank')
   }
 
-  const handleAddEnquiry = () => {
-    if (!newEnquiryForm.customerName.trim()) {
-      toast.error('Please enter the customer name.')
+  const handleAddEnquiry = async () => {
+    if (!newEnquiryForm.crmCustomerId) {
+      toast.error('Please select a customer.')
       return
     }
-    if (newEnquiryLines.every((l) => !l.productName.trim())) {
+    const validLines = newEnquiryLines.filter((l) => !!l.productId)
+    if (validLines.length === 0) {
       toast.error('Please add at least one product requirement.')
       return
     }
-    const now = new Date().toISOString()
-    const yr = new Date().getFullYear().toString().slice(-2)
-    const mo = String(new Date().getMonth() + 1).padStart(2, '0')
-    const num = String(Math.floor(Math.random() * 8999) + 1000)
-    const ref = `AGP-${yr}${mo}-${num}`
-    const newOrder: Order = {
-      id: `o-offline-${Date.now()}`,
-      reference: ref,
-      placedOn: now,
-      status: 'placed',
-      paymentStatus: 'pending',
-      paymentMode: 'bank_transfer',
-      customerName: newEnquiryForm.customerName,
-      companyName: newEnquiryForm.companyName,
-      customerPhone: newEnquiryForm.customerPhone,
-      customerCity: newEnquiryForm.customerCity,
-      deliveryAddress: newEnquiryForm.deliveryAddress || 'Pickup from Agriport Warehouse',
-      lines: newEnquiryLines
-        .filter((l) => l.productName.trim())
-        .map((l, idx) => ({
-          productId: `offline-${Date.now()}-${idx}`,
-          name: l.productName,
-          image: '',
+    try {
+      await createOrder({
+        customerId: newEnquiryForm.crmCustomerId,
+        lines: validLines.map((l) => ({
+          productId: l.productId,
           quantity: l.quantity,
           unit: l.unit,
-          unitPrice: 0,
-          lineTotal: 0,
         })),
-      subtotal: 0,
-      tax: 0,
-      shipping: 0,
-      total: 0,
-      trackingTimeline: [
-        { label: 'Order placed', at: now, done: true },
-        { label: 'Admin approval', at: null, done: false },
-        { label: 'Delivered', at: null, done: false },
-      ],
+        deliveryAddress: newEnquiryForm.deliveryAddress || 'Pickup from Agriport Warehouse',
+        paymentMode: 'offline',
+      }).unwrap()
+
+      toast.success('Offline enquiry saved successfully!')
+      setAddEnquiryOpen(false)
+      setNewEnquiryForm({ crmCustomerId: '', deliveryAddress: '' })
+      setNewEnquiryLines([{ productId: '', quantity: 1, unit: 'kg' }])
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to save enquiry')
     }
-    mockOrders.unshift(newOrder)
-    setRows([...mockOrders])
-    toast.success(`Offline enquiry ${ref} added!`)
-    setAddEnquiryOpen(false)
-    setNewEnquiryForm({ customerName: '', companyName: '', customerPhone: '', customerCity: '', deliveryAddress: '' })
-    setNewEnquiryLines([{ productName: '', quantity: 1, unit: 'unit' }])
   }
 
   const handleRePrintInvoice = (o: Order) => {
@@ -259,39 +238,32 @@ export default function ExecutiveEnquiriesPage() {
     setWhatsappMsg(msg)
   }
 
-  const handleCancelSubmit = () => {
+  const handleCancelSubmit = async () => {
     if (!selectedEnquiry) return
-    patchOrder(selectedEnquiry.id, 'cancelled', 'refunded', 'Cancelled', {
-      cancellationReason: cancelReason || 'Cancelled by sales executive',
-      refundStatus: 'No refund required (B2B Enquiry)',
-    })
-    toast.success(`Enquiry ${selectedEnquiry.reference} cancelled.`)
-    setCancelOpen(false)
-    setCancelReason('')
+    try {
+      await quoteOrder({
+        id: selectedEnquiry.id,
+        status: 'cancelled',
+        reason: cancelReason || 'Cancelled by Sales Executive',
+      }).unwrap()
+      toast.success(`Enquiry ${selectedEnquiry.reference} cancelled successfully.`)
+      setCancelOpen(false)
+      setCancelReason('')
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to cancel enquiry')
+    }
   }
 
-  const handleRecordSale = (o: Order) => {
-    // 1. Mark order status as completed & payment as paid
-    patchOrder(o.id, 'completed', 'paid', 'Delivered')
-
-    // 2. Generate sales records for each line item and insert into mockSalesRecords
-    o.lines.forEach((line, index) => {
-      const record: SaleRecord = {
-        id: `s-${Date.now()}-${index}`,
-        ref: `SL-${o.reference.slice(-4)}-${index}`,
-        customer: o.companyName || o.customerName || 'Unknown Customer',
-        product: line.name,
-        quantity: line.quantity,
-        unit: line.unit,
-        amount: line.lineTotal,
-        date: new Date().toISOString(),
-        paymentStatus: 'paid',
-        by: 'Rahul Verma', // Logged-in executive
-      }
-      mockSalesRecords.unshift(record)
-    })
-
-    toast.success(`Deal Closed! Sale recorded for ${o.reference}.`)
+  const handleRecordSale = async (o: Order) => {
+    try {
+      await quoteOrder({
+        id: o.id,
+        status: 'completed',
+      }).unwrap()
+      toast.success(`Deal Closed! Sale recorded for ${o.reference}.`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to record sale')
+    }
   }
 
   const getTimelineDate = (timeline: Order['trackingTimeline'], label: string) => {
@@ -299,12 +271,14 @@ export default function ExecutiveEnquiriesPage() {
     return found && found.at ? formatDate(found.at, true) : 'Pending'
   }
 
+  const activeEnquiry = activeSelectedEnquiry || selectedEnquiry
+
   return (
     <Box className="flex flex-col gap-6 animate-fade-up">
       {/* Stats Summary Bar */}
       <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Enquiries', val: rows.length, color: 'var(--ink-700)', bg: 'var(--ink-50)' },
+          { label: 'Total Enquiries', val: serverOrders.length, color: 'var(--ink-700)', bg: 'var(--ink-50)' },
           { label: 'Pending Review', val: counts.placed ?? 0, color: 'orange', bg: '#FFF7ED' },
           { label: 'Confirmed', val: counts.confirmed ?? 0, color: 'var(--brand-700)', bg: 'var(--brand-50)' },
           { label: 'Completed (Deals Closed)', val: counts.completed ?? 0, color: 'green', bg: '#F0FDF4' },
@@ -333,11 +307,12 @@ export default function ExecutiveEnquiriesPage() {
       {/* Tabs Filter */}
       <Box sx={{ borderBottom: '1px solid var(--ink-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Tabs value={filter} onChange={(_, v) => setFilter(v)} variant="scrollable" scrollButtons="auto">
-          <Tab value="all" label={`All (${rows.length})`} />
+          <Tab value="all" label={`All (${serverOrders.length})`} />
           <Tab value="placed" label={`Placed (${counts.placed ?? 0})`} />
           <Tab value="confirmed" label={`Confirmed (${counts.confirmed ?? 0})`} />
           <Tab value="completed" label={`Completed (${counts.completed ?? 0})`} />
           <Tab value="cancelled" label={`Cancelled (${counts.cancelled ?? 0})`} />
+          <Tab value="sales_log" label={`My Sales Log (${mySalesCount})`} />
         </Tabs>
         <FormControlLabel
           control={<Switch checked={myCustomersOnly} onChange={(e) => setMyCustomersOnly(e.target.checked)} color="primary" />}
@@ -397,15 +372,70 @@ export default function ExecutiveEnquiriesPage() {
             No customer enquiries match your current filters.
           </Typography>
         </Box>
+      ) : filter === 'sales_log' ? (
+        <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow
+                  sx={{
+                    bgcolor: 'var(--ink-50)',
+                    '& th': {
+                      fontWeight: 700,
+                      fontSize: 12,
+                      color: 'var(--ink-600)',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      borderColor: 'var(--ink-200)',
+                    },
+                  }}
+                >
+                  <TableCell>Date</TableCell>
+                  <TableCell>Order Ref</TableCell>
+                  <TableCell>Customer Company</TableCell>
+                  <TableCell>Products Sold</TableCell>
+                  <TableCell>Total Amount</TableCell>
+                  <TableCell>Payment Status</TableCell>
+                  <TableCell align="right">Status</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredEnquiries.map((enquiry) => (
+                  <TableRow key={enquiry.id} hover sx={{ '& td': { borderColor: 'var(--ink-100)', py: 1.5 } }}>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>{formatDate(enquiry.placedOn)}</TableCell>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 700 }} className="tnum">
+                      {enquiry.reference}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 600 }}>
+                      {enquiry.companyName || enquiry.customerName || 'Direct Customer'}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 13 }}>
+                      {enquiry.lines.map((line) => `${line.name} (${line.quantity} ${line.unit})`).join(', ')}
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-600)' }} className="tnum">
+                      {formatMoney(enquiry.total)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusChip kind="payment" value={enquiry.paymentStatus} />
+                    </TableCell>
+                    <TableCell align="right">
+                      <StatusChip kind="order" value={enquiry.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       ) : (
         <Box className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredEnquiries.map((enquiry) => {
             const itemCount = enquiry.lines.reduce((n, l) => n + l.quantity, 0)
-            const isMine =
-              enquiry.companyName === 'Megha Trading Co.' ||
-              enquiry.companyName === 'Qureshi Agro' ||
-              enquiry.customerName === 'Rohan Mehta' ||
-              enquiry.customerName === 'Sana Qureshi'
+            const isMine = crmCustomers.some(
+              (c) =>
+                (c.company && c.company.toLowerCase() === enquiry.companyName?.toLowerCase()) ||
+                c.name.toLowerCase() === enquiry.customerName?.toLowerCase()
+            )
 
             return (
               <Box key={enquiry.id}>
@@ -516,9 +546,12 @@ export default function ExecutiveEnquiriesPage() {
 
       {/* Enquiry Detail Dialog */}
       <Dialog open={Boolean(selectedEnquiry)} onClose={() => setSelectedEnquiry(null)} maxWidth="md" fullWidth slotProps={{ paper: { sx: { borderRadius: 4 } } }}>
-        {selectedEnquiry && (
-          <>
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+        {(() => {
+          const selectedEnquiry = activeSelectedEnquiry;
+          if (!selectedEnquiry) return null;
+          return (
+            <>
+              <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: 18 }}>
                   Review Enquiry: {selectedEnquiry.reference}
@@ -736,7 +769,8 @@ export default function ExecutiveEnquiriesPage() {
               </Box>
             </DialogActions>
           </>
-        )}
+          );
+        })()}
       </Dialog>
 
       {/* ── Price Entry Dialog ──────────────────────────────────────────────── */}
@@ -992,53 +1026,22 @@ export default function ExecutiveEnquiriesPage() {
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  id="enq-customer-name"
-                  label="Customer Name"
-                  size="small"
-                  required
-                  value={newEnquiryForm.customerName}
-                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, customerName: e.target.value }))}
-                  placeholder="e.g. Rahul Sharma"
-                />
-                <TextField
-                  id="enq-company-name"
-                  label="Company Name"
-                  size="small"
-                  value={newEnquiryForm.companyName}
-                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, companyName: e.target.value }))}
-                  placeholder="e.g. Sharma Traders"
-                />
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  id="enq-phone"
-                  label="Phone Number"
-                  size="small"
-                  value={newEnquiryForm.customerPhone}
-                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, customerPhone: e.target.value }))}
-                  placeholder="+91 98765 00000"
-                  slotProps={{
-                    input: {
-                      startAdornment: <PhoneRoundedIcon sx={{ fontSize: 15, color: 'var(--ink-400)', mr: 0.75 }} />,
-                    },
-                  }}
-                />
-                <TextField
-                  id="enq-city"
-                  label="City"
-                  size="small"
-                  value={newEnquiryForm.customerCity}
-                  onChange={(e) => setNewEnquiryForm((p) => ({ ...p, customerCity: e.target.value }))}
-                  placeholder="e.g. Pune"
-                  slotProps={{
-                    input: {
-                      startAdornment: <PlaceRoundedIcon sx={{ fontSize: 15, color: 'var(--ink-400)', mr: 0.75 }} />,
-                    },
-                  }}
-                />
-              </Box>
+              <TextField
+                id="enq-customer-select"
+                label="Select Customer"
+                size="small"
+                select
+                fullWidth
+                required
+                value={newEnquiryForm.crmCustomerId}
+                onChange={(e) => setNewEnquiryForm((p) => ({ ...p, crmCustomerId: e.target.value }))}
+              >
+                {platformCustomers.map((c) => (
+                  <MenuItem key={c.id} value={c.platformUserId}>
+                    {c.company ? `${c.company} (${c.name})` : c.name}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 id="enq-delivery-address"
                 label="Delivery Address (optional)"
@@ -1080,17 +1083,29 @@ export default function ExecutiveEnquiriesPage() {
                   }}
                 >
                   <TextField
-                    id={`enq-product-name-${idx}`}
+                    id={`enq-product-select-${idx}`}
                     label="Product / Item"
                     size="small"
-                    value={line.productName}
+                    select
+                    value={line.productId}
                     onChange={(e) => {
+                      const pId = e.target.value
+                      const prod = products.find((p) => p.id === pId)
                       const updated = [...newEnquiryLines]
-                      updated[idx] = { ...updated[idx], productName: e.target.value }
+                      updated[idx] = {
+                        ...updated[idx],
+                        productId: pId,
+                        unit: prod ? prod.unit : 'kg',
+                      }
                       setNewEnquiryLines(updated)
                     }}
-                    placeholder="e.g. Basmati Rice 25kg"
-                  />
+                  >
+                    {products.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                   <TextField
                     id={`enq-product-qty-${idx}`}
                     label="Qty"
@@ -1111,15 +1126,9 @@ export default function ExecutiveEnquiriesPage() {
                       id={`enq-product-unit-${idx}`}
                       label="Unit"
                       value={line.unit}
-                      onChange={(e) => {
-                        const updated = [...newEnquiryLines]
-                        updated[idx] = { ...updated[idx], unit: e.target.value }
-                        setNewEnquiryLines(updated)
-                      }}
+                      disabled
                     >
-                      {['unit', 'kg', 'bag', 'sack', 'bundle', 'carton', 'box', 'roll', 'pack', 'piece', 'litre', 'ton'].map((u) => (
-                        <MenuItem key={u} value={u}>{u}</MenuItem>
-                      ))}
+                      <MenuItem value={line.unit}>{line.unit}</MenuItem>
                     </Select>
                   </FormControl>
                   <IconButton
@@ -1141,7 +1150,7 @@ export default function ExecutiveEnquiriesPage() {
                 variant="outlined"
                 size="small"
                 startIcon={<AddRoundedIcon />}
-                onClick={() => setNewEnquiryLines([...newEnquiryLines, { productName: '', quantity: 1, unit: 'unit' }])}
+                onClick={() => setNewEnquiryLines([...newEnquiryLines, { productId: '', quantity: 1, unit: 'kg' }])}
                 sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2, alignSelf: 'flex-start', mt: 0.5 }}
               >
                 Add another product
@@ -1154,8 +1163,8 @@ export default function ExecutiveEnquiriesPage() {
           <Button
             onClick={() => {
               setAddEnquiryOpen(false)
-              setNewEnquiryForm({ customerName: '', companyName: '', customerPhone: '', customerCity: '', deliveryAddress: '' })
-              setNewEnquiryLines([{ productName: '', quantity: 1, unit: 'unit' }])
+              setNewEnquiryForm({ crmCustomerId: '', deliveryAddress: '' })
+              setNewEnquiryLines([{ productId: '', quantity: 1, unit: 'kg' }])
             }}
             variant="outlined"
             sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}

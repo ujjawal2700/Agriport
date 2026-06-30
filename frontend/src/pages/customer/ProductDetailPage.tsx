@@ -11,6 +11,7 @@ import {
   TableCell,
   TableRow,
   TextField,
+  MenuItem,
 } from '@mui/material'
 import BoltRoundedIcon from '@mui/icons-material/BoltRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
@@ -45,7 +46,10 @@ export default function ProductDetailPage() {
     if (product?.specifications?.['Packing Type']) {
       setPackingType(product.specifications['Packing Type'])
     }
-  }, [product])
+    if (product?.sizeVariants && product.sizeVariants.length > 0 && !specificSize) {
+      setSpecificSize(product.sizeVariants[0].size)
+    }
+  }, [product, specificSize])
 
   if (isLoading) return <ProductDetailSkeleton />
   if (!product)
@@ -56,19 +60,22 @@ export default function ProductDetailPage() {
   // Initialise qty to MOQ on first resolve
   const effectiveQty = Math.max(qty, product.moq)
   const outOfStock = product.stockStatus === 'out_of_stock'
+  const selectedVariant = product.sizeVariants?.find((v) => v.size === specificSize)
 
   const handleAdd = () => {
+    const activePackingType = selectedVariant?.packingType || packingType
     const updatedProduct = {
       ...product,
       specifications: {
         ...product.specifications,
-        'Packing Type': packingType,
+        'Packing Type': activePackingType,
         'Specific Size': specificSize || 'Not specified',
         'Container Option': containerOption === 'full' ? 'Full Container' : 'Half Container',
       },
     }
     dispatch(addToCart({ product: updatedProduct, quantity: effectiveQty }))
-    toast.success(`Enquiry sent successfully for ${effectiveQty} ${product.unit}`)
+    toast.success(`Added to enquiry list! Redirecting to submit...`)
+    navigate(ROUTES.cart)
   }
 
   return (
@@ -135,42 +142,48 @@ export default function ProductDetailPage() {
             </Box>
           </Box>
 
+
           <Typography color="text.secondary" sx={{ mb: 3 }}>
             {product.shortDescription}
           </Typography>
 
-          {/* Lot-based pricing */}
-          <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', mb: 3 }}>
-            <Box sx={{ px: 2, py: 1.25, bgcolor: 'var(--ink-50)', borderBottom: '1px solid var(--ink-200)' }}>
-              <Typography sx={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--ink-600)' }}>
-                size and count availability
-              </Typography>
-            </Box>
+          {/* Specifications */}
+          <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700 }}>
+            Specifications
+          </Typography>
+          <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', bgcolor: '#fff', mb: 3.5 }}>
             <Table size="small">
               <TableBody>
-                {product.pricingSlabs.map((s) => {
-                  const active = effectiveQty >= s.minQty && (s.maxQty === null || effectiveQty <= s.maxQty)
-                  return (
-                    <TableRow
-                      key={s.label}
-                      sx={{
-                        bgcolor: active ? 'var(--brand-50)' : 'transparent',
-                        '& td': { borderColor: 'var(--ink-100)' },
-                      }}
-                    >
-                      <TableCell sx={{ fontWeight: active ? 700 : 500 }}>
-                        {active && '▸ '}
-                        {s.label}
-                      </TableCell>
-                      <TableCell align="right" className="tnum" sx={{ fontWeight: 700, color: active ? 'var(--brand-700)' : 'inherit' }}>
-                        {formatMoney(s.price)}
-                        <Box component="span" sx={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 500 }}>
-                          /{product.unit}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {Object.entries(product.specifications).map(([k, v]) => (
+                  <TableRow key={k} sx={{ '& td': { borderColor: 'var(--ink-100)' } }}>
+                    <TableCell sx={{ color: 'var(--ink-500)', fontWeight: 500 }}>{k}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>
+                      {k === 'Packing Type' ? (
+                        <select
+                          value={packingType}
+                          onChange={(e) => setPackingType(e.target.value)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--ink-200)',
+                            fontFamily: 'inherit',
+                            fontSize: '13.5px',
+                            fontWeight: 600,
+                            color: 'var(--ink-800)',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="Cartoon">Cartoon</option>
+                          <option value="Basket">Basket</option>
+                        </select>
+                      ) : (
+                        v
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </Box>
@@ -195,24 +208,52 @@ export default function ProductDetailPage() {
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
                   SPECIFIC SIZE
                 </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  placeholder={product.sizePlaceholder || 'e.g. 400x300x300 mm'}
-                  value={specificSize}
-                  onChange={(e) => setSpecificSize(e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2.5,
-                      bgcolor: 'var(--ink-50)',
-                      '& fieldset': { borderColor: 'var(--ink-200)' },
-                    }
-                  }}
-                />
+                {product.sizeVariants && product.sizeVariants.length > 0 ? (
+                  <TextField
+                    select
+                    size="small"
+                    fullWidth
+                    value={specificSize}
+                    onChange={(e) => setSpecificSize(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2.5,
+                        bgcolor: 'var(--ink-50)',
+                        '& fieldset': { borderColor: 'var(--ink-200)' },
+                      }
+                    }}
+                  >
+                    {product.sizeVariants.map((sv) => (
+                      <MenuItem key={sv.size} value={sv.size}>
+                        {sv.size} {sv.netWeight ? `(Net: ${sv.netWeight} kg / Gross: ${sv.grossWeight} kg)` : ''} — ₹{sv.price}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder={product.sizePlaceholder || 'e.g. 400x300x300 mm'}
+                    value={specificSize}
+                    onChange={(e) => setSpecificSize(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2.5,
+                        bgcolor: 'var(--ink-50)',
+                        '& fieldset': { borderColor: 'var(--ink-200)' },
+                      }
+                    }}
+                  />
+                )}
+                {selectedVariant && (
+                  <Typography sx={{ fontSize: 12, color: 'var(--brand-600)', fontWeight: 600, mt: 1 }}>
+                    Packaging: {selectedVariant.packingType || 'Cartoon'} {selectedVariant.netWeight ? `· Net Weight: ${selectedVariant.netWeight} kg · Gross Weight: ${selectedVariant.grossWeight} kg` : ''}
+                  </Typography>
+                )}
               </Box>
               <Box>
                 <Typography sx={{ fontSize: 11.5, color: 'var(--ink-500)', fontWeight: 600, mb: 0.5 }}>
-                  QUANTITY (MOQ {product.moq})
+                  QUANTITY
                 </Typography>
                 <QuantityStepper
                   value={effectiveQty}
@@ -293,83 +334,40 @@ export default function ProductDetailPage() {
         </Box>
       </Box>
 
-      {/* Description & specs */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: { xs: 4, md: 8 }, mt: { xs: 6, md: 12 } }}>
-        <Box>
-          <Typography variant="h5" sx={{ mb: 2 }}>
-            Product description
-          </Typography>
-          <Typography color="text.secondary" sx={{ lineHeight: 1.7, mb: 4 }}>
-            {product.description}
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {[
-              // Executive-editable global trust badges
-              ...trustBadges.map((b) => ({ icon: trustIcon(b.icon), label: b.label })),
-              // Auto-derived from product data
-              { icon: <PublicRoundedIcon />, label: `Origin · ${product.origin}` },
-            ].map((f, i) => (
-              <Box
-                key={i}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  px: 2,
-                  py: 1.25,
-                  borderRadius: 2.5,
-                  border: '1px solid var(--ink-200)',
-                  bgcolor: '#fff',
-                  color: 'var(--brand-700)',
-                  flex: { xs: '1 1 100%', sm: '0 1 auto' },
-                }}
-              >
-                {f.icon}
-                <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-800)' }}>{f.label}</Typography>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-        <Box>
-          <Typography variant="h5" sx={{ mb: 2 }}>
-            Specifications
-          </Typography>
-          <Box sx={{ borderRadius: 3, border: '1px solid var(--ink-200)', overflow: 'hidden', bgcolor: '#fff' }}>
-            <Table size="small">
-              <TableBody>
-                {Object.entries(product.specifications).map(([k, v]) => (
-                  <TableRow key={k} sx={{ '& td': { borderColor: 'var(--ink-100)' } }}>
-                    <TableCell sx={{ color: 'var(--ink-500)', fontWeight: 500 }}>{k}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      {k === 'Packing Type' ? (
-                        <select
-                          value={packingType}
-                          onChange={(e) => setPackingType(e.target.value)}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            border: '1px solid var(--ink-200)',
-                            fontFamily: 'inherit',
-                            fontSize: '13.5px',
-                            fontWeight: 600,
-                            color: 'var(--ink-800)',
-                            backgroundColor: '#fff',
-                            cursor: 'pointer',
-                            outline: 'none',
-                          }}
-                        >
-                          <option value="Cartoon">Cartoon</option>
-                          <option value="Basket">Basket</option>
-                        </select>
-                      ) : (
-                        v
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
+      {/* Description */}
+      <Box sx={{ mt: { xs: 6, md: 8 }, maxWidth: '800px' }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Product description
+        </Typography>
+        <Typography color="text.secondary" sx={{ lineHeight: 1.7, mb: 4 }}>
+          {product.description}
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+          {[
+            // Executive-editable global trust badges
+            ...trustBadges.map((b) => ({ icon: trustIcon(b.icon), label: b.label })),
+            // Auto-derived from product data
+            { icon: <PublicRoundedIcon />, label: `Origin · ${product.origin}` },
+          ].map((f, i) => (
+            <Box
+              key={i}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                px: 2,
+                py: 1.25,
+                borderRadius: 2.5,
+                border: '1px solid var(--ink-200)',
+                bgcolor: '#fff',
+                color: 'var(--brand-700)',
+                flex: { xs: '1 1 100%', sm: '0 1 auto' },
+              }}
+            >
+              {f.icon}
+              <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink-800)' }}>{f.label}</Typography>
+            </Box>
+          ))}
         </Box>
       </Box>
     </Box>

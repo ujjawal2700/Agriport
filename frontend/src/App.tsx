@@ -4,6 +4,9 @@ import AppProviders from '@/providers/AppProviders'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 import RoleRoute from '@/routes/RoleRoute'
 import PageFallback from '@/components/common/PageFallback'
+import { useGetStorefrontQuery } from '@/redux/api'
+import { useAppDispatch } from '@/redux/hooks'
+import { setStorefront } from '@/redux/slices/storefrontSlice'
 
 // Layouts are eager (shared shell); page chunks load lazily per route so the
 // customer, auth and admin areas each ship as their own bundle.
@@ -53,10 +56,11 @@ const ExecutiveIncentivesPage = lazy(() => import('@/pages/executive/ExecutiveIn
 const ExecutiveProductsPage = lazy(() => import('@/pages/executive/ExecutiveProductsPage'))
 const NewPurchasePage = lazy(() => import('@/pages/executive/NewPurchasePage'))
 const OnArrivalPage = lazy(() => import('@/pages/executive/OnArrivalPage'))
+const PurchaseHistoryPage = lazy(() => import('@/pages/executive/PurchaseHistoryPage'))
+const ArrivalsLogPage = lazy(() => import('@/pages/executive/ArrivalsLogPage'))
 
 // Misc
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
-const MobileShowcase = lazy(() => import('@/pages/mobile/MobileShowcase'))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -66,11 +70,25 @@ function ScrollToTop() {
   return null
 }
 
+function StorefrontInitializer() {
+  const { data } = useGetStorefrontQuery()
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    if (data) {
+      dispatch(setStorefront(data))
+    }
+  }, [data, dispatch])
+
+  return null
+}
+
 export default function App() {
   return (
     <AppProviders>
       <BrowserRouter>
         <ScrollToTop />
+        <StorefrontInitializer />
         <Suspense fallback={<PageFallback />}>
         <Routes>
           {/* Auth */}
@@ -103,7 +121,7 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <RoleRoute role="admin">
+              <RoleRoute role={['admin', 'manager']}>
                 <AdminLayout />
               </RoleRoute>
             }
@@ -114,10 +132,15 @@ export default function App() {
             <Route path="orders" element={<OrdersAdminPage />} />
             <Route path="users" element={<UsersAdminPage />} />
             <Route path="sales" element={<SalesAdminPage />} />
+            <Route path="new-sale" element={<ExecutiveSalesPage />} />
             <Route path="inventory" element={<InventoryAdminPage />} />
+            <Route path="add-stock/new-purchase" element={<NewPurchasePage />} />
+            <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
+            <Route path="add-stock/purchases" element={<PurchaseHistoryPage />} />
             <Route path="reports" element={<ReportsAdminPage />} />
             <Route path="storefront" element={<AdminStorefrontPage />} />
           </Route>
+
 
 
 
@@ -138,9 +161,10 @@ export default function App() {
             <Route path="products" element={<ExecutiveProductsPage />} />
             <Route path="add-stock/new-purchase" element={<NewPurchasePage />} />
             <Route path="add-stock/on-arrival" element={<OnArrivalPage />} />
+            <Route path="add-stock/purchases" element={<PurchaseHistoryPage />} />
+            <Route path="add-stock/arrivals" element={<ArrivalsLogPage />} />
           </Route>
 
-          <Route path="/mobile-showcase" element={<MobileShowcase />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

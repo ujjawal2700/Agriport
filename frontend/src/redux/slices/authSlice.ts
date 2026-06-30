@@ -1,7 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { User } from '@/types'
-import { currentUser } from '@/mocks/data'
 
 interface AuthState {
   user: User | null
@@ -37,10 +36,9 @@ const authSlice = createSlice({
   name: 'auth',
   initialState: loadInitialState(),
   reducers: {
-    // Mock sign-in: any credentials resolve to the demo customer.
-    signIn: (state, action: PayloadAction<{ token: string; user?: User } | undefined>) => {
-      state.user = action.payload?.user ?? currentUser
-      state.accessToken = action.payload?.token ?? 'mock.jwt.token'
+    signIn: (state, action: PayloadAction<{ token: string; user: User }>) => {
+      state.user = action.payload.user
+      state.accessToken = action.payload.token
       state.status = 'authenticated'
       try {
         localStorage.setItem(

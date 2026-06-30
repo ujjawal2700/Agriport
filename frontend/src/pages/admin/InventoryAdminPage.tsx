@@ -10,7 +10,7 @@ import EmptyState from '@/components/common/EmptyState'
 import StatCard from '@/components/admin/StatCard'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import PendingActionsRoundedIcon from '@mui/icons-material/PendingActionsRounded'
-import { useGetStockRequestsQuery } from '@/redux/api'
+import { useGetStockRequestsQuery, useUpdateStockRequestMutation } from '@/redux/api'
 import { formatDate } from '@/utils/format'
 import type { StockRequest, StockRequestType } from '@/types'
 import toast from 'react-hot-toast'
@@ -25,27 +25,33 @@ const TYPE_META: Record<StockRequestType, { label: string; icon: ReactNode; colo
 
 export default function InventoryAdminPage() {
   const { data: server } = useGetStockRequestsQuery()
-  const [rows, setRows] = useState<StockRequest[]>([])
+  const [updateStockRequest] = useUpdateStockRequestMutation()
   const [filter, setFilter] = useState<Filter>('pending')
 
-  useEffect(() => {
-    if (server) setRows(server)
-  }, [server])
+  const list = server || []
 
-  const decide = (r: StockRequest, status: 'approved' | 'rejected') => {
-    setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, status } : x)))
-    toast.success(`Request ${status}`)
+  const decide = async (r: StockRequest, status: 'approved' | 'rejected') => {
+    try {
+      await updateStockRequest({
+        id: r.id,
+        status,
+        rejectionReason: status === 'rejected' ? 'Rejected by Admin' : undefined,
+      }).unwrap()
+      toast.success(`Request ${status}`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || `Failed to ${status} request`)
+    }
   }
 
-  const filtered = useMemo(() => rows.filter((r) => r.status === filter), [rows, filter])
-  const pendingCount = rows.filter((r) => r.status === 'pending').length
+  const filtered = useMemo(() => list.filter((r) => r.status === filter), [list, filter])
+  const pendingCount = list.filter((r) => r.status === 'pending').length
 
   return (
     <Box className="flex flex-col gap-6">
       <Box className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Pending Requests" value={pendingCount.toString()} icon={<PendingActionsRoundedIcon />} hint="Awaiting approval" />
-        <StatCard label="Total Requests" value={rows.length.toString()} icon={<Inventory2RoundedIcon />} />
-        <StatCard label="Approved" value={rows.filter((r) => r.status === 'approved').length.toString()} icon={<CheckRoundedIcon />} />
+        <StatCard label="Total Requests" value={list.length.toString()} icon={<Inventory2RoundedIcon />} />
+        <StatCard label="Approved" value={list.filter((r) => r.status === 'approved').length.toString()} icon={<CheckRoundedIcon />} />
       </Box>
 
       <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 2, md: 3 } }}>

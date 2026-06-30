@@ -24,12 +24,11 @@ import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
-import { useGetProductsQuery } from '@/redux/api'
+import { useGetProductsQuery, useCreateOrderMutation } from '@/redux/api'
 import { useAppSelector } from '@/redux/hooks'
 import ProductCard from '@/components/product/ProductCard'
 import { CardGridSkeleton } from '@/components/common/Loader'
 import { ROUTES } from '@/constants'
-import { orders as mockOrders } from '@/mocks/data'
 import toast from 'react-hot-toast'
 
 function SectionTitle({ title, to, icon }: { title: string; to?: string; icon?: ReactNode }) {
@@ -67,8 +66,8 @@ export default function HomePage() {
   const [enqUnit, setEnqUnit] = useState('kg')
   const [enqOrigin, setEnqOrigin] = useState('')
   const [enqNotes, setEnqNotes] = useState('')
-  const [enqSubmitting, setEnqSubmitting] = useState(false)
   const [enqOpen, setEnqOpen] = useState(false)
+  const [createOrder, { isLoading: enqSubmitting }] = useCreateOrderMutation()
 
   const featured = products ?? []
   const fresh = products?.filter((p) => p.isNew) ?? []
@@ -80,10 +79,10 @@ export default function HomePage() {
     }
   }
 
-  const handleEnquirySubmit = (e: React.FormEvent) => {
+  const handleEnquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!enqProduct.trim()) {
-      toast.error('Please enter the product name.')
+    if (!enqProduct) {
+      toast.error('Please select a product.')
       return
     }
     if (!enqQty || isNaN(Number(enqQty)) || Number(enqQty) <= 0) {
@@ -94,58 +93,35 @@ export default function HomePage() {
       toast.error('Please enter the origin.')
       return
     }
-    setEnqSubmitting(true)
-    setTimeout(() => {
-      const now = new Date().toISOString()
-      const yr = new Date().getFullYear().toString().slice(-2)
-      const mo = String(new Date().getMonth() + 1).padStart(2, '0')
-      const ref = `AGP-${yr}${mo}-${String(Math.floor(Math.random() * 8999) + 1000)}`
-      mockOrders.unshift({
-        id: `o-enq-${Date.now()}`,
-        reference: ref,
-        placedOn: now,
-        status: 'placed',
-        paymentStatus: 'pending',
-        paymentMode: 'bank_transfer',
-        customerName: user?.fullName ?? 'Customer',
-        companyName: user?.companyName ?? '',
-        customerPhone: user?.mobile ?? '',
-        customerCity: user?.city ?? '',
-        deliveryAddress: user?.address ?? 'To be confirmed',
+
+    try {
+      const res = await createOrder({
         lines: [
           {
-            productId: `enq-${Date.now()}`,
-            name: enqProduct.trim(),
-            image: '',
+            productId: enqProduct,
             quantity: Number(enqQty),
             unit: enqUnit,
-            unitPrice: 0,
-            lineTotal: 0,
             specifications: {
-              ...(enqOrigin.trim() ? { Origin: enqOrigin.trim() } : {}),
-              ...(enqNotes.trim() ? { Notes: enqNotes.trim() } : {}),
+              Origin: enqOrigin.trim(),
+              Notes: enqNotes.trim() || undefined,
             },
           },
         ],
-        subtotal: 0,
-        tax: 0,
-        shipping: 0,
-        total: 0,
-        trackingTimeline: [
-          { label: 'Order placed', at: now, done: true },
-          { label: 'Admin approval', at: null, done: false },
-          { label: 'Delivered', at: null, done: false },
-        ],
-      })
-      toast.success(`Enquiry submitted! Reference: ${ref}`)
+        paymentMode: 'offline',
+        deliveryAddress: user?.address || 'To be confirmed',
+      }).unwrap()
+
+      const order = res.data
+      toast.success(`Enquiry submitted! Reference: ${order.reference || order.id}`)
       setEnqOpen(false)
       setEnqProduct('')
       setEnqQty('')
       setEnqUnit('kg')
       setEnqOrigin('')
       setEnqNotes('')
-      setEnqSubmitting(false)
-    }, 700)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to submit enquiry')
+    }
   }
 
   return (
@@ -393,7 +369,7 @@ export default function HomePage() {
                 onChange={(e) => setEnqProduct(e.target.value)}
               >
                 {featured.map((p) => (
-                  <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
+                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>

@@ -12,6 +12,7 @@ import {
   IconButton,
   Link as MuiLink,
   Divider,
+  CircularProgress,
 } from '@mui/material'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
@@ -26,6 +27,7 @@ import { signIn } from '@/redux/slices/authSlice'
 import { demoUsers } from '@/mocks/data'
 import { ROUTES } from '@/constants'
 import type { UserRole } from '@/types'
+import { useLoginMutation } from '@/redux/api'
 import toast from 'react-hot-toast'
 
 type StaffRole = Extract<UserRole, 'admin' | 'executive'>
@@ -70,15 +72,30 @@ export default function StaffLoginPage({ role }: { role: StaffRole }) {
   const from = (location.state as { from?: string } | null)?.from
   const dest = from && from.startsWith(`/${role}`) ? from : cfg.home
 
+  const [login, { isLoading }] = useLoginMutation()
+
   const { control, handleSubmit } = useForm<Form>({
     resolver: zodResolver(schema),
     defaultValues: { email: cfg.demoEmail, password: 'password' },
   })
 
-  const onSubmit = () => {
-    dispatch(signIn({ token: `mock.${role}.token`, user: demoUsers[role] }))
-    toast.success(`Signed in as ${cfg.title}`)
-    navigate(dest, { replace: true })
+  const onSubmit = async (data: Form) => {
+    try {
+      const result = await login({ loginId: data.email, password: data.password }).unwrap()
+      const user = result.data.user
+      const accessToken = result.data.accessToken
+      
+      // Enforce role checks matching the portal
+      if (user.role !== role && !(role === 'admin' && user.role === 'manager')) {
+        throw new Error(`Unauthorized. You are not allowed to access this portal as an ${user.role}.`)
+      }
+
+      dispatch(signIn({ token: accessToken, user }))
+      toast.success(`Signed in as ${cfg.title}`)
+      navigate(dest, { replace: true })
+    } catch (err: any) {
+      toast.error(err.message || err.data?.message || 'Login failed. Please check credentials.')
+    }
   }
 
   return (
@@ -158,8 +175,14 @@ export default function StaffLoginPage({ role }: { role: StaffRole }) {
                 },
               }}
             />
-            <Button type="submit" variant="contained" size="large" startIcon={cfg.icon}>
-              Sign in
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isLoading}
+              startIcon={isLoading ? null : cfg.icon}
+            >
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Sign in'}
             </Button>
           </Box>
 

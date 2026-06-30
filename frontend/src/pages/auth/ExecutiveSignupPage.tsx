@@ -11,6 +11,7 @@ import {
   IconButton,
   Link as MuiLink,
   Divider,
+  CircularProgress,
 } from '@mui/material'
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
@@ -18,9 +19,7 @@ import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import KeyboardBackspaceRoundedIcon from '@mui/icons-material/KeyboardBackspaceRounded'
 import Logo from '@/components/common/Logo'
 import RHFTextField from '@/components/forms/RHFTextField'
-import { useAppDispatch } from '@/redux/hooks'
-import { signIn } from '@/redux/slices/authSlice'
-import { demoUsers } from '@/mocks/data'
+import { useSignupExecutiveMutation } from '@/redux/api'
 import toast from 'react-hot-toast'
 
 const schema = z.object({
@@ -38,11 +37,13 @@ const schema = z.object({
 type Form = z.infer<typeof schema>
 
 export default function ExecutiveSignupPage() {
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const [signupExecutive, { isLoading }] = useSignupExecutiveMutation()
   
   const [aadharPreview, setAadharPreview] = useState<string | null>(null)
   const [panPreview, setPanPreview] = useState<string | null>(null)
+  const [aadharFile, setAadharFile] = useState<File | null>(null)
+  const [panFile, setPanFile] = useState<File | null>(null)
 
   const { control, handleSubmit } = useForm<Form>({
     resolver: zodResolver(schema),
@@ -62,6 +63,7 @@ export default function ExecutiveSignupPage() {
   const handleAadharUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setAadharFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         setAadharPreview(reader.result as string)
@@ -73,6 +75,7 @@ export default function ExecutiveSignupPage() {
   const handlePanUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setPanFile(file)
       const reader = new FileReader()
       reader.onloadend = () => {
         setPanPreview(reader.result as string)
@@ -81,37 +84,34 @@ export default function ExecutiveSignupPage() {
     }
   }
 
-  const onSubmit = (data: Form) => {
-    if (!aadharPreview) {
+  const onSubmit = async (data: Form) => {
+    if (!aadharFile) {
       toast.error('Please upload Aadhar Card photo')
       return
     }
-    if (!panPreview) {
+    if (!panFile) {
       toast.error('Please upload PAN Card photo')
       return
     }
 
-    // Determine target mock role
-    const targetRole = 'executive'
-    const templateUser = demoUsers[targetRole]
+    try {
+      const formData = new FormData()
+      formData.append('name', data.fullName)
+      formData.append('email', data.email)
+      formData.append('mobile', data.mobile)
+      formData.append('password', data.password)
+      const region = data.address.split(',').pop()?.trim() || data.address || 'Pune'
+      formData.append('region', region)
+      formData.append('target', '0')
+      formData.append('aadhaarCard', aadharFile)
+      formData.append('panCard', panFile)
 
-    // Login the user with mock credentials and navigate to their homepage
-    dispatch(
-      signIn({
-        token: `mock.${targetRole}.token`,
-        user: {
-          ...templateUser,
-          fullName: data.fullName,
-          email: data.email,
-          mobile: data.mobile,
-          companyName: data.companyName || templateUser.companyName,
-          address: data.address,
-        },
-      })
-    )
-
-    toast.success(`Registered successfully as ${data.businessType}!`)
-    navigate('/executive', { replace: true })
+      const result = await signupExecutive(formData).unwrap()
+      toast.success(result.message || 'Executive registration submitted successfully!')
+      navigate('/executive/login', { replace: true })
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to submit registration')
+    }
   }
 
   return (
@@ -367,8 +367,8 @@ export default function ExecutiveSignupPage() {
               </Box>
             </Box>
 
-            <Button type="submit" variant="contained" size="large" sx={{ mt: 1.5 }}>
-              Sign Up & Request Access
+            <Button type="submit" variant="contained" size="large" sx={{ mt: 1.5 }} disabled={isLoading}>
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Sign Up & Request Access'}
             </Button>
           </Box>
 

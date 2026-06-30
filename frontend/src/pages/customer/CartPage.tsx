@@ -39,8 +39,8 @@ export default function CartPage() {
   return (
     <Box className="animate-fade-up">
       <PageHeader
-        title="Your cart"
-        subtitle={`${items.length} ${items.length === 1 ? 'product' : 'products'} ready for checkout`}
+        title="Your Enquiry List"
+        subtitle={`${items.length} ${items.length === 1 ? 'product' : 'products'} added to your enquiry list`}
         crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Cart' }]}
       />
 
@@ -67,7 +67,7 @@ export default function CartPage() {
                   to={ROUTES.productDetail(item.productId)}
                   sx={{ width: { xs: '100%', sm: 96 }, height: 96, flexShrink: 0 }}
                 >
-                  <ProductThumb id={item.productId} name={item.name} />
+                  <ProductThumb id={item.productId} name={item.name} imageUrl={item.image} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography
@@ -113,7 +113,7 @@ export default function CartPage() {
             sx={{ mt: 2 }}
             onClick={() => navigate(ROUTES.checkout)}
           >
-            Proceed to checkout
+            Proceed to submit enquiry
           </Button>
         </Box>
       </Box>

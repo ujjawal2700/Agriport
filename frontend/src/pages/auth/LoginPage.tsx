@@ -2,9 +2,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom'
-import { Box, Typography, Button, Divider } from '@mui/material'
+import { Box, Typography, Button, Divider, CircularProgress } from '@mui/material'
 import RHFTextField from '@/components/forms/RHFTextField'
 import { ROUTES } from '@/constants'
+import { useSendOtpMutation } from '@/redux/api'
+import toast from 'react-hot-toast'
 
 const mobileSchema = z.object({
   mobile: z.string().regex(/^[0-9+\s-]{10,15}$/, 'Enter a valid mobile number'),
@@ -16,10 +18,17 @@ export default function LoginPage() {
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? ROUTES.home
 
+  const [sendOtp, { isLoading }] = useSendOtpMutation()
   const mobileForm = useForm<MobileForm>({ resolver: zodResolver(mobileSchema), defaultValues: { mobile: '9876543210' } })
 
-  const onMobileSubmit = (data: MobileForm) => {
-    navigate(ROUTES.otp, { state: { mobile: data.mobile, from } })
+  const onMobileSubmit = async (data: MobileForm) => {
+    try {
+      await sendOtp({ mobile: data.mobile, purpose: 'login' }).unwrap()
+      toast.success('OTP sent successfully.')
+      navigate(ROUTES.otp, { state: { mobile: data.mobile, from, purpose: 'login' } })
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to send OTP. Please check the number.')
+    }
   }
 
   return (
@@ -38,8 +47,8 @@ export default function LoginPage() {
           label="Mobile number"
           placeholder="+91 98765 43210"
         />
-        <Button type="submit" variant="contained" size="large">
-          Send OTP
+        <Button type="submit" variant="contained" size="large" disabled={isLoading}>
+          {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Send OTP'}
         </Button>
       </Box>
 

@@ -1,0 +1,49 @@
+import Notification from './notification.model.js';
+import asyncWrapper from '../../utils/asyncWrapper.js';
+import AppError from '../../utils/AppError.js';
+import { successResponse } from '../../utils/apiResponse.js';
+import { paginate } from '../../utils/paginate.js';
+
+// 1. Get notifications for the logged-in user
+export const getNotifications = asyncWrapper(async (req, res) => {
+  const queryObj = { recipientId: req.user._id };
+
+  const result = await paginate(Notification, queryObj, req.query, {
+    sort: { createdAt: -1 }
+  });
+
+  return successResponse(
+    res,
+    {
+      notifications: result.docs,
+      pagination: result.pagination,
+    },
+    200,
+    'Notifications retrieved successfully.'
+  );
+});
+
+// 2. Mark a notification as read
+export const markAsRead = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+
+  const notification = await Notification.findOne({ _id: id, recipientId: req.user._id });
+  if (!notification) {
+    return next(new AppError('Notification not found.', 404));
+  }
+
+  notification.read = true;
+  await notification.save();
+
+  return successResponse(res, notification, 200, 'Notification marked as read.');
+});
+
+// 3. Mark all notifications as read
+export const markAllAsRead = asyncWrapper(async (req, res) => {
+  await Notification.updateMany(
+    { recipientId: req.user._id, read: false },
+    { $set: { read: true } }
+  );
+
+  return successResponse(res, null, 200, 'All notifications marked as read.');
+});

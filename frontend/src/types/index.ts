@@ -32,6 +32,8 @@ export interface SizeVariant {
   stock: number
   price: number
   packingType?: string
+  netWeight?: number
+  grossWeight?: number
 }
 
 export interface WeightVariant {
@@ -41,6 +43,7 @@ export interface WeightVariant {
 
 export interface Product {
   id: string
+  sku?: string
   name: string
   category: string
   images: string[]
@@ -75,6 +78,7 @@ export interface Category {
   slug: string
   productCount: number
   icon: string
+  isActive?: boolean
 }
 
 export interface CartItem {
@@ -129,6 +133,7 @@ export interface Order {
   deliveryAddress?: string
   quotedPrices?: Record<string, number>   // productId → agreed unit price
   quotedShipping?: number
+  executiveId?: { id: string; name: string; role: string } | null
 }
 
 export interface Transaction {
@@ -147,6 +152,7 @@ export interface BusinessDocument {
   uploadedOn: string | null
   status: 'verified' | 'pending' | 'missing'
   fileName?: string
+  fileUrl?: string
 }
 
 export interface Banner {
@@ -178,9 +184,10 @@ export interface TrustBadge {
 
 // ── Admin domain ─────────────────────────────────────────────────────────────
 
-export type AccountStatus = 'active' | 'suspended' | 'blocked'
+export type AccountStatus = 'active' | 'suspended' | 'blocked' | 'pending'
 
 export interface AdminUser {
+  role?: UserRole
   id: string
   name: string
   company: string
@@ -212,6 +219,8 @@ export interface ExecutiveApproval {
   region: string
   requestedOn: string
   status: 'pending' | 'approved' | 'rejected'
+  aadharUrl?: string
+  panUrl?: string
 }
 
 export type StockRequestType = 'add' | 'update' | 'new_product'
@@ -225,6 +234,7 @@ export interface StockRequest {
   requestedChange: number
   requestedOn: string
   status: 'pending' | 'approved' | 'rejected'
+  notes?: string
 }
 
 export interface DashboardStats {
@@ -247,6 +257,8 @@ export interface SalesPoint {
   label: string
   revenue: number
   orders: number
+  purchased?: number
+  onArrival?: number
 }
 
 export interface CategorySales {
@@ -280,6 +292,7 @@ export interface CRMCustomer {
   lastContact: string
   owner: string
   gst?: string
+  platformUserId?: string
 }
 
 export interface FollowUp {
@@ -315,7 +328,65 @@ export interface VendorPurchase {
   total: number
   date: string
   status: 'received' | 'pending' | 'ordered'
+  purchaser?: string
+  notes?: string
 }
+
+export interface PurchaseDraft {
+  vendorName: string
+  productId: string
+  productName: string
+  quantity: number
+  unit: string
+  buyPrice: number
+  purchaseDate: string
+  status: 'received' | 'pending' | 'ordered'
+  notes: string
+  specifications?: Record<string, string>
+  images?: string[]
+  sizeVariants?: SizeVariant[]
+  origin?: string
+  leadTimeDays?: number
+}
+
+export interface ArrivalDraft {
+  productId: string
+  productName: string
+  category: string
+  currentStock: number
+  requestedChange: number
+  type: 'add' | 'update'
+  notes: string
+  specifications?: Record<string, string>
+  images?: string[]
+  sizeVariants?: SizeVariant[]
+  origin?: string
+  leadTimeDays?: number
+}
+
+export interface SaleItemDraft {
+  productId: string
+  productName: string
+  quantity: number
+  unit: string
+  unitPrice: number
+}
+
+export interface SaleDraft {
+  customerId: string
+  customerName: string
+  productId: string
+  productName: string
+  category: string
+  quantity: number
+  unit: string
+  unitPrice: number
+  deliveryAddress: string
+  paymentMode: PaymentMode
+  notes: string
+}
+
+
 
 export interface IncentivePoint {
   label: string
@@ -332,4 +403,19 @@ export interface SalesStats {
   pending: number
   teamSize: number
   incentiveEarned: number
+  commissionPct?: number
 }
+
+export interface InAppNotification {
+  id: string
+  recipientId: string
+  senderId?: string
+  title: string
+  message: string
+  type: 'order' | 'kyc' | 'stock' | 'payment' | 'auth'
+  read: boolean
+  entityId?: string
+  createdAt: string
+  updatedAt: string
+}
+

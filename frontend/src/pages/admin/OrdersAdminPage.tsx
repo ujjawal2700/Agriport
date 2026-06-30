@@ -11,7 +11,7 @@ import TableCard from '@/components/admin/TableCard'
 import { gridSx } from '@/components/admin/gridStyles'
 import StatusChip from '@/components/common/StatusChip'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
-import { useGetOrdersQuery } from '@/redux/api'
+import { useGetOrdersQuery, useUpdateOrderStatusMutation, useVerifyPaymentMutation } from '@/redux/api'
 import { formatMoney, formatDate } from '@/utils/format'
 import { PAYMENT_MODE_LABEL } from '@/constants'
 import { downloadInvoice } from '@/utils/documents'
@@ -30,56 +30,65 @@ const TABS: { value: Filter; label: string }[] = [
 
 export default function OrdersAdminPage() {
   const { data: serverOrders, isLoading } = useGetOrdersQuery()
-  const [rows, setRows] = useState<Order[]>([])
+  const [updateOrderStatus, { isLoading: isUpdatingStatus }] = useUpdateOrderStatusMutation()
+  const [verifyPaymentMutation] = useVerifyPaymentMutation()
+
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null)
   const [active, setActive] = useState<Order | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Order | null>(null)
 
-  useEffect(() => {
-    if (serverOrders) setRows(serverOrders)
-  }, [serverOrders])
-
-  const patch = (id: string, changes: Partial<Order>) =>
-    setRows((prev) => prev.map((o) => (o.id === id ? { ...o, ...changes } : o)))
-
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
-    return rows
+    const list = serverOrders || []
+    return list
       .filter((o) => {
         if (filter === 'all') return true
         if (filter === 'pending_payment') return o.paymentStatus === 'pending'
         return o.status === filter
       })
       .filter((o) => o.reference.toLowerCase().includes(s))
-  }, [rows, filter, search])
+  }, [serverOrders, filter, search])
 
-  const confirmOrder = (o: Order) => {
-    patch(o.id, {
-      status: 'confirmed',
-      invoiceNo: o.invoiceNo ?? `INV-${o.reference.slice(4)}`,
-      gatePassNo: o.gatePassNo ?? `GP-${o.reference.slice(4)}`,
-      pickupAddress: o.pickupAddress ?? 'Agriport Warehouse 3, Bhiwandi, Maharashtra 421302',
-    })
-    toast.success(`${o.reference} confirmed · invoice generated`)
+  const confirmOrder = async (o: Order) => {
+    try {
+      await updateOrderStatus({ id: o.id, status: 'confirmed' }).unwrap()
+      toast.success(`${o.reference} confirmed · invoice generated`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to confirm order')
+    }
   }
-  const verifyPayment = (o: Order) => {
-    patch(o.id, { paymentStatus: 'paid' })
-    toast.success(`Payment verified for ${o.reference}`)
+
+  const verifyPayment = async (o: Order) => {
+    try {
+      await verifyPaymentMutation({ transactionId: o.id }).unwrap()
+      toast.success(`Payment verified for ${o.reference}`)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to verify payment')
+    }
   }
-  const cancelOrder = () => {
+
+  const cancelOrder = async () => {
     if (!cancelTarget) return
-    patch(cancelTarget.id, { status: 'cancelled', cancellationReason: 'Cancelled by admin', refundStatus: 'Refund initiated' })
-    toast.success(`${cancelTarget.reference} cancelled`)
+    try {
+      await updateOrderStatus({
+        id: cancelTarget.id,
+        status: 'cancelled',
+        reason: 'Cancelled by admin',
+      }).unwrap()
+      toast.success(`${cancelTarget.reference} cancelled`)
+      setCancelTarget(null)
+    } catch (err: any) {
+      toast.error(err?.data?.message || 'Failed to cancel order')
+    }
   }
 
   const columns: GridColDef<Order>[] = [
     {
       field: 'reference',
       headerName: 'Order',
-      flex: 1,
-      minWidth: 170,
+      width: 170,
       renderCell: (p) => (
         <Box>
           <Typography className="tnum" sx={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.2 }}>
@@ -89,6 +98,27 @@ export default function OrdersAdminPage() {
             {formatDate(p.row.placedOn)} · {p.row.lines.length} items
           </Typography>
         </Box>
+      ),
+    },
+    {
+      field: 'productsSold',
+      headerName: 'Products Sold',
+      flex: 1.5,
+      minWidth: 220,
+      renderCell: (p) => (
+        <Typography sx={{ fontSize: 13, display: 'flex', alignItems: 'center', height: '100%', color: 'var(--ink-700)' }}>
+          {p.row.lines.map((line) => `${line.name} (${line.quantity} ${line.unit})`).join(', ')}
+        </Typography>
+      ),
+    },
+    {
+      field: 'salesExecutive',
+      headerName: 'Sales Executive',
+      width: 180,
+      renderCell: (p) => (
+        <span style={{ display: 'flex', alignItems: 'center', height: '100%', fontSize: 13, fontWeight: p.row.executiveId ? 600 : 400, color: p.row.executiveId ? 'var(--brand-700)' : 'var(--ink-500)' }}>
+          {p.row.executiveId?.name || 'Storefront / Self-service'}
+        </span>
       ),
     },
     {
@@ -219,6 +249,7 @@ export default function OrdersAdminPage() {
         destructive
         onConfirm={cancelOrder}
         onClose={() => setCancelTarget(null)}
+        loading={isUpdatingStatus}
       />
     </Box>
   )

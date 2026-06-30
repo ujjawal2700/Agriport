@@ -4,17 +4,19 @@ import { useAppSelector } from '@/redux/hooks'
 import type { UserRole } from '@/types'
 
 /**
- * Gates a workspace to a single role. If the visitor isn't signed in as that
- * role, they're sent to that role's dedicated login (preserving the intended
- * destination so login can return them there).
+ * Gates a workspace to one or more roles. If the visitor isn't signed in as an
+ * authorized role, they're sent to a dedicated login.
  */
-export default function RoleRoute({ role, children }: { role: UserRole; children: ReactNode }) {
+export default function RoleRoute({ role, children }: { role: UserRole | UserRole[]; children: ReactNode }) {
   const status = useAppSelector((s) => s.auth.status)
   const userRole = useAppSelector((s) => s.auth.user?.role)
   const location = useLocation()
 
-  if (status !== 'authenticated' || userRole !== role) {
-    return <Navigate to={`/${role}/login`} state={{ from: location.pathname }} replace />
+  const allowedRoles = Array.isArray(role) ? role : [role]
+
+  if (status !== 'authenticated' || !userRole || !allowedRoles.includes(userRole)) {
+    const redirectRole = Array.isArray(role) ? role[0] : role
+    return <Navigate to={`/${redirectRole}/login`} state={{ from: location.pathname }} replace />
   }
   return <>{children}</>
 }

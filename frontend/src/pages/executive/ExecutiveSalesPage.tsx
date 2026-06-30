@@ -4,7 +4,7 @@ import SellProductForm from '@/components/sales/SellProductForm'
 export default function ExecutiveSalesPage() {
   return (
     <Box>
-      <SellProductForm />
+      <SellProductForm formMode="sale" />
     </Box>
   )
 }

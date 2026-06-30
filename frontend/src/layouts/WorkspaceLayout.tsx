@@ -12,6 +12,7 @@ import {
   useMediaQuery,
   Divider,
   Button,
+  Popover,
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
@@ -22,6 +23,11 @@ import PageFallback from '@/components/common/PageFallback'
 import { useAppDispatch } from '@/redux/hooks'
 import { signOut } from '@/redux/slices/authSlice'
 import toast from 'react-hot-toast'
+import {
+  useGetNotificationsQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
+} from '@/redux/api'
 
 const W = 256
 
@@ -214,6 +220,22 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
   const dispatch = useAppDispatch()
   const title = config.titles[location.pathname] ?? config.subtitle
 
+  const [notifAnchorEl, setNotifAnchorEl] = useState<HTMLButtonElement | null>(null)
+
+  const handleOpenNotifications = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setNotifAnchorEl(event.currentTarget)
+  }
+  const handleCloseNotifications = () => {
+    setNotifAnchorEl(null)
+  }
+
+  const { data: notificationsData } = useGetNotificationsQuery()
+  const [markAsRead] = useMarkNotificationReadMutation()
+  const [markAllAsRead] = useMarkAllNotificationsReadMutation()
+
+  const notificationsList = notificationsData?.notifications || []
+  const unreadCount = notificationsList.filter((n: any) => !n.read).length
+
   const handleSignOut = () => {
     dispatch(signOut())
     toast.success('Signed out')
@@ -262,12 +284,103 @@ export default function WorkspaceLayout({ config }: { config: WorkspaceConfig })
             <Typography sx={{ fontSize: 12, color: 'var(--ink-500)' }}>{config.subtitle}</Typography>
           </Box>
           <Tooltip title="Notifications">
-            <IconButton>
-              <Badge color="error" variant="dot">
+            <IconButton onClick={handleOpenNotifications}>
+              <Badge color="error" badgeContent={unreadCount}>
                 <NotificationsRoundedIcon />
               </Badge>
             </IconButton>
           </Tooltip>
+          <Popover
+            open={Boolean(notifAnchorEl)}
+            anchorEl={notifAnchorEl}
+            onClose={handleCloseNotifications}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            slotProps={{
+              paper: {
+                sx: { width: 320, maxHeight: 400, display: 'flex', flexDirection: 'column', mt: 1 }
+              }
+            }}
+          >
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--ink-200)' }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 14 }}>Notifications</Typography>
+              {unreadCount > 0 && (
+                <Button size="small" onClick={() => markAllAsRead()} sx={{ fontSize: 11, textTransform: 'none', color: 'var(--brand-700)' }}>
+                  Mark all as read
+                </Button>
+              )}
+            </Box>
+            <Box sx={{ overflowY: 'auto', flex: 1 }}>
+              {notificationsList.length === 0 ? (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography sx={{ fontSize: 13, color: 'var(--ink-500)' }}>No notifications yet</Typography>
+                </Box>
+              ) : (
+                notificationsList.map((notif: any) => (
+                  <Box
+                    key={notif.id || notif._id}
+                    onClick={async () => {
+                      if (!notif.read) {
+                        await markAsRead(notif.id || notif._id);
+                      }
+                      handleCloseNotifications();
+                      if (notif.entityId) {
+                        const entityIdStr = notif.entityId.toString();
+                        if (notif.type === 'order') {
+                          if (config.user.role === 'customer' || config.user.role === 'Customer') {
+                            navigate(`/orders/${entityIdStr}`);
+                          } else {
+                            navigate(`/admin/orders?id=${entityIdStr}`);
+                          }
+                        } else if (notif.type === 'kyc') {
+                          navigate('/admin/users');
+                        } else if (notif.type === 'stock') {
+                          if (config.user.role === 'admin' || config.user.role === 'Admin') {
+                            navigate('/admin/inventory');
+                          } else {
+                            navigate('/inventory');
+                          }
+                        } else if (notif.type === 'payment') {
+                          if (config.user.role === 'admin' || config.user.role === 'Admin') {
+                            navigate('/admin/payments');
+                          } else {
+                            navigate(`/orders/${entityIdStr}`);
+                          }
+                        } else if (notif.type === 'auth') {
+                          if (config.user.role === 'admin' || config.user.role === 'Admin') {
+                            navigate('/admin/users');
+                          }
+                        }
+                      }
+                    }}
+                    sx={{
+                      p: 1.5,
+                      borderBottom: '1px solid var(--ink-100)',
+                      cursor: 'pointer',
+                      backgroundColor: notif.read ? 'transparent' : 'rgba(10, 51, 36, 0.04)',
+                      '&:hover': { backgroundColor: 'var(--ink-50)' },
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: notif.read ? 600 : 700, fontSize: 12.5, color: 'var(--ink-900)' }}>
+                      {notif.title}
+                    </Typography>
+                    <Typography sx={{ fontSize: 11.5, color: 'var(--ink-600)', mt: 0.5 }}>
+                      {notif.message}
+                    </Typography>
+                    <Typography sx={{ fontSize: 9.5, color: 'var(--ink-400)', mt: 0.5 }}>
+                      {new Date(notif.createdAt).toLocaleDateString()} {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Typography>
+                  </Box>
+                ))
+              )}
+            </Box>
+          </Popover>
           <Box className="flex items-center gap-2" sx={{ pl: 1, borderLeft: '1px solid var(--ink-200)' }}>
             <Avatar sx={{ width: 36, height: 36, bgcolor: 'var(--brand-700)', fontSize: 14 }}>{config.user.initials}</Avatar>
             <Box sx={{ display: { xs: 'none', sm: 'block' } }}>

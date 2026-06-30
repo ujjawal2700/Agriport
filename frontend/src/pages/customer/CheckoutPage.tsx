@@ -1,47 +1,37 @@
-import { useState } from 'react'
-import type { ReactElement } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Typography,
   Button,
-  Radio,
   TextField,
   Divider,
   CircularProgress,
 } from '@mui/material'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import AccountBalanceRoundedIcon from '@mui/icons-material/AccountBalanceRounded'
-import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded'
-import QrCodeRoundedIcon from '@mui/icons-material/QrCode2Rounded'
-import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import PageHeader from '@/components/common/PageHeader'
-import OrderSummary, { computeTotals } from '@/components/order/OrderSummary'
+import OrderSummary from '@/components/order/OrderSummary'
 import EmptyState from '@/components/common/EmptyState'
 import { useAppDispatch, useAppSelector } from '@/redux/hooks'
 import { clearCart } from '@/redux/slices/cartSlice'
-import { PAYMENT_METHODS, ROUTES } from '@/constants'
-import type { PaymentMode, Order } from '@/types'
-import { currentUser, orders } from '@/mocks/data'
+import { ROUTES } from '@/constants'
+import { useCreateOrderMutation } from '@/redux/api'
 import toast from 'react-hot-toast'
-
-const ICONS: Record<PaymentMode, ReactElement> = {
-  upi: <QrCodeRoundedIcon />,
-  card: <CreditCardRoundedIcon />,
-  gateway: <ShieldRoundedIcon />,
-  bank_transfer: <AccountBalanceRoundedIcon />,
-  cash: <PaymentsRoundedIcon />,
-}
 
 export default function CheckoutPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const items = useAppSelector((s) => s.cart.items)
-  const user = useAppSelector((s) => s.auth.user) ?? currentUser
-  const [method, setMethod] = useState<PaymentMode>('upi')
-  const [placing, setPlacing] = useState(false)
-  const [address, setAddress] = useState(user.address ?? '')
+  const user = useAppSelector((s) => s.auth.user)
+  const [address, setAddress] = useState('')
+  const [createOrder, { isLoading: placing }] = useCreateOrderMutation()
+
+  useEffect(() => {
+    if (user?.address) {
+      setAddress(user.address)
+    }
+  }, [user])
 
   if (items.length === 0) {
     return (
@@ -49,87 +39,33 @@ export default function CheckoutPage() {
     )
   }
 
-  const { total } = computeTotals(items)
-  const online = PAYMENT_METHODS.filter((m) => m.group === 'online')
-  const offline = PAYMENT_METHODS.filter((m) => m.group === 'offline')
+  const placeOrder = async () => {
+    try {
+      const orderPayload = {
+        lines: items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          specifications: item.specifications,
+        })),
+        paymentMode: 'offline',
+        deliveryAddress: address || user?.address || '',
+      }
 
-  const placeOrder = () => {
-    setPlacing(true)
-    const newOrder: Order = {
-      id: `o-${Date.now()}`,
-      reference: `AGP-2406-${Math.floor(1000 + Math.random() * 9000)}`,
-      placedOn: new Date().toISOString(),
-      status: 'placed',
-      paymentStatus: 'pending',
-      paymentMode: method,
-      customerName: user.fullName || 'Rohan Mehta',
-      companyName: user.companyName || 'Megha Trading Co.',
-      customerPhone: user.mobile || '+91 98765 43210',
-      customerCity: user.city || 'Pune',
-      deliveryAddress: address || user.address || '',
-      lines: items.map((item) => ({
-        productId: item.productId,
-        name: item.name,
-        image: item.image || '',
-        quantity: item.quantity,
-        unit: item.unit,
-        unitPrice: item.unitPrice,
-        lineTotal: item.quantity * item.unitPrice,
-        specifications: item.specifications,
-      })),
-      subtotal: total,
-      tax: Math.round(total * 0.05),
-      shipping: total > 50000 ? 0 : 1500,
-      total: total + Math.round(total * 0.05) + (total > 50000 ? 0 : 1500),
-      trackingTimeline: [
-        { label: 'Order placed', at: new Date().toISOString(), done: true },
-        { label: 'Payment verification', at: null, done: false },
-        { label: 'Admin approval', at: null, done: false },
-        { label: 'Dispatch', at: null, done: false },
-        { label: 'Delivered', at: null, done: false },
-      ],
-    }
-
-    setTimeout(() => {
-      orders.push(newOrder)
+      await createOrder(orderPayload).unwrap()
       dispatch(clearCart())
-      toast.success('Order placed successfully!')
+      window.dispatchEvent(new Event('cart-updated'))
+      toast.success('Enquiry submitted successfully!')
       navigate(`${ROUTES.orders}?placed=1`, { replace: true })
-    }, 1400)
-  }
-
-  const MethodCard = ({ id, label, description }: { id: PaymentMode; label: string; description: string }) => {
-    const selected = method === id
-    return (
-      <Box
-        onClick={() => setMethod(id)}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: { xs: 1.25, md: 1.5 },
-          p: { xs: 1.25, md: 1.75 },
-          borderRadius: 2,
-          cursor: 'pointer',
-          border: `1.5px solid ${selected ? 'var(--brand-500)' : 'var(--ink-200)'}`,
-          bgcolor: selected ? 'var(--brand-50)' : '#fff',
-          transition: 'all .15s',
-        }}
-      >
-        <Radio checked={selected} size="small" sx={{ p: 0 }} />
-        <Box sx={{ color: 'var(--brand-700)', display: 'grid', placeItems: 'center', '& svg': { fontSize: { xs: 20, md: 24 } } }}>{ICONS[id]}</Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: { xs: 13.5, md: 14.5 } }}>{label}</Typography>
-          <Typography sx={{ fontSize: { xs: 11.5, md: 12.5 }, color: 'var(--ink-500)', mt: 0.25 }}>{description}</Typography>
-        </Box>
-      </Box>
-    )
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to submit enquiry')
+    }
   }
 
   return (
     <Box className="animate-fade-up">
       <PageHeader
-        title="Checkout"
-        crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Cart', to: ROUTES.cart }, { label: 'Checkout' }]}
+        title="Submit Enquiry"
+        crumbs={[{ label: 'Home', to: ROUTES.home }, { label: 'Cart', to: ROUTES.cart }, { label: 'Submit Enquiry' }]}
       />
 
       <Box className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -140,8 +76,8 @@ export default function CheckoutPage() {
               Billing & pickup
             </Typography>
             <Box className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <TextField label="Business name" value={user.companyName} size="small" slotProps={{ input: { readOnly: true } }} />
-              <TextField label="GST number" value={user.gstNumber} size="small" slotProps={{ input: { readOnly: true } }} />
+              <TextField label="Business name" value={user?.companyName ?? ''} size="small" slotProps={{ input: { readOnly: true } }} />
+              <TextField label="GST number" value={user?.gstNumber ?? ''} size="small" slotProps={{ input: { readOnly: true } }} />
             </Box>
             <TextField
               label="Delivery address"
@@ -151,33 +87,6 @@ export default function CheckoutPage() {
               multiline
               minRows={2}
             />
-          </Box>
-
-          {/* Payment */}
-          <Box sx={{ borderRadius: 4, border: '1px solid var(--ink-200)', bgcolor: '#fff', p: { xs: 1.75, md: 3 } }}>
-            <Typography variant="h6" sx={{ fontSize: 17, mb: 0.5 }}>
-              Payment method
-            </Typography>
-            <Typography sx={{ fontSize: 13, color: 'var(--ink-500)', mb: { xs: 1.5, md: 2.5 } }}>
-              Online payments are confirmed instantly. Offline modes are verified by our team after payment.
-            </Typography>
-
-            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-500)', mb: 0.75 }}>
-              ONLINE
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 1.25, mb: { xs: 2.5, md: 4 } }}>
-              {online.map((m) => (
-                <MethodCard key={m.id} id={m.id} label={m.label} description={m.description} />
-              ))}
-            </Box>
-            <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--ink-500)', mb: 0.75 }}>
-              OFFLINE
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.25 }}>
-              {offline.map((m) => (
-                <MethodCard key={m.id} id={m.id} label={m.label} description={m.description} />
-              ))}
-            </Box>
           </Box>
         </Box>
 
@@ -192,13 +101,13 @@ export default function CheckoutPage() {
             startIcon={placing ? <CircularProgress size={18} color="inherit" /> : <CheckCircleRoundedIcon />}
             onClick={placeOrder}
           >
-            {placing ? 'Placing order…' : 'Place order'}
+            {placing ? 'Submitting enquiry…' : 'Submit Enquiry'}
           </Button>
           <Divider sx={{ my: 2 }} />
           <Box className="flex items-start gap-2">
             <ShieldRoundedIcon sx={{ fontSize: 18, color: 'var(--brand-600)', mt: 0.25 }} />
             <Typography sx={{ fontSize: 12.5, color: 'var(--ink-500)' }}>
-              Your payment is protected. Invoice and gate pass are generated once the order is confirmed.
+              Your enquiry is secure. Customized quotation, invoice, and gate pass will be generated once the order is confirmed by our sales team.
             </Typography>
           </Box>
         </Box>

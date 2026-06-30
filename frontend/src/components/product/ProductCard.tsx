@@ -5,6 +5,7 @@ import ProductThumb from '@/components/common/ProductThumb'
 import StatusChip from '@/components/common/StatusChip'
 import { ROUTES } from '@/constants'
 import type { Product } from '@/types'
+import { formatMoney } from '@/utils/format'
 
 export default function ProductCard({ product }: { product: Product }) {
   return (
@@ -32,7 +33,7 @@ export default function ProductCard({ product }: { product: Product }) {
             border: '1px solid var(--ink-200)',
           }}
         >
-          <ProductThumb id={product.id} name={product.name} category={product.category} rounded={5} />
+          <ProductThumb id={product.id} name={product.name} category={product.category} rounded={5} imageUrl={product.images?.[0] || undefined} />
           <Box sx={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 0.75 }}>
             {product.isNew && (
               <Chip
@@ -70,10 +71,10 @@ export default function ProductCard({ product }: { product: Product }) {
         <Box sx={{ mt: { xs: 0.5, md: 1.5 } }}>
           <Box sx={{ mt: { xs: 0.5, md: 1 }, pt: { xs: 0.5, md: 1 }, borderTop: '1px dashed var(--ink-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography sx={{ fontSize: { xs: 10, md: 11 }, color: 'var(--ink-500)', fontWeight: 600 }}>
-              make enquiry
+              Origin & Grade
             </Typography>
-            <Typography className="tnum" sx={{ fontWeight: 700, fontSize: { xs: 11, md: 13.5 }, color: 'var(--ink-800)' }}>
-              {product.moq} {product.unit}
+            <Typography sx={{ fontWeight: 700, fontSize: { xs: 11, md: 13.5 }, color: 'var(--brand-700)' }}>
+              {product.origin} ({product.specifications?.Grade || 'Standard'})
             </Typography>
           </Box>
           <Box sx={{ display: { xs: 'none', md: 'flex' }, mt: 1, justifyContent: 'flex-end', alignItems: 'center', color: 'var(--brand-700)', gap: 0.25 }}>

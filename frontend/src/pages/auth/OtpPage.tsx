@@ -1,11 +1,12 @@
 import { useRef, useState, useEffect } from 'react'
 import type { ClipboardEvent, KeyboardEvent } from 'react'
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
-import { Box, Typography, Button, Link as MuiLink } from '@mui/material'
+import { Box, Typography, Button, Link as MuiLink, CircularProgress } from '@mui/material'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import { useAppDispatch } from '@/redux/hooks'
 import { signIn } from '@/redux/slices/authSlice'
 import { ROUTES } from '@/constants'
+import { useVerifyOtpMutation, useSignupCustomerMutation, useSendOtpMutation } from '@/redux/api'
 import toast from 'react-hot-toast'
 
 const LEN = 6
@@ -14,10 +15,13 @@ export default function OtpPage() {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const location = useLocation()
-  const state = (location.state as { mobile?: string; from?: string; signup?: boolean } | null) ?? {}
+  const state = (location.state as { mobile?: string; from?: string; signup?: boolean; signupData?: any } | null) ?? {}
   const mobile = state.mobile ?? 'your mobile'
 
-  const [digits, setDigits] = useState<string[]>(['1', '2', '3', '4', '5', '6'])
+  const [verifyOtp, { isLoading: verifying }] = useVerifyOtpMutation()
+  const [signupCustomer, { isLoading: signingUp }] = useSignupCustomerMutation()
+  const [sendOtp, { isLoading: sending }] = useSendOtpMutation()
+  const [digits, setDigits] = useState<string[]>(Array(LEN).fill(''))
   const [seconds, setSeconds] = useState(30)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -59,10 +63,44 @@ export default function OtpPage() {
   const code = digits.join('')
   const complete = code.length === LEN
 
-  const verify = () => {
-    dispatch(signIn())
-    toast.success(state.signup ? 'Account verified — welcome to Agriport!' : 'Verified successfully')
-    navigate(state.from ?? ROUTES.home, { replace: true })
+  const verify = async () => {
+    try {
+      const purpose = state.signup ? 'signup' : 'login'
+      const verifyResult = await verifyOtp({ mobile: state.mobile ?? '', otpCode: code, purpose }).unwrap()
+      
+      if (state.signup) {
+        // Customer registration payload mapping
+        const address = state.signupData?.address || '';
+        const city = address.split(',').pop()?.trim() || 'Pune';
+        const signupData = {
+          name: state.signupData?.fullName || '',
+          email: state.signupData?.email || '',
+          mobile: state.mobile ?? '',
+          companyName: state.signupData?.companyName || '',
+          gstNumber: state.signupData?.gstNumber || '',
+          city,
+          address,
+          businessType: 'Wholesaler', // fallback
+        }
+        const signupResult = await signupCustomer(signupData).unwrap()
+        if (signupResult.data?.accessToken) {
+          dispatch(signIn({ token: signupResult.data.accessToken, user: signupResult.data.user }))
+          toast.success('Account verified — welcome to Agriport!')
+          navigate(state.from ?? ROUTES.home, { replace: true })
+        } else {
+          toast.success(signupResult.message || 'Registration submitted successfully. Pending Admin approval.')
+          navigate(ROUTES.login, { replace: true })
+        }
+      } else {
+        // Retrieve returned user profile details on OTP login success
+        const loginData = verifyResult.data || verifyResult;
+        dispatch(signIn({ token: loginData.accessToken, user: loginData.user }))
+        toast.success('Verified successfully.')
+        navigate(state.from ?? ROUTES.home, { replace: true })
+      }
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Verification failed. Please check the code.')
+    }
   }
 
   return (
@@ -81,7 +119,7 @@ export default function OtpPage() {
       </Typography>
       <Typography color="text.secondary" sx={{ mb: 4 }}>
         We sent a 6-digit code to <strong style={{ color: 'var(--ink-900)' }}>{mobile}</strong>.
-        Enter it below to continue. <em>(Demo: any 6 digits work.)</em>
+        Enter it below to continue.
       </Typography>
 
       <Box className="flex gap-2 sm:gap-3 mb-6" onPaste={handlePaste}>
@@ -114,8 +152,14 @@ export default function OtpPage() {
         ))}
       </Box>
 
-      <Button variant="contained" size="large" fullWidth disabled={!complete} onClick={verify}>
-        Verify & continue
+      <Button
+        variant="contained"
+        size="large"
+        fullWidth
+        disabled={!complete || verifying || signingUp}
+        onClick={verify}
+      >
+        {verifying || signingUp ? <CircularProgress size={24} color="inherit" /> : 'Verify & continue'}
       </Button>
 
       <Typography sx={{ mt: 3, textAlign: 'center', fontSize: 14, color: 'var(--ink-500)' }}>
@@ -126,14 +170,21 @@ export default function OtpPage() {
           <MuiLink
             component="button"
             type="button"
+            disabled={sending}
             underline="hover"
-            sx={{ fontWeight: 600 }}
-            onClick={() => {
-              setSeconds(30)
-              toast.success('OTP resent')
+            sx={{ fontWeight: 600, opacity: sending ? 0.5 : 1, cursor: sending ? 'not-allowed' : 'pointer' }}
+            onClick={async () => {
+              try {
+                const purpose = state.signup ? 'signup' : 'login'
+                await sendOtp({ mobile: state.mobile ?? '', purpose }).unwrap()
+                setSeconds(30)
+                toast.success('OTP resent')
+              } catch (err: any) {
+                toast.error(err.data?.message || 'Failed to resend OTP. Please try again.')
+              }
             }}
           >
-            Resend OTP
+            {sending ? 'Resending...' : 'Resend OTP'}
           </MuiLink>
         )}
       </Typography>
