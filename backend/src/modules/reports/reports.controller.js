@@ -58,7 +58,7 @@ export const getDashboardStats = asyncWrapper(async (req, res) => {
 
   // Aggregate total product stock
   const productStockResult = await Product.aggregate([
-    { $match: { isArchived: false } },
+    { $match: { isArchived: { $ne: true } } },
     { $group: { _id: null, total: { $sum: '$stock' } } }
   ]);
   const productStock = productStockResult[0]?.total || 0;

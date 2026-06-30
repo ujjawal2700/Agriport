@@ -85,6 +85,10 @@ const productSchema = new mongoose.Schema(
       of: String,
       default: {},
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

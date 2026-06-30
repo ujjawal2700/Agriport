@@ -23,7 +23,7 @@ export const getCategories = asyncWrapper(async (req, res) => {
               $expr: {
                 $and: [
                   { $eq: ['$category', '$$catId'] },
-                  { $eq: ['$isArchived', false] }
+                  { $ne: ['$isArchived', true] }
                 ]
               }
             }

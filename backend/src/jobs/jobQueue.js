@@ -95,7 +95,7 @@ export const auditProductStockLevels = async () => {
   logger.info('[JobManager] Running daily product stock audit...');
   const lowStockProducts = await Product.find({
     stock: { $lt: 10 },
-    isArchived: false,
+    isArchived: { $ne: true },
   });
 
   if (lowStockProducts.length > 0) {
